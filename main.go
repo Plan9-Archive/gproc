@@ -51,9 +51,22 @@ var (
 	role = "client"
 )
 
+/* 
+ * some examples: -myId 'hostname base 7 / hostname base 7 % dup ifeq'
+ * which is the same as taking, given a hostname of sb12, 
+ * i = atoi(&sb[2]); return (i %7 == 0) ? i % 7 : i / 7
+ * for the parent: 'hostname base 7 roundup sb strcat 10.0.0.253 hostname base 7 % ifelse'
+ * returns same of i = atoi(&sb[2]); return (i %7 == 0) ? 10.0.0.253 : strcat(sb[0:1, (((i+6)/7)*7))
+ * You can just put a simple string in for the argument and it will push and pop it
+ * example: -parent='hostname base 7 roundup sb strcat sbfe  hostname base 7 % ifeq' -myId=0 -myAddress=hostname
+ */ 
 func main() {
 	flag.Usage = usage
 	flag.Parse()
+	*myId = forth(*myId)
+	*myAddress = forth(*myAddress)
+	*parent = forth(*parent)
+	fmt.Printf("My id is %v; parent %v; address %v\n", *myId, *parent, *myAddress)
 	log.SetPrefix("newgproc " + *prefix + ": ")
 	Dprintln(2, "starting:", os.Args, "debuglevel", *DebugLevel)
 
