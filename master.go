@@ -21,15 +21,15 @@ var (
 	exceptList  []string
 )
 
-func startMaster(domainSock string, loc Locale) {
+func startMaster() {
 	log.SetPrefix("master " + *prefix + ": ")
 	Dprintln(2, "starting master")
 	exceptFiles = make(map[string]bool, 16)
 	exceptList = []string{}
 
 	go web()
-	go receiveCmds(domainSock)
-	registerSlaves(loc)
+	go receiveCmds(*defaultMasterUDS)
+	registerSlaves()
 }
 
 func sendCommandsToANodeSet(sendReq *StartReq, subNodes string, root string, nodeSet []string) (numnodes int) {
@@ -92,7 +92,7 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (nu
  */
 func receiveCmds(domainSock string) os.Error {
 	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready", Exceptlist: exceptFiles}
-	l, err := Listen("unix", domainSock)
+	l, err := Listen("unix", *defaultMasterUDS)
 	if err != nil {
 		log.Fatal("listen error:", err)
 	}

@@ -10,19 +10,11 @@ GOFILES=\
 	bproc_$(GOOS)_$(GOARCH).go\
 	common.go\
 	info.go\
-	locale.go\
 	mexec.go\
 	main.go\
 	master.go\
 	misc.go \
 	slave.go\
-	kanecfg.go \
-	kfcfg.go \
-	localcfg.go\
-	strongboxcfg.go\
-	jaguarcfg.go\
-	jsoncfg.go\
-	etchostscfg.go\
 	web.go\
 
 include $(GOROOT)/src/Make.cmd

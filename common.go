@@ -63,6 +63,7 @@ func (a *cmdToExec) String() string {
  * It can be sent periodically as things change. A slave can inform its parent of new nodes or nodes
  * lost int he Nodes array. Due to the way LocalAddr works, we might as well tell the parent what its 
  * address is ... 
+ * Nodes tell their id to the master. Nasty bproc problem solved.
  */
 
 type vitalData struct {
@@ -71,6 +72,7 @@ type vitalData struct {
 	HostAddr   string
 	ParentAddr string
 	ServerAddr string
+	Id	string
 	Nodes      []string
 	Exceptlist map[string]bool
 }
@@ -315,7 +317,7 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 	/* it is important to return the listen address, if this function was called
 	 * with port 0
 	 */
-	netl, err := net.Listen(defaultFam, srvaddr)
+	netl, err := net.Listen(*defaultFam, srvaddr)
 	if err != nil {
 		log.Fatal("newListenProc: ", err)
 	}
@@ -355,7 +357,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.E
 		larg.Files = append(larg.Files, f)
 	}
 
-	client, err := Dial(defaultFam, "", clientnode)
+	client, err := Dial(*defaultFam, "", clientnode)
 	if err != nil {
 		log.Print("cacheRelayFilesAndDelegateExec: dialing: ", clientnode, ": ", err)
 		return err
@@ -490,7 +492,7 @@ func fileTcpDial(server string) (*os.File, net.Conn, os.Error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	c, err := net.DialTCP(defaultFam, &laddr, raddr)
+	c, err := net.DialTCP(*defaultFam, &laddr, raddr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -528,18 +530,14 @@ func newStartReq(arg *StartReq) *StartReq {
  */
 
 
-func registerSlaves(loc Locale) os.Error {
-	l, err := Listen(defaultFam, loc.Addr())
+func registerSlaves() os.Error {
+	l, err := Listen(*defaultFam, *myAddress)
 	if err != nil {
 		log.Fatal("listen error:", err)
 	}
 
 	Dprint(0, "-cmdport=", l.Addr())
 	Dprint(2, l.Addr())
-	err = loc.RegisterServer(l)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	slaves = newSlaves()
 	for {
@@ -592,7 +590,7 @@ func newSlaves() (s Slaves) {
 func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 	var s *SlaveInfo
 	s = &SlaveInfo{
-		Id:     loc.SlaveIdFromVitalData(vd),
+		Id:     vd.Id,
 		Addr:   vd.HostAddr,
 		Server: vd.ServerAddr,
 		Nodes:  vd.Nodes,

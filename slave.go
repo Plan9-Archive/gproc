@@ -25,15 +25,24 @@ var id string
  * up well for quite some time. And, in fact, it makes no sense to do it any other way ...
  */
 /* note that we're going to be able to merge master and slave fairly soon, now that they do almost the same things. */
-func startSlave(fam, masterAddr string, loc Locale) {
+func startSlave() {
+	if *parent == "" {
+		log.Fatal("Slave: must set parent IP with -parent switch")
+	}
+	if *myAddress == "" {
+		log.Fatal("Slave: must set myAddress IP with -myAddress switch")
+	}
+	if *myId == "" {
+		log.Fatal("Slave: must set myId with -myId switch")
+	}
 	/* slight difference from master: we're ready when we start, since we run things */
-	vitalData := &vitalData{HostReady: true}
+	vitalData := &vitalData{HostReady: true, Id: *myId}
 	/* some simple sanity checking */
 	if *DoPrivateMount == true && os.Getuid() != 0 {
 		log.Fatal("Need to run as root for private mounts")
 	}
-	Dprint(2, "dialing masterAddr ", masterAddr)
-	master, err := Dial(fam, "", masterAddr)
+	Dprint(2, "dialing masterAddr ", *parent)
+	master, err := Dial(*defaultFam, "", *parent)
 	if err != nil {
 		log.Fatal("startSlave: dialing:", err)
 	}
@@ -48,13 +57,13 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	peerAddr := addr[0] + ":0"
 
 	laddr, _ := net.ResolveTCPAddr("tcp4", peerAddr)      // This multiple-return business sometimes gets annoying
-	netl, err := net.ListenTCP(defaultFam, laddr) // this is how we're ditching newListenProc
+	netl, err := net.ListenTCP(*defaultFam, laddr) // this is how we're ditching newListenProc
 	vitalData.ServerAddr = netl.Addr().String()
 	vitalData.HostAddr = master.LocalAddr().String()
 	vitalData.ParentAddr = master.RemoteAddr().String()
 	r := NewRpcClientServer(master, *binRoot)
 	initSlave(r, vitalData)
-	go registerSlaves(loc)
+	go registerSlaves()
 	go func() {
 		for {
 			// Wait for a connection from the master
@@ -75,7 +84,6 @@ func startSlave(fam, masterAddr string, loc Locale) {
 				"gproc",
 				fmt.Sprintf("-debug=%d", *DebugLevel),
 				fmt.Sprintf("-p=%v", *DoPrivateMount),
-				fmt.Sprintf("-locale=%v", *locale),
 				fmt.Sprintf("-binRoot=%v", *binRoot),
 				fmt.Sprintf("-parent=%v", *parent),
 				"-prefix=" + id,
@@ -186,11 +194,11 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
 	Dprint(2, "receiveCmds: sendReq.Nodes: ", req.Nodes, " expands to ", slaveNodes)
 
 	if len(availableSlaves.Nodes) > 0 {
-		workerChan, l, err = ioProxy(defaultFam, loc.Ip()+":0", c)
+		workerChan, l, err = ioProxy(*defaultFam, *myAddress+":0", c)
 		if err != nil {
 			log.Fatalf("slave: ioproxy: ", err)
 		}
-		Dprint(2, "netwaiter locl.Ip() ", loc.Ip(), " listener at ", l.Addr().String())
+		Dprint(2, "netwaiter locl.Ip() ", *myAddress, " listener at ", l.Addr().String())
 		req.Lfam = l.Addr().Network()
 		req.Lserver = l.Addr().String()
 
