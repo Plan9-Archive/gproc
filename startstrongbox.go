@@ -36,17 +36,17 @@ func runlevel(lowNode, highNode int, mod7 bool) {
 		}
 		numspawn++
 		go func(anode int) {
-			node := fmt.Sprintf("root@cn%d", anode)
+			node := fmt.Sprintf("root@sb%d", anode)
 
 			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_arm", "-locale=strongbox", fmt.Sprintf("-debug=%d", *debugLevel), "s"}
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)
-			pid, err := os.ForkExec("/usr/bin/ssh", Args, os.Environ(), "", f)
+			pid, err := os.StartProcess("/usr/bin/ssh", Args, &os.ProcAttr{Files: f})
 			if err != nil {
-				fmt.Print("Forkexec fails: ", err)
+				fmt.Print("StartProcess fails: ", err)
 			}
 
-			msg, err := os.Wait(pid, 0)
+			msg, err := os.Wait(pid.Pid, 0)
 			reap <- msg
 		}(i)
 	}

@@ -10,6 +10,8 @@
 package main
 
 import (
+	"log"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -47,9 +49,15 @@ func (s *strongbox) Init(role string) {
 			s.parentAddr = *parent + ":" + *cmdPort
 		default:
 			boardMaster := ((which + 6) / 7) * 7
-			s.parentAddr = "10.0.0." + strconv.Itoa(int(boardMaster)) + ":" + *cmdPort
+			s.parentAddr = "sb" + strconv.Itoa(int(boardMaster)) + ":" + *cmdPort
 		}
-		s.ip = "10.0.0." + strconv.Itoa(which)
+		ips, ok := net.LookupIP(hostname)
+		log.Printf("ips is %v\n", ips)
+		if ok != nil {
+			log.Fatal("I don't know my own name? name ", hostname)
+		}
+		
+		s.ip = ips[0].String()
 		s.addr = s.ip + ":" + *cmdPort
 	case "client":
 	}

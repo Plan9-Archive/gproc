@@ -48,7 +48,7 @@ func runlevel(lowNode, highNode int, mod bool) {
 			fmt.Printf("Spawn to %v\n", node)
 			pid, err := os.StartProcess("/usr/bin/ssh", Args, &os.ProcAttr{Files: f})
 			if err != nil {
-				fmt.Print("Forkexec fails: ", err)
+				fmt.Print("StartProcess fails: ", err)
 			}
 
 			msg, err := os.Wait(pid.Pid, 0)
