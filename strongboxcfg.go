@@ -51,13 +51,13 @@ func (s *strongbox) Init(role string) {
 			boardMaster := ((which + 6) / 7) * 7
 			s.parentAddr = "sb" + strconv.Itoa(int(boardMaster)) + ":" + *cmdPort
 		}
-		ips, ok := net.LookupIP(hostname)
+		ips, ok := net.LookupHost(hostname)
 		log.Printf("ips is %v\n", ips)
 		if ok != nil {
 			log.Fatal("I don't know my own name? name ", hostname)
 		}
 		
-		s.ip = ips[0].String()
+		s.ip = ips[0]
 		s.addr = s.ip + ":" + *cmdPort
 	case "client":
 	}
