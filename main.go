@@ -44,11 +44,12 @@ var (
 	cmdPort          = flag.String("cmdport", "6666", "command port")
 	defaultFam = flag.String("fam", "tcp4", "network type")
 	/* required in the command line */
-	parent           = flag.String("parent", "", "parent for some configurations")
-	myAddress = flag.String("myAddress", "", "Required set to my address")
-	myId = flag.String("myId", "", "Required -- tell slaves their id")
+	parent           = flag.String("parent", "hostname", "parent for some configurations")
+	myAddress = flag.String("myAddress", "hostname", "Required set to my address")
+	myId = flag.String("myId", "0", "Required -- tell slaves their id")
 	/* these are not switches */
 	role = "client"
+	myListenAddress string
 )
 
 /* 
@@ -68,6 +69,7 @@ func main() {
 	*myAddress = forth(*myAddress)
 	*parent = forth(*parent)
 	fmt.Printf("My id is %v; parent %v; address %v\n", *myId, *parent, *myAddress)
+	myListenAddress = *myAddress + ":" + *cmdPort
 	log.SetPrefix("newgproc " + *prefix + ": ")
 	Dprintln(2, "starting:", os.Args, "debuglevel", *DebugLevel)
 

@@ -17,7 +17,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -88,9 +87,9 @@ func (s *Stack) triop(op string) {
  */
 func forth(c string) (string){
 	var stack Stack
-	fmt.Printf("FORTH: START>>>>>>>>>>>>>>>>\n") 
+	//fmt.Printf("FORTH: START>>>>>>>>>>>>>>>>\n") 
 	in := Stack(c)
-	fmt.Printf("in: %v\n", string(in))
+	//fmt.Printf("in: %v\n", string(in))
 	/* we won't use full tokenization yet because we're not sure we need it */
 	for len(string(in)) > 0 {
 		command := in.pop()
@@ -131,8 +130,8 @@ func forth(c string) (string){
 				stack.push(command)
 			}
 		}
-		fmt.Printf("Op: %v; Stack: %v\n", command, string(stack))
+		//fmt.Printf("Op: %v; Stack: %v\n", command, string(stack))
 	}
-	fmt.Printf("FORTH: END>>>>>>>>>>>>>>>>%v\n", stack.tos())
+	//fmt.Printf("FORTH: END>>>>>>>>>>>>>>>>%v\n", stack.tos())
 	return stack.pop()
 }

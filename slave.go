@@ -37,12 +37,13 @@ func startSlave() {
 	}
 	/* slight difference from master: we're ready when we start, since we run things */
 	vitalData := &vitalData{HostReady: true, Id: *myId}
+	masterAddr := *parent + ":" + *cmdPort
 	/* some simple sanity checking */
 	if *DoPrivateMount == true && os.Getuid() != 0 {
 		log.Fatal("Need to run as root for private mounts")
 	}
-	Dprint(2, "dialing masterAddr ", *parent)
-	master, err := Dial(*defaultFam, "", *parent)
+	Dprint(2, "dialing masterAddr ", masterAddr)
+	master, err := Dial(*defaultFam, "", masterAddr)
 	if err != nil {
 		log.Fatal("startSlave: dialing:", err)
 	}

@@ -317,6 +317,7 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 	/* it is important to return the listen address, if this function was called
 	 * with port 0
 	 */
+	Dprint(2, "newListenProc %v %v\n", *defaultFam, srvaddr)
 	netl, err := net.Listen(*defaultFam, srvaddr)
 	if err != nil {
 		log.Fatal("newListenProc: ", err)
@@ -531,7 +532,7 @@ func newStartReq(arg *StartReq) *StartReq {
 
 
 func registerSlaves() os.Error {
-	l, err := Listen(*defaultFam, *myAddress)
+	l, err := Listen(*defaultFam, myListenAddress)
 	if err != nil {
 		log.Fatal("listen error:", err)
 	}
