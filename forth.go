@@ -37,13 +37,17 @@ func (s *Stack) tos() (string) {
 
 func (s *Stack) pop() (tos string) {
 	stack := strings.SplitN(string(*s), " ", 2)
-	*s = Stack(stack[1])
+	if len(stack) > 1 {
+		*s = Stack(stack[1])
+	} else {
+		*s = ""
+	}
 	return stack[0]
 }
 
 func (s *Stack) binop(op string) {
-	op1,_ := strconv.Atoi(s.pop())
 	op2,_ := strconv.Atoi(s.pop())
+	op1,_ := strconv.Atoi(s.pop())
 	var res int
 
 	switch(op) {
@@ -70,9 +74,9 @@ func (s *Stack) triop(op string) {
 		case "ifelse":
 			op1val,_ := strconv.Atoi(op1)
 			if op1val == 0 {
-				s.push(op3)
-			} else {
 				s.push(op2)
+			} else {
+				s.push(op3)
 			}
 	}
 	return
@@ -84,12 +88,12 @@ func (s *Stack) triop(op string) {
  */
 func forth(c string) (string){
 	var stack Stack
-
+	fmt.Printf("FORTH: START>>>>>>>>>>>>>>>>\n")
 	in := Stack(c)
+	fmt.Printf("in: %v\n", string(in))
 	/* we won't use full tokenization yet because we're not sure we need it */
 	for len(string(in)) > 0 {
 		command := in.pop()
-		fmt.Printf("Command: %v\n", command)
 		switch(command) {
 		case "hostname":
 			hostname, _ := os.Hostname()
@@ -121,10 +125,12 @@ func forth(c string) (string){
 			s1 := stack.pop()
 			s2 := stack.pop()
 			stack.push(s1 + s2)
+		case " ": 
 		default: 
 			stack.push(command)
 		}
-		fmt.Printf("Op: %v; Stack: %v\n", command, stack)
+		fmt.Printf("Op: %v; Stack: %v\n", command, string(stack))
 	}
+	fmt.Printf("FORTH: END>>>>>>>>>>>>>>>>%v\n", stack.tos())
 	return stack.pop()
 }

@@ -52,13 +52,14 @@ var (
 )
 
 /* 
- * some examples: -myId 'hostname base 7 / hostname base 7 % dup ifeq'
+ * some examples: -myId 'hostname base 7 / hostname base 7 % dup ifelse'
  * which is the same as taking, given a hostname of sb12, 
  * i = atoi(&sb[2]); return (i %7 == 0) ? i % 7 : i / 7
  * for the parent: 'hostname base 7 roundup sb strcat 10.0.0.253 hostname base 7 % ifelse'
  * returns same of i = atoi(&sb[2]); return (i %7 == 0) ? 10.0.0.253 : strcat(sb[0:1, (((i+6)/7)*7))
  * You can just put a simple string in for the argument and it will push and pop it
- * example: -parent='hostname base 7 roundup sb strcat sbfe  hostname base 7 % ifeq' -myId=0 -myAddress=hostname
+ *  ./gproc_linux_arm -parent='hostname base 7 roundup sb strcat 10.1.1.1 hostname base 7 % ifelse' -myId='hostname base 7 % 1  + hostname base 7 / hostname base 7 % ifelse' -myAddress=hostname s
+ * is used for strongbox, where there is a single root, 49 level 1s defined by name %7 == 0, and 
  */ 
 func main() {
 	flag.Usage = usage
