@@ -88,7 +88,7 @@ func (s *Stack) triop(op string) {
  */
 func forth(c string) (string){
 	var stack Stack
-	fmt.Printf("FORTH: START>>>>>>>>>>>>>>>>\n")
+	fmt.Printf("FORTH: START>>>>>>>>>>>>>>>>\n") 
 	in := Stack(c)
 	fmt.Printf("in: %v\n", string(in))
 	/* we won't use full tokenization yet because we're not sure we need it */
@@ -100,7 +100,7 @@ func forth(c string) (string){
 			stack.push(hostname)
 		case "base": 
 			host := stack.pop()
-			stack.push(strings.TrimLeft(host, "abcdefghijklmnopqrstuvwxyz-"))
+			stack.push(strings.TrimLeft(host, "abcdefghijklmnopqrstuvwxyz -"))
 		case "*":
 			stack.binop( command)
 		case "+":
@@ -125,9 +125,11 @@ func forth(c string) (string){
 			s1 := stack.pop()
 			s2 := stack.pop()
 			stack.push(s1 + s2)
-		case " ": 
+		/* discard empty junk left by Split */
 		default: 
-			stack.push(command)
+			if len(command) > 0 {
+				stack.push(command)
+			}
 		}
 		fmt.Printf("Op: %v; Stack: %v\n", command, string(stack))
 	}
