@@ -38,8 +38,9 @@ func runlevel(lowNode, highNode int, mod7 bool) {
 		numspawn++
 		go func(anode int) {
 			node := fmt.Sprintf("root@sb%d", anode)
+//-parent='hostname base 7 roundup sb strcat 10.1.1.1 hostname base 7 % ifelse' -myId='hostname base 7 % 1  + hostname base 7 / hostname base   7 %  ifelse' -myAddress=hostname s
 
-			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_arm", "-locale=strongbox", fmt.Sprintf("-debug=%d", *debugLevel), fmt.Sprintf("-parent=%v", *parent), "s"}
+			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_arm", "-parent='hostname base 7 roundup sb strcat 10.0.0.253 hostname base 7 % ifelse'", "-myId='hostname base 7 % 1  + hostname base 7 / hostname base   7 %  ifelse'", "-myAddress=hostname", fmt.Sprintf("-debug=%d", *debugLevel), "s"}
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)
 			pid, err := os.StartProcess("/usr/bin/ssh", Args, &os.ProcAttr{Files: f})
