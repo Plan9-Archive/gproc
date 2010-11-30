@@ -40,19 +40,19 @@ type SetDebugLevel struct {
 }
 
 type Acmd struct {
-	name  string
+	name         string
 	fullpathname string
-	local int
-	fi    os.FileInfo
+	local        int
+	fi           os.FileInfo
 }
 
 type noderange struct {
 	Base int
-	Ip string
+	Ip   string
 }
 
 type gpconfig struct {
-	Noderanges [ ]noderange
+	Noderanges []noderange
 }
 
 /* a StartArg is a description of what to run and where to run it.
@@ -91,9 +91,9 @@ type SlaveInfo struct {
 }
 
 type Worker struct {
-	Alive bool
-	Addr string
-	Conn net.Conn
+	Alive  bool
+	Addr   string
+	Conn   net.Conn
 	Status chan int
 }
 
@@ -101,23 +101,71 @@ func usage() {
 	fmt.Fprint(os.Stderr, "usage: gproc m <path>\n")
 	fmt.Fprint(os.Stderr, "usage: gproc s <family> <address>\n")
 	fmt.Fprint(os.Stderr, "usage: gproc e <server address> <fam> <address> <nodes> <command>\n")
-	fmt.Fprint(os.Stderr, "usage: gproc R <cmd>\n")
+	fmt.Fprint(os.Stderr, "usage: gproc R\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }
 
 var (
-	localbin = flag.Bool("localbin", false, "execute local files")
+	Logfile = "/tmp/log"
+	Slaves  map[string]SlaveInfo
+	Workers []Worker
+
+	localbin       = flag.Bool("localbin", false, "execute local files")
 	DoPrivateMount = flag.Bool("p", true, "Do a private mount")
-	DebugLevel = flag.Int("debug", 0, "debug level")
+	DebugLevel     = flag.Int("debug", 0, "debug level")
 	/* this one gets me a zero-length string if not set. Phooey. */
 	takeout = flag.String("f", "", "comma-seperated list of files/directories to take along")
-	root = flag.String("r", "", "root for finding binaries")
-	libs = flag.String("L", "/lib:/usr/lib", "library path")
+	root    = flag.String("r", "", "root for finding binaries")
+	libs    = flag.String("L", "/lib:/usr/lib", "library path")
 )
-var Logfile = "/tmp/log"
-var Slaves map[string]SlaveInfo
-var Workers []Worker
+
+func main() {
+	flag.Usage = usage
+	flag.Parse()
+
+	Slaves = make(map[string]SlaveInfo, 1024)
+	config := getConfig()
+	if *DebugLevel > -1 {
+		log.Printf("config is %v\n", config)
+		log.Printf("gproc starts with %v and DebugLevel is %d\n", os.Args, *DebugLevel)
+	}
+	switch flag.Arg(0) {
+	/* traditional bproc master, commands over unix domain socket */
+	case "d":
+		SetDebugLevelRPC(flag.Arg(1), flag.Arg(2), flag.Arg(3))
+	case "m":
+		if len(flag.Args()) < 2 {
+			flag.Usage()
+		}
+		master(flag.Arg(1))
+	case "s":
+		/* traditional slave; connect to master, await instructions */
+		if len(flag.Args()) < 3 {
+			flag.Usage()
+		}
+		slave(flag.Arg(1), flag.Arg(2))
+	case "e":
+		if len(flag.Args()) < 6 {
+			flag.Usage()
+		}
+		mexec()
+	case "R":
+		run()
+	default:
+		flag.Usage()
+	}
+}
+
+func setupLog() {
+	logfile, err := os.Open(Logfile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
+	if err != nil {
+		log.Panic("No log file", err)
+	}
+	log.SetOutput(logfile)
+	log.Printf("DoPrivateMount: %v\n", DoPrivateMount)
+
+}
 
 func notslash(c int) bool {
 	if c != '/' {
@@ -159,7 +207,7 @@ func packfile(l, root string, flist *vector.Vector, dodir bool) os.Error {
 	}
 	_, err := os.Stat(root + l)
 	if err != nil {
-		log.Panic("Bad file: ", root + l, err)
+		log.Panic("Bad file: ", root+l, err)
 		return err
 	}
 	/* Push the file, then its components. Then we pop and get it all back in the right order */
@@ -170,7 +218,7 @@ func packfile(l, root string, flist *vector.Vector, dodir bool) os.Error {
 		if dodir && fi.IsDirectory() {
 			packdir(curfile, flist, false)
 		}
-		c := Acmd{curfile, root+curfile, 0, *fi}
+		c := Acmd{curfile, root + curfile, 0, *fi}
 		if *DebugLevel > 2 {
 			log.Printf("Push %v stat %v\n", c.name, fi)
 		}
@@ -543,9 +591,9 @@ func iowaiter(fam, server string, nw int) (chan int, net.Listener) {
 	}
 
 	go func() {
-		for i := 0; nw > 0; nw, i = nw - 1, i + 1 {
+		for i := 0; nw > 0; nw, i = nw-1, i+1 {
 			conn, err := l.Accept()
-			w := &Worker{Alive:true, Conn: conn, Status: workers}
+			w := &Worker{Alive: true, Conn: conn, Status: workers}
 			Workers[i] = w
 			if err != nil {
 				log.Printf("%v\n", err)
@@ -597,7 +645,6 @@ func netwaiter(fam, server string, nw int, c net.Conn) (chan int, net.Listener) 
 	}()
 	return workers, l
 }
-
 
 
 /* let's be nice and do an Ldd on each file. That's helpful to people. Later. */
@@ -695,7 +742,7 @@ func unixserve(l net.Listener) os.Error {
 				a.gid = gid
 			*/
 			MExec(&a, c)
-		} ()
+		}()
 	}
 	return nil
 }
@@ -827,19 +874,46 @@ func SetDebugLevelRPC(fam, server, newlevel string) {
 
 }
 
+func mexec() {
+	var uniquefiles int = 0
+	cmds := make([]Acmd, 0)
+	var flist vector.Vector
+	allfiles := make(map[string]bool, 1024)
+	workers, l := iowaiter(flag.Arg(2), flag.Arg(3), len(flag.Arg(4)))
+	nodelist := NodeList(flag.Arg(4))
+	if len(*takeout) > 0 {
+		takeaway := strings.Split(*takeout, ",", -1)
+		for _, s := range takeaway {
+			packfile(s, "", &flist, true)
+		}
+	}
+	e, _ := ldd.Ldd(flag.Arg(5), *root, *libs)
+	if !*localbin {
+		for _, s := range e {
+			packfile(s, *root, &flist, false)
+		}
+	}
+	if len(flist) > 0 {
+		cmds = make([]Acmd, len(flist))
+		listlen := flist.Len()
+		uniquefiles = 0
+		for i := 0; i < listlen; i++ {
+			x := flist.Pop().(*Acmd)
+			if _, ok := allfiles[x.name]; !ok {
+				cmds[uniquefiles] = *x
+				uniquefiles++
+				allfiles[x.name] = true
+			}
+		}
+	}
 
+	args := flag.Args()[5:]
+	mexecclient("unix", flag.Arg(1), nodelist, []string{}, cmds[0:uniquefiles], args, l, workers)
+}
 
-
-func main() {
-	var takeout, root, libs string
-	var config gpconfig
-	Slaves = make(map[string]SlaveInfo, 1024)
-	flag.Usage = usage
-	flag.Parse()
-
-	/* do the Config thing */
-	for _,s := range []string{"gpconfig", "/etc/clustermatic/gpconfig"} {
-		configdata,_ := ioutil.ReadFile(s)
+func getConfig() (config gpconfig) {
+	for _, s := range []string{"gpconfig", "/etc/clustermatic/gpconfig"} {
+		configdata, _ := ioutil.ReadFile(s)
 		if configdata == nil {
 			continue
 		}
@@ -850,87 +924,5 @@ func main() {
 		}
 		break
 	}
-	/*
-		if len(os.Args) < 2 {
-			fmt.Printf("Usage: echorpc [c fam addr call] nbytes iter | [s port]")
-		}
-
-	*/
-
-	logfile,err := os.Open(Logfile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
-	if err != nil {
-		log.Panic("No log file", err)
-	}
-	log.SetOutput(logfile)
-log.Printf("DoPrivateMount: %v\n", DoPrivateMount)
-	if *DebugLevel > -1 {
-		log.Printf("gproc starts with %v and *DebugLevel is %d\n", os.Args, *DebugLevel)
-	}
-	switch flag.Arg(0) {
-	/* traditional bproc master, commands over unix domain socket */
-	case "d":
-		SetDebugLevelRPC(flag.Arg(1), flag.Arg(2), flag.Arg(3))
-	case "m":
-		if len(flag.Args()) < 2 {
-			fmt.Printf("Usage: %s m <path>\n", os.Args[0])
-			os.Exit(1)
-		}
-		master(flag.Arg(1))
-	case "s":
-		/* traditional slave; connect to master, await instructions */
-		if len(flag.Args()) < 3 {
-			fmt.Printf("Usage: %s s <family> <address>\n", os.Args[0])
-			os.Exit(1)
-		}
-		slave(flag.Arg(1), flag.Arg(2))
-	case "e":
-		var uniquefiles int = 0
-		cmds := make([]Acmd, 0)
-		if len(flag.Args()) < 6 {
-			fmt.Printf("Usage: %s e  <server address> <fam> <address> <nodes> <command>\n",os.Args[0])
-			os.Exit(1)
-		}
-		var flist vector.Vector
-		allfiles := make(map[string]bool, 1024)
-		workers, l := iowaiter(flag.Arg(2), flag.Arg(3), len(flag.Arg(4)))
-		nodelist := NodeList(flag.Arg(4))
-		if len(takeout) > 0 {
-			takeaway := strings.Split(takeout, ",", -1)
-			for _, s := range takeaway {
-				packfile(s, "", &flist, true)
-			}
-		}
-		e, _ := ldd.Ldd(flag.Arg(5), root, libs)
-		if !*localbin {
-			for _, s := range e {
-				packfile(s, root, &flist, false)
-			}
-		}
-		if len(flist) > 0 {
-			cmds = make([]Acmd, len(flist))
-			listlen := flist.Len()
-			uniquefiles = 0
-			for i := 0; i < listlen; i++ {
-				x := flist.Pop().(*Acmd)
-				if _, ok := allfiles[x.name]; !ok {
-					cmds[uniquefiles] = *x
-					uniquefiles++
-					allfiles[x.name] = true
-				}
-			}
-		}
-
-		args := flag.Args()[5:]
-		mexecclient("unix", flag.Arg(1), nodelist, []string{}, cmds[0:uniquefiles], args, l, workers)
-	case "R":
-		run()
-	default:
-		for _, s := range flag.Args() {
-			fmt.Print(s, " ")
-		}
-		flag.Usage()
-	}
-
+	return
 }
-
-
