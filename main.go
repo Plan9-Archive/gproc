@@ -97,12 +97,26 @@ type Worker struct {
 	Status chan int
 }
 
-var localbin = false
+func usage() {
+	fmt.Fprint(os.Stderr, "usage: gproc m <path>\n")
+	fmt.Fprint(os.Stderr, "usage: gproc s <family> <address>\n")
+	fmt.Fprint(os.Stderr, "usage: gproc e <server address> <fam> <address> <nodes> <command>\n")
+	fmt.Fprint(os.Stderr, "usage: gproc R <cmd>\n")
+	flag.PrintDefaults()
+	os.Exit(2)
+}
 
-var DebugLevel int
+var (
+	localbin = flag.Bool("localbin", false, "execute local files")
+	DoPrivateMount = flag.Bool("p", true, "Do a private mount")
+	DebugLevel = flag.Int("debug", 0, "debug level")
+	/* this one gets me a zero-length string if not set. Phooey. */
+	takeout = flag.String("f", "", "comma-seperated list of files/directories to take along")
+	root = flag.String("r", "", "root for finding binaries")
+	libs = flag.String("L", "/lib:/usr/lib", "library path")
+)
 var Logfile = "/tmp/log"
 var Slaves map[string]SlaveInfo
-var DoPrivateMount = true
 var Workers []Worker
 
 func notslash(c int) bool {
@@ -157,7 +171,7 @@ func packfile(l, root string, flist *vector.Vector, dodir bool) os.Error {
 			packdir(curfile, flist, false)
 		}
 		c := Acmd{curfile, root+curfile, 0, *fi}
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			log.Printf("Push %v stat %v\n", c.name, fi)
 		}
 		flist.Push(&c)
@@ -224,8 +238,8 @@ func Ping(arg *Arg, res *Res) os.Error {
 }
 
 func Debug(arg *SetDebugLevel, res *SetDebugLevel) os.Error {
-	res.level = DebugLevel
-	DebugLevel = arg.level
+	res.level = *DebugLevel
+	*DebugLevel = arg.level
 	return nil
 }
 
@@ -251,11 +265,11 @@ func run() {
 	d.Decode(&arg)
 	/* make sure the directory exists and then do the private name space mount */
 
-	if DebugLevel > 3 {
+	if *DebugLevel > 3 {
 		log.Printf("arg is %v\n", arg)
 	}
 	os.Mkdir(pathbase, 0700)
-	if DoPrivateMount == true {
+	if *DoPrivateMount == true {
 		unshare()
 		_ = unmount(pathbase)
 		syscallerr := privatemount(pathbase)
@@ -266,7 +280,7 @@ func run() {
 	}
 
 	for _, s := range arg.cmds {
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			log.Printf("Localbin %v cmd %v:", arg.LocalBin, s)
 			log.Printf("%s\n", s.name)
 		}
@@ -275,7 +289,7 @@ func run() {
 			break
 		}
 	}
-	if DebugLevel > 2 {
+	if *DebugLevel > 2 {
 		log.Printf("Connect to %v\n", arg.Lserver)
 	}
 
@@ -300,7 +314,7 @@ func run() {
 			}
 		}()
 	} else {
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			log.Printf("ForkExec failed: %s\n", err)
 		}
 	}
@@ -309,7 +323,7 @@ func run() {
 
 /* rexec will create a listener and then relay the results. We do this go get an IO hierarchy. */
 func RExec(arg *StartArg, c net.Conn, res *Res) os.Error {
-	if DebugLevel > 2 {
+	if *DebugLevel > 2 {
 		log.Printf("Start on nodes %s files call back to %s %s", arg.Nodes, arg.Lfam, arg.Lserver)
 	}
 
@@ -320,10 +334,10 @@ func RExec(arg *StartArg, c net.Conn, res *Res) os.Error {
 	if err != nil {
 		fmt.Print("Exec:pipe failed: %v\n", err)
 	}
-	bugger := fmt.Sprintf("-debug=%d", DebugLevel)
+	bugger := fmt.Sprintf("-debug=%d", *DebugLevel)
 	private := fmt.Sprintf("-p=%v", DoPrivateMount)
 	pid, err := os.ForkExec("./gproc", []string{"gproc", bugger, private, "R"}, []string{""}, ".", []*os.File{r, w})
-	if DebugLevel > 2 {
+	if *DebugLevel > 2 {
 		log.Printf("Forked %d\n", pid)
 	}
 	if err == nil {
@@ -334,18 +348,18 @@ func RExec(arg *StartArg, c net.Conn, res *Res) os.Error {
 			}
 		}()
 	} else {
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			log.Printf("ForkExec failed: %s\n", err)
 		}
 	}
 
 	/* relay data to the child */
 	e := gob.NewEncoder(w)
-	if arg.LocalBin && DebugLevel > 2 {
+	if arg.LocalBin && *DebugLevel > 2 {
 		log.Printf("RExec arg.LocalBin %v arg.cmds %v\n", arg.LocalBin, arg.cmds)
 	}
 	e.Encode(arg)
-	if DebugLevel > 2 {
+	if *DebugLevel > 2 {
 		log.Printf("clone pid %d err %v\n", pid, err)
 	}
 	b := make([]byte, 8192)
@@ -364,7 +378,7 @@ func RExec(arg *StartArg, c net.Conn, res *Res) os.Error {
 }
 
 func MExec(arg *StartArg, c net.Conn) os.Error {
-	if DebugLevel > 2 {
+	if *DebugLevel > 2 {
 		fmt.Fprintf(os.Stderr, "Start on nodes %s files call back to %s %s", arg.Nodes, arg.Lfam, arg.Lserver)
 	}
 
@@ -383,7 +397,7 @@ func MExec(arg *StartArg, c net.Conn) os.Error {
 	 */
 	for _, n := range arg.Nodes {
 		s, ok := Slaves[n]
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			log.Printf("Node %v is slave %v\n", n, s)
 		}
 		if !ok {
@@ -397,10 +411,10 @@ func MExec(arg *StartArg, c net.Conn) os.Error {
 			log.Printf("Encode error on s %v: he's dead jim\n", s)
 			continue
 		}
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			log.Printf("totalfilebytes %v localbin %v\n", arg.totalfilebytes, arg.LocalBin)
 		}
-		if arg.LocalBin && DebugLevel > 2 {
+		if arg.LocalBin && *DebugLevel > 2 {
 			log.Printf("cmds %v\n", arg.cmds)
 		}
 		for i := int64(0); i < arg.totalfilebytes; {
@@ -452,7 +466,7 @@ func writeitout(in *os.File, s string, fi os.FileInfo) (int, os.Error) {
 	var err os.Error
 	var filelen int = 0
 	out := "/tmp/xproc" + s
-	if DebugLevel > 2 {
+	if *DebugLevel > 2 {
 		log.Printf("write out  %s, %v %v\n", out, fi, fi.Mode)
 	}
 	switch fi.Mode & syscall.S_IFMT {
@@ -481,11 +495,11 @@ func writeitout(in *os.File, s string, fi os.FileInfo) (int, os.Error) {
 				return -1, err
 			}
 			i += int64(amt)
-			if DebugLevel > 5 {
+			if *DebugLevel > 5 {
 				log.Printf("Processed %d of %d\n", i, fi.Size)
 			}
 		}
-		if DebugLevel > 5 {
+		if *DebugLevel > 5 {
 			log.Printf("Done %v\n", out)
 		}
 		if err != nil {
@@ -495,7 +509,7 @@ func writeitout(in *os.File, s string, fi os.FileInfo) (int, os.Error) {
 		return -1, nil
 	}
 
-	if DebugLevel > 2 {
+	if *DebugLevel > 2 {
 		log.Printf("Finished %v\n", out)
 	}
 	return filelen, nil
@@ -584,25 +598,7 @@ func netwaiter(fam, server string, nw int, c net.Conn) (chan int, net.Listener) 
 	return workers, l
 }
 
-func debuglevel(fam, server, newlevel string) {
-	var ans SetDebugLevel
-	level, err := strconv.Atoi(newlevel)
-	if err != nil {
-		log.Exit("bad level:", err)
-	}
 
-	a := SetDebugLevel{level} // Synchronous call
-	client, err := rpc.DialHTTP(fam, server)
-	if err != nil {
-		log.Exit("dialing:", err)
-	}
-	err = client.Call("Node.Debug", a, &ans)
-	if err != nil {
-		log.Exit("error:", err)
-	}
-	log.Printf("Was %d is %d\n", ans.level, level)
-
-}
 
 /* let's be nice and do an Ldd on each file. That's helpful to people. Later. */
 func buildcmds(file, root, libs string) []Acmd {
@@ -627,10 +623,10 @@ func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []
 	nworkers := len(nodes) + len(peers)
 	var ans Res
 	var err os.Error
-	a := StartArg{Lfam: string(l.Addr().Network()), Lserver: string(l.Addr().String()), cmds: nil, LocalBin: localbin}
+	a := StartArg{Lfam: string(l.Addr().Network()), Lserver: string(l.Addr().String()), cmds: nil, LocalBin: *localbin}
 	files := make([]*os.File, len(cmds))
 	for i := 0; i < len(cmds); i++ {
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			fmt.Printf("cmd %v\n", cmds[i])
 		}
 		if !cmds[i].fi.IsRegular() {
@@ -643,7 +639,7 @@ func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []
 		defer files[i].Close()
 		a.totalfilebytes += cmds[i].fi.Size
 	}
-	if DebugLevel > 2 {
+	if *DebugLevel > 2 {
 		log.Printf("Total file bytes: %v\n", a.totalfilebytes)
 	}
 	a.Args = make([]string, 1)
@@ -811,14 +807,38 @@ func slave(rfam, raddr string) {
 
 }
 
+func SetDebugLevelRPC(fam, server, newlevel string) {
+	var ans SetDebugLevel
+	level, err := strconv.Atoi(newlevel)
+	if err != nil {
+		log.Exit("bad level:", err)
+	}
+
+	a := SetDebugLevel{level} // Synchronous call
+	client, err := rpc.DialHTTP(fam, server)
+	if err != nil {
+		log.Exit("dialing:", err)
+	}
+	err = client.Call("Node.Debug", a, &ans)
+	if err != nil {
+		log.Exit("error:", err)
+	}
+	log.Printf("Was %d is %d\n", ans.level, level)
+
+}
+
+
+
+
 func main() {
 	var takeout, root, libs string
 	var config gpconfig
-	configpaths := [...]string{"gpconfig", "/etc/clustermatic/gpconfig"}
 	Slaves = make(map[string]SlaveInfo, 1024)
+	flag.Usage = usage
+	flag.Parse()
 
 	/* do the Config thing */
-	for _,s := range configpaths {
+	for _,s := range []string{"gpconfig", "/etc/clustermatic/gpconfig"} {
 		configdata,_ := ioutil.ReadFile(s)
 		if configdata == nil {
 			continue
@@ -836,27 +856,20 @@ func main() {
 		}
 
 	*/
-	flag.BoolVar(&localbin, "localbin", false, "execute local files")
-	flag.BoolVar(&DoPrivateMount, "p", true, "Do a private mount")
-	flag.IntVar(&DebugLevel, "debug", 0, "debug level")
-	/* this one gets me a zero-length string if not set. Phooey. */
-	flag.StringVar(&takeout, "f", "", "comma-seperated list of files/directories to take along")
-	flag.StringVar(&root, "r", "", "root for finding binaries")
-	flag.StringVar(&libs, "L", "/lib:/usr/lib", "library path")
-	flag.Parse()
+
 	logfile,err := os.Open(Logfile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		log.Panic("No log file", err)
 	}
 	log.SetOutput(logfile)
 log.Printf("DoPrivateMount: %v\n", DoPrivateMount)
-	if DebugLevel > -1 {
-		log.Printf("gproc starts with %v and debuglevel is %d\n", os.Args, DebugLevel)
+	if *DebugLevel > -1 {
+		log.Printf("gproc starts with %v and *DebugLevel is %d\n", os.Args, *DebugLevel)
 	}
 	switch flag.Arg(0) {
 	/* traditional bproc master, commands over unix domain socket */
 	case "d":
-		debuglevel(flag.Arg(1), flag.Arg(2), flag.Arg(3))
+		SetDebugLevelRPC(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	case "m":
 		if len(flag.Args()) < 2 {
 			fmt.Printf("Usage: %s m <path>\n", os.Args[0])
@@ -888,7 +901,7 @@ log.Printf("DoPrivateMount: %v\n", DoPrivateMount)
 			}
 		}
 		e, _ := ldd.Ldd(flag.Arg(5), root, libs)
-		if !localbin {
+		if !*localbin {
 			for _, s := range e {
 				packfile(s, root, &flist, false)
 			}
@@ -915,8 +928,9 @@ log.Printf("DoPrivateMount: %v\n", DoPrivateMount)
 		for _, s := range flag.Args() {
 			fmt.Print(s, " ")
 		}
-		fmt.Print("\n")
-		log.Exit("Usage: echorpc [c fam addr call] | [s fam addr]")
+		flag.Usage()
 	}
 
 }
+
+

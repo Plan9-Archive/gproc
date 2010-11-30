@@ -12,14 +12,14 @@ func connect(Lserver string) int {
 	/* try your best ... */
 	a, err := net.ResolveTCPAddr(Lserver)
 	if err != nil {
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 		}
 		return -1
 	}
 	sock, e := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_TCP)
 	if sock < 0 {
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			fmt.Printf("%v %v\n", sock, e)
 		}
 		return -1
@@ -46,7 +46,7 @@ func connect(Lserver string) int {
 	connargs[2] = uintptr(addrlen)
 	_, _, e1 := syscall.Syscall(102, 3, uintptr(unsafe.Pointer(&connargs[0])), 0)
 	if e1 < 0 {
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			fmt.Printf("%v %v\n", sock, e)
 		}
 		return -1
@@ -68,7 +68,7 @@ func ucred(fd int) (pid, uid, gid int) {
 	_, _, e1 := syscall.Syscall(102, 15, uintptr(unsafe.Pointer(&ucred[0])), 0)
 
 	if e1 < 0 {
-		if DebugLevel > 2 {
+		if *DebugLevel > 2 {
 			fmt.Printf("%v %v\n", fd, e1)
 		}
 		return -1,-1,-1
