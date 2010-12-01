@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 
+simple gproc exerciser, starts gprocs on 
 MASTER=10.12.0.7
 IPPREF=10.12.0
+RANGE="11 17"
 
-ssh 10.12.0.7 killall gproc 2>/dev/null
+case $# in
+	1 )
+		MASTER=$1
+		IPPREF=${MASTER%%.*%}
+		;;
+	2 )
+		MASTER=$1
+		IPPREF=$2
+		;;
+	3 )
+		MASTER=$1
+		IPPREF=$2
+		RANGE=$3
+		;;		
+esac
+
+ssh $MASTER killall gproc 2>/dev/null
 SOCKNAME=`mktemp /tmp/g.XXXXXX`
 SRVADDR=`mktemp /tmp/servaddr.XXXXXX`
 
@@ -21,12 +39,12 @@ $(ssh $MASTER gproc m $SOCKNAME | grep 'Serving on' | sed 's/Serving on 0.0.0.0:
 # separate out gproc into a package then you can write commands that provide arbitrary interface
 # is there a scalable way for the master to advertise itself?
 
-for i in `seq 11 17`; do
+for i in `seq $RANGE`; do
 	ssh root@$IPPREF.$i killall gproc 2>/dev/null
 done
 
-for i in `seq 11 17`; do
-	ssh root@$IPPREF.$i gproc s  tcp4 $MASTER:`cat $SRVDADDR` &
+for i in `seq $RANGE`; do
+	ssh root@$IPPREF.$i gproc s tcp4 $MASTER:`cat $SRVDADDR` &
 done
 sleep 20
-ssh $MASTER gproc e  /tmp/g tcp 0.0.0.0:0 '1' /tmp/date
+ssh $MASTER gproc e $SOCKNAME tcp 0.0.0.0:0 ${RANGE// /-} /tmp/date

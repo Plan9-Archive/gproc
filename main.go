@@ -53,24 +53,29 @@ func main() {
 	}
 	switch flag.Arg(0) {
 	/* traditional bproc master, commands over unix domain socket */
+	case "debug":
 	case "d":
 		SetDebugLevelRPC(flag.Arg(1), flag.Arg(2), flag.Arg(3))
+	case "master":
 	case "m":
 		if len(flag.Args()) < 2 {
 			flag.Usage()
 		}
 		master(flag.Arg(1))
+	case "worker":
 	case "s":
 		/* traditional slave; connect to master, await instructions */
 		if len(flag.Args()) < 3 {
 			flag.Usage()
 		}
 		slave(flag.Arg(1), flag.Arg(2))
+	case "exec":
 	case "e":
 		if len(flag.Args()) < 6 {
 			flag.Usage()
 		}
 		mexec(flag.Arg(1), flag.Arg(2),  flag.Arg(3), flag.Arg(4), flag.Args()[5:])
+	case "run":
 	case "R":
 		run()
 	default:

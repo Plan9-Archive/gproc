@@ -7,10 +7,11 @@ import (
 	"gob"
 	"net"
 	"syscall"
+	"strings"
 )
 
 func hasPort(addr string) bool {
-	return strings.Contains(":")
+	return strings.Contains(addr, ":")
 }
 
 
@@ -24,7 +25,7 @@ func slave(rfam, raddr string) {
 	var err os.Error
 	a := SlaveArg{id: "-1"}
 
-	if !hasPort(addr){
+	if !hasPort(raddr){
 		raddr += ":42092"
 	}
 	client, err := net.Dial(rfam, "", raddr)
