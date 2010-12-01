@@ -5,12 +5,78 @@ import (
 	"log"
 	"os"
 	"gob"
-	"flag"
 	"container/vector"
 	"net"
 	"strings"
 	"bitbucket.org/npe/ldd"
 )
+
+
+// should be ...
+func mexec(masterAddr, fam, server, nodes string, cmd []string) {
+	var uniquefiles int = 0
+	cmds := make([]Acmd, 0)
+	var flist vector.Vector
+	allfiles := make(map[string]bool, 1024)
+	workers, l, err := iowaiter(fam, server, len(nodes))
+	if err != nil {
+		log.Exit(err)
+	}
+	
+	nodelist := NodeList(nodes)
+	if len(*takeout) > 0 {
+		takeaway := strings.Split(*takeout, ",", -1)
+		for _, s := range takeaway {
+			packfile(s, "", &flist, true)
+		}
+	}
+	e, _ := ldd.Ldd(cmd[0], *root, *libs)
+	if !*localbin {
+		for _, s := range e {
+			packfile(s, *root, &flist, false)
+		}
+	}
+	if len(flist) > 0 {
+		cmds = make([]Acmd, len(flist))
+		listlen := flist.Len()
+		uniquefiles = 0
+		for i := 0; i < listlen; i++ {
+			x := flist.Pop().(*Acmd)
+			if _, ok := allfiles[x.name]; !ok {
+				cmds[uniquefiles] = *x
+				uniquefiles++
+				allfiles[x.name] = true
+			}
+		}
+	}
+
+	mexecclient("unix", masterAddr, nodelist, []string{}, cmds[0:uniquefiles], cmd, l, workers)
+}
+
+func iowaiter(fam, server string, nw int) (workers chan int, l net.Listener, err os.Error) {
+	workers = make(chan int, nw)
+	Workers := make([]*Worker, nw)
+	l, err = net.Listen(fam, server)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Listen: %v\n", err)
+		return
+	}
+
+	go func() {
+		for i := 0; nw > 0; nw, i = nw-1, i+1 {
+			conn, err := l.Accept()
+			w := &Worker{Alive: true, Conn: conn, Status: workers}
+			Workers[i] = w
+			if err != nil {
+				log.Printf("%v\n", err)
+				continue
+			}
+			go ioreader(w)
+		}
+	}()
+	return
+}
+
 
 func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []string, l net.Listener, workers chan int) os.Error {
 	nworkers := len(nodes) + len(peers)
@@ -71,40 +137,116 @@ func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []
 	}
 	return nil
 }
+func RangeList(l string) []string {
+	var ret []string
+	ll := strings.Split(l, "-", -1)
+	switch len(ll) {
+	case 2:
+		var start, end int
+		cnt, err := fmt.Sscanf(ll[0], "%d", &start)
+		if cnt != 1 || err != nil {
+			fmt.Printf("Bad number: %v\n", ll[0])
+		}
+		cnt, err = fmt.Sscanf(ll[1], "%d", &end)
+		if cnt != 1 || err != nil {
+			fmt.Printf("Bad number: %v\n", ll[1])
+		}
+		if start > end {
+			fmt.Printf("%d > %d\n", start, end)
+		}
+		ret = make([]string, end-start+1)
+		for i := start; i <= end; i++ {
+			ret[i-start] = fmt.Sprint(i)
+		}
+	case 1:
+		ret = ll
+	default:
+		fmt.Print("%s: bogus\n", l)
+		return nil
+	}
+	return ret
+}
+func NodeList(l string) []string {
+	var ret []string
+	l = strings.Trim(l, " ,")
+	ll := strings.Split(l, ",", -1)
 
-func mexec() {
-	var uniquefiles int = 0
-	cmds := make([]Acmd, 0)
-	var flist vector.Vector
-	allfiles := make(map[string]bool, 1024)
-	workers, l := iowaiter(flag.Arg(2), flag.Arg(3), len(flag.Arg(4)))
-	nodelist := NodeList(flag.Arg(4))
-	if len(*takeout) > 0 {
-		takeaway := strings.Split(*takeout, ",", -1)
-		for _, s := range takeaway {
-			packfile(s, "", &flist, true)
+	for _, s := range ll {
+		newlist := RangeList(s)
+		if newlist == nil {
+			continue
 		}
+		nextret := make([]string, len(ret)+len(newlist))
+		if ret != nil {
+			copy(nextret[0:], ret[0:])
+		}
+		copy(nextret[len(ret):], newlist[0:])
+		ret = nextret
 	}
-	e, _ := ldd.Ldd(flag.Arg(5), *root, *libs)
-	if !*localbin {
-		for _, s := range e {
-			packfile(s, *root, &flist, false)
-		}
+	return ret
+}
+
+func notslash(c int) bool {
+	if c != '/' {
+		return true
 	}
-	if len(flist) > 0 {
-		cmds = make([]Acmd, len(flist))
-		listlen := flist.Len()
-		uniquefiles = 0
-		for i := 0; i < listlen; i++ {
-			x := flist.Pop().(*Acmd)
-			if _, ok := allfiles[x.name]; !ok {
-				cmds[uniquefiles] = *x
-				uniquefiles++
-				allfiles[x.name] = true
-			}
+	return false
+}
+
+func slash(c int) bool {
+	if c == '/' {
+		return true
+	}
+	return false
+}
+
+/* we do the files here. We push the files and then the directories. We just push them on,
+ * duplicates and all, and do the dedup later when we pop them.
+ */
+func packfile(l, root string, flist *vector.Vector, dodir bool) os.Error {
+	/* what a hack we need to fix this idiocy */
+	if len(l) < 1 {
+		return nil
+	}
+	_, err := os.Stat(root + l)
+	if err != nil {
+		log.Panic("Bad file: ", root+l, err)
+		return err
+	}
+	/* Push the file, then its components. Then we pop and get it all back in the right order */
+	curfile := l
+	for len(curfile) > 0 {
+		fi, _ := os.Stat(root + curfile)
+		/* if it is a directory, and we're following them, do the elements first. */
+		if dodir && fi.IsDirectory() {
+			packdir(curfile, flist, false)
 		}
+		c := Acmd{curfile, root + curfile, 0, *fi}
+		if *DebugLevel > 2 {
+			log.Printf("Push %v stat %v\n", c.name, fi)
+		}
+		flist.Push(&c)
+		curfile = strings.TrimRightFunc(curfile, notslash)
+		curfile = strings.TrimRightFunc(curfile, slash)
+		/* we don't dodir on our parents. */
+		dodir = false
+	}
+	return nil
+}
+
+func packdir(l string, flist *vector.Vector, dodir bool) os.Error {
+	f, err := os.Open(l, 0, 0)
+	if err != nil {
+		return err
+	}
+	list, err := f.Readdirnames(-1)
+
+	if err != nil {
+		return err
 	}
 
-	args := flag.Args()[5:]
-	mexecclient("unix", flag.Arg(1), nodelist, []string{}, cmds[0:uniquefiles], args, l, workers)
+	for _, s := range list {
+		packfile(l+"/"+s, "", flist, false)
+	}
+	return nil
 }

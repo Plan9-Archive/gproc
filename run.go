@@ -85,3 +85,57 @@ func run() {
 	}
 	os.Exit(1)
 }
+
+
+func writeitout(in *os.File, s string, fi os.FileInfo) (int, os.Error) {
+	var err os.Error
+	var filelen int = 0
+	out := "/tmp/xproc" + s
+	if *DebugLevel > 2 {
+		log.Printf("write out  %s, %v %v\n", out, fi, fi.Mode)
+	}
+	switch fi.Mode & syscall.S_IFMT {
+	case syscall.S_IFDIR:
+		err = os.Mkdir(out, fi.Mode&0777)
+		if err != nil {
+			err = os.Chown(out, fi.Uid, fi.Gid)
+		}
+	case syscall.S_IFLNK:
+		err = os.Symlink(out, "/tmp/xproc"+fi.Name)
+	case syscall.S_IFREG:
+		f, err := os.Open(out, os.O_RDWR|os.O_CREAT, 0777)
+		if err != nil {
+			return -1, err
+		}
+		defer f.Close()
+		b := make([]byte, 8192)
+		for i := int64(0); i < fi.Size; {
+			var amt int = int(fi.Size - i)
+			if amt > len(b) {
+				amt = len(b)
+			}
+			amt, _ = in.Read(b[0:amt])
+			amt, err = f.Write(b[0:amt])
+			if err != nil {
+				return -1, err
+			}
+			i += int64(amt)
+			if *DebugLevel > 5 {
+				log.Printf("Processed %d of %d\n", i, fi.Size)
+			}
+		}
+		if *DebugLevel > 5 {
+			log.Printf("Done %v\n", out)
+		}
+		if err != nil {
+			err = os.Chown(out, fi.Uid, fi.Gid)
+		}
+	default:
+		return -1, nil
+	}
+
+	if *DebugLevel > 2 {
+		log.Printf("Finished %v\n", out)
+	}
+	return filelen, nil
+}

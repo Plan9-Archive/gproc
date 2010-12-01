@@ -9,6 +9,10 @@ import (
 	"syscall"
 )
 
+func hasPort(addr string) bool {
+	return strings.Contains(":")
+}
+
 
 /* the original bproc maintained a persistent connection. That doesn't scale well and, besides,
  * it doesn't fit the RPC model well. So, we're going to set up a server socket and then
@@ -20,6 +24,9 @@ func slave(rfam, raddr string) {
 	var err os.Error
 	a := SlaveArg{id: "-1"}
 
+	if !hasPort(addr){
+		raddr += ":42092"
+	}
 	client, err := net.Dial(rfam, "", raddr)
 	if err != nil {
 		log.Exit("dialing:", err)

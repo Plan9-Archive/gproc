@@ -65,7 +65,7 @@ func ucred(fd int) (pid, uid, gid int) {
 		if *DebugLevel > 2 {
 			fmt.Printf("%v %v\n", fd, e1)
 		}
-		return -1,-1,-1
+		return -1, -1, -1
 	}
 	return creds[0], creds[1], creds[2]
 }

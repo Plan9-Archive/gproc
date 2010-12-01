@@ -8,6 +8,90 @@ import (
 	"fmt"
 )
 
+var Workers []Worker
+
+/* the most complex one. Needs to ForkExec itself, after
+ * pasting the fd for the accept over the stdin etc.
+ * and the complication of course is that net.Conn is
+ * not able to do this, we have to relay the data
+ * via a pipe. Oh well, at least we get to manage the
+ * net.Conn without worrying about child fooling with it. BLEAH.
+ */
+func master(addr string) {
+	l, e := net.Listen("unix", addr)
+	if e != nil {
+		log.Exit("listen error:", e)
+	}
+
+	go unixserve(l)
+
+	netl, e := net.Listen("tcp4", "0.0.0.0:0")
+	if e != nil {
+		log.Exit("listen error:", e)
+	}
+	fmt.Printf("Serving on %v\n", netl.Addr())
+
+	masterserve(netl)
+
+}
+
+func unixserve(l net.Listener) os.Error {
+	for {
+		var a StartArg
+		c, err := l.Accept()
+		if err != nil {
+			log.Printf("unixserve: accept on (%v) failed %v\n", l, err)
+		}
+		go func() {
+			d := gob.NewDecoder(c)
+			d.Decode(&a)
+			/*
+				_, uid, gid := ucred(0)
+				a.uid = uid
+				a.gid = gid
+			*/
+			MExec(&a, c)
+		}()
+	}
+	return nil
+}
+
+/* you need to keep making new encode/decoders because the process
+ * at the other end is always new
+ */
+func masterserve(l net.Listener) os.Error {
+	for {
+		var s SlaveArg
+		var r SlaveRes
+		c, _ := l.Accept()
+		d := gob.NewDecoder(c)
+		d.Decode(&s)
+		newSlave(&s, c, &r)
+		e := gob.NewEncoder(c)
+		e.Encode(&r)
+	}
+	return nil
+}
+
+
+/* rewrite this so it uses an interface. This is C code in a Go program. */
+func ioreader(w *Worker) {
+	data := make([]byte, 1024)
+	for {
+		n, err := w.Conn.Read(data)
+		if n <= 0 {
+			break
+		}
+		if err != nil {
+			log.Printf("%s\n", err)
+			break
+		}
+
+		fmt.Printf(string(data[0:n]))
+	}
+	w.Status <- 1
+}
+
 func MExec(arg *StartArg, c net.Conn) os.Error {
 	if *DebugLevel > 2 {
 		fmt.Fprintf(os.Stderr, "Start on nodes %s files call back to %s %s", arg.Nodes, arg.Lfam, arg.Lserver)
@@ -86,107 +170,5 @@ func transfer(in *os.File, out net.Conn, length int) os.Error {
 	return nil
 }
 
-/* rewrite this so it uses an interface. This is C code in a Go program. */
-func ioreader(w *Worker) {
-	data := make([]byte, 1024)
-	for {
-		n, err := w.Conn.Read(data)
-		if n <= 0 {
-			break
-		}
-		if err != nil {
-			log.Printf("%s\n", err)
-			break
-		}
 
-		fmt.Printf(string(data[0:n]))
-	}
-	w.Status <- 1
-}
 
-func unixserve(l net.Listener) os.Error {
-	for {
-		var a StartArg
-		c, err := l.Accept()
-		if err != nil {
-			log.Printf("unixserve: accept on (%v) failed %v\n", l, err)
-		}
-		go func() {
-			d := gob.NewDecoder(c)
-			d.Decode(&a)
-			/*
-				_, uid, gid := ucred(0)
-				a.uid = uid
-				a.gid = gid
-			*/
-			MExec(&a, c)
-		}()
-	}
-	return nil
-}
-
-/* you need to keep making new encode/decoders because the process
- * at the other end is always new
- */
-func masterserve(l net.Listener) os.Error {
-	for {
-		var s SlaveArg
-		var r SlaveRes
-		c, _ := l.Accept()
-		d := gob.NewDecoder(c)
-		d.Decode(&s)
-		newSlave(&s, c, &r)
-		e := gob.NewEncoder(c)
-		e.Encode(&r)
-	}
-	return nil
-}
-
-/* the most complex one. Needs to ForkExec itself, after
- * pasting the fd for the accept over the stdin etc.
- * and the complication of course is that net.Conn is
- * not able to do this, we have to relay the data
- * via a pipe. Oh well, at least we get to manage the
- * net.Conn without worrying about child fooling with it. BLEAH.
- */
-func master(addr string) {
-	l, e := net.Listen("unix", addr)
-	if e != nil {
-		log.Exit("listen error:", e)
-	}
-
-	go unixserve(l)
-
-	netl, e := net.Listen("tcp4", "0.0.0.0:0")
-	if e != nil {
-		log.Exit("listen error:", e)
-	}
-	fmt.Printf("Serving on %v\n", netl.Addr())
-
-	masterserve(netl)
-
-}
-
-func iowaiter(fam, server string, nw int) (chan int, net.Listener) {
-	workers := make(chan int, nw)
-	Workers := make([]*Worker, nw)
-	l, err := net.Listen(fam, server)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Listen: %v\n", err)
-		return nil, nil
-	}
-
-	go func() {
-		for i := 0; nw > 0; nw, i = nw-1, i+1 {
-			conn, err := l.Accept()
-			w := &Worker{Alive: true, Conn: conn, Status: workers}
-			Workers[i] = w
-			if err != nil {
-				log.Printf("%v\n", err)
-				continue
-			}
-			go ioreader(w)
-		}
-	}()
-	return workers, l
-}

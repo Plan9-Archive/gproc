@@ -8,6 +8,7 @@ TARG=gproc
 GOFILES=\
 	bproc_$(GOOS).go\
 	bproc_$(GOOS)_$(GOARCH).go\
+	common.go\
 	mexec.go\
 	main.go\
 	master.go\
