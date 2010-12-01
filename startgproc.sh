@@ -26,7 +26,7 @@ SOCKNAME=`mktemp /tmp/g.XXXXXX`
 SRVADDR=`mktemp /tmp/servaddr.XXXXXX`
 
 rm $SOCKNAME
-$(ssh $MASTER gproc m $SOCKNAME | grep 'Serving on' | sed 's/Serving on 0.0.0.0://g' >$SRVADDR) &
+$(ssh $MASTER gproc master $SOCKNAME | grep 'Serving on' | sed 's/Serving on 0.0.0.0://g' >$SRVADDR) &
 
 # hg pull http://bitbucket.org/npe/gproc # should be goinstall -c bitbucket.org/npe/gproc
 # for i in `seq 11 17`; do
@@ -44,7 +44,7 @@ for i in `seq $RANGE`; do
 done
 
 for i in `seq $RANGE`; do
-	ssh root@$IPPREF.$i gproc s tcp4 $MASTER:`cat $SRVDADDR` &
+	ssh root@$IPPREF.$i gproc newworker tcp4 $MASTER:`cat $SRVDADDR` &
 done
 sleep 20
-ssh $MASTER gproc e $SOCKNAME tcp 0.0.0.0:0 ${RANGE// /-} /tmp/date
+ssh $MASTER gproc exec $SOCKNAME tcp 0.0.0.0:0 ${RANGE// /-} /tmp/date
