@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"syscall"
 	"unsafe"
+	"log"
 )
 
 func connect(Lserver string) int {
@@ -20,7 +21,7 @@ func connect(Lserver string) int {
 	sock, e := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_TCP)
 	if sock < 0 {
 		if *DebugLevel > 2 {
-			fmt.Printf("%v %v\n", sock, e)
+			log.Printf("%v %v\n", sock, e)
 		}
 		return -1
 	}
@@ -47,7 +48,7 @@ func connect(Lserver string) int {
 	_, _, e1 := syscall.Syscall(102, 3, uintptr(unsafe.Pointer(&connargs[0])), 0)
 	if e1 < 0 {
 		if *DebugLevel > 2 {
-			fmt.Printf("%v %v\n", sock, e)
+			log.Printf("%v %v\n", sock, e)
 		}
 		return -1
 	}
@@ -69,7 +70,7 @@ func ucred(fd int) (pid, uid, gid int) {
 
 	if e1 < 0 {
 		if *DebugLevel > 2 {
-			fmt.Printf("%v %v\n", fd, e1)
+			log.Printf("%v %v\n", fd, e1)
 		}
 		return -1, -1, -1
 	}

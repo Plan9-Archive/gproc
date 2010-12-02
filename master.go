@@ -6,6 +6,7 @@ import (
 	"log"
 	"gob"
 	"fmt"
+	"io/ioutil"
 )
 
 var Workers []Worker
@@ -18,19 +19,26 @@ var Workers []Worker
  * net.Conn without worrying about child fooling with it. BLEAH.
  */
 func master(addr string) {
-	l, e := net.Listen("unix", addr)
-	if e != nil {
-		log.Exit("listen error:", e)
+	Dprintln(2,"starting master")
+	l, err := net.Listen("unix", addr)
+	if err != nil {
+		log.Exit("listen error:", err)
 	}
 
 	go unixserve(l)
 
-	netl, e := net.Listen("tcp4", "0.0.0.0:0")
-	if e != nil {
-		log.Exit("listen error:", e)
+	netl, err := net.Listen("tcp4", "0.0.0.0:0")
+	if err != nil {
+		log.Exit("listen error:", err)
 	}
-	fmt.Printf("Serving on %v\n", netl.Addr())
-
+	log.SetPrefix("master:")
+	Dprint(2,"master:", netl.Addr())
+	fmt.Println(netl.Addr())
+	err = ioutil.WriteFile("/tmp/srvaddr", []byte(netl.Addr().String()), 0644)
+	if err != nil {
+		log.Exit(err)
+	}
+	
 	masterserve(netl)
 
 }
@@ -63,15 +71,46 @@ func masterserve(l net.Listener) os.Error {
 	for {
 		var s SlaveArg
 		var r SlaveRes
-		c, _ := l.Accept()
+		c, err := l.Accept()
+		if err != nil {
+			log.Exit("masterserve:", err)
+		}
+
 		d := gob.NewDecoder(c)
 		d.Decode(&s)
+		if err != nil {
+			log.Exit(err)
+		}
 		newSlave(&s, c, &r)
 		e := gob.NewEncoder(c)
-		e.Encode(&r)
+		err = e.Encode(&r)
+		if err != nil {
+			log.Exit(err)
+		}
 	}
 	return nil
 }
+
+func newSlave(arg *SlaveArg, c net.Conn, res *SlaveRes) os.Error {
+	var i int
+	var s SlaveInfo
+	if arg.id == "" {
+		i = len(Slaves)
+		i++
+		s.Addr = arg.a
+		s.id = fmt.Sprintf("%d", i)
+		res.id = s.id
+	} else {
+		s = Slaves[arg.id]
+		res.id = s.id
+		s.Addr = arg.a
+	}
+	s.client = c
+	Slaves[s.id] = s
+	Dprintln(2,"Slaves[s.id]:", s)
+	return nil
+}
+
 
 
 /* rewrite this so it uses an interface. This is C code in a Go program. */
@@ -87,14 +126,14 @@ func ioreader(w *Worker) {
 			break
 		}
 
-		fmt.Printf(string(data[0:n]))
+		log.Printf(string(data[0:n]))
 	}
 	w.Status <- 1
 }
 
 func MExec(arg *StartArg, c net.Conn) os.Error {
 	if *DebugLevel > 2 {
-		fmt.Fprintf(os.Stderr, "Start on nodes %s files call back to %s %s", arg.Nodes, arg.Lfam, arg.Lserver)
+		log.Print("MExec: ",arg.Nodes, " fileServer: ", arg.Lfam, arg.Lserver)
 	}
 
 	/* suck in all the file data. Only the master need do this. */
@@ -155,14 +194,14 @@ func transfer(in *os.File, out net.Conn, length int) os.Error {
 	for i := 0; i < length; {
 		amt, err = in.Read(b)
 		if err != nil {
-			log.Panicf("transfer read: %v: %v\n", in, err)
+			log.Exitf("transfer read: %v: %v\n", in, err)
 		}
 		amt, err = out.Write(b[0:amt])
 		if err != nil {
-			log.Panic("transfer read: %v", err)
+			log.Exitf("transfer read: %v", err)
 		}
 		if amt == 0 {
-			log.Panic("0 byte write!\n")
+			log.Exitln("0 byte write!")
 			return nil
 		}
 		i += amt

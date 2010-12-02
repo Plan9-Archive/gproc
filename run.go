@@ -30,9 +30,7 @@ func run() {
 	d.Decode(&arg)
 	/* make sure the directory exists and then do the private name space mount */
 
-	if *DebugLevel > 3 {
-		log.Printf("arg is %v\n", arg)
-	}
+	Dprintf(3, "arg is %v\n", arg)
 	os.Mkdir(pathbase, 0700)
 	if *DoPrivateMount == true {
 		unshare()
@@ -45,18 +43,14 @@ func run() {
 	}
 
 	for _, s := range arg.cmds {
-		if *DebugLevel > 2 {
-			log.Printf("Localbin %v cmd %v:", arg.LocalBin, s)
-			log.Printf("%s\n", s.name)
-		}
+		Dprintf(2, "Localbin %v cmd %v:", arg.LocalBin, s)
+		Dprintf(2, "%s\n", s.name)
 		_, err := writeitout(os.Stdin, s.name, s.fi)
 		if err != nil {
 			break
 		}
 	}
-	if *DebugLevel > 2 {
-		log.Printf("Connect to %v\n", arg.Lserver)
-	}
+	Dprintf(2, "Connect to %v\n", arg.Lserver)
 
 	sock := connect(arg.Lserver)
 
@@ -69,6 +63,7 @@ func run() {
 	if arg.LocalBin {
 		execpath = arg.Args[0]
 	}
+	log.Println("execpath",execpath)
 	_, err := os.ForkExec(execpath, arg.Args, arg.Env, pathbase, f)
 	n.Close()
 	if err == nil {

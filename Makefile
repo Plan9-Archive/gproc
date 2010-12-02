@@ -18,7 +18,7 @@ GOFILES=\
 include $(GOROOT)/src/Make.cmd
 
 test: $(TARG)
-	./test.sh
+	./startgproc.sh
 
 smoketest: $(TARG)
 	(cd testdata; ./test.sh)

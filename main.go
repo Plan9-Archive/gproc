@@ -46,42 +46,31 @@ func main() {
 	flag.Parse()
 
 	Slaves = make(map[string]SlaveInfo, 1024)
-	config := getConfig()
-	if *DebugLevel > -1 {
-		log.Printf("config is %v\n", config)
-		log.Printf("gproc starts with %v and DebugLevel is %d\n", os.Args, *DebugLevel)
-	}
+	//setupLog()
+	//config := getConfig()
+	Dprintln(2, "starting:", os.Args,"debuglevel", *DebugLevel)
+
 	switch flag.Arg(0) {
 	/* traditional bproc master, commands over unix domain socket */
-	case "DEBUG":
-	case "debug":
-	case "d":
+	case "DEBUG", "debug", "d":
 		SetDebugLevelRPC(flag.Arg(1), flag.Arg(2), flag.Arg(3))
-	case "MASTER":
-	case "master":
-	case "m":
+	case "MASTER", "master", "m":
 		if len(flag.Args()) < 2 {
 			flag.Usage()
 		}
 		master(flag.Arg(1))
-	case "WORKER":
-	case "worker":
-	case "s":
+	case "WORKER", "worker", "s":
 		/* traditional slave; connect to master, await instructions */
 		if len(flag.Args()) < 3 {
 			flag.Usage()
 		}
 		slave(flag.Arg(1), flag.Arg(2))
-	case "EXEC":
-	case "exec":
-	case "e":
+	case "EXEC", "exec", "e":
 		if len(flag.Args()) < 6 {
 			flag.Usage()
 		}
-		mexec(flag.Arg(1), flag.Arg(2),  flag.Arg(3), flag.Arg(4), flag.Args()[5:])
-	case "RUN":
-	case "run":
-	case "R":
+		mexec(flag.Arg(1), flag.Arg(2), flag.Arg(3), flag.Arg(4), flag.Args()[5:])
+	case "RUN", "run", "R":
 		run()
 	default:
 		flag.Usage()
@@ -91,11 +80,12 @@ func main() {
 func setupLog() {
 	logfile, err := os.Open(Logfile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
-		log.Panic("No log file", err)
+		log.Exit("No log file", err)
 	}
-	log.SetOutput(logfile)
-	log.Printf("DoPrivateMount: %v\n", DoPrivateMount)
 
+	log.SetOutput(logfile)
+
+	log.Printf("DoPrivateMount: %v\n", DoPrivateMount)
 }
 
 func SetDebugLevelRPC(fam, server, newlevel string) {
@@ -125,9 +115,9 @@ func getConfig() (config gpconfig) {
 		}
 		err := json.Unmarshal(configdata, &config)
 		if err != nil {
-			fmt.Printf("Bad config file: %v\n", err)
-			os.Exit(1)
+			log.Exit("Bad config file:", err)
 		}
+		Dprintf(2,"config is %v\n", config)
 		break
 	}
 	return

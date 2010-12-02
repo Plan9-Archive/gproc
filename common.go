@@ -3,11 +3,18 @@ package main
 import (
 	"os"
 	"net"
+	"fmt"
+	"log"
 )
 
 type SlaveRes struct {
 	id string
 }
+
+func (s SlaveRes) String() string {
+	return fmt.Sprint("id", s.id)
+}
+
 
 type Res struct {
 	Msg []byte
@@ -59,6 +66,10 @@ type StartArg struct {
 	cmds           []Acmd
 }
 
+func (s *StartArg) String() string {
+	return fmt.Sprint(s.Nodes," ",s.Peers," ",s.Args," ",s.cmds)	
+}
+
 type Worker struct {
 	Alive  bool
 	Addr   string
@@ -72,4 +83,30 @@ type SlaveInfo struct {
 	client net.Conn
 }
 
+func (s *SlaveInfo) String() string {
+	if s != nil {
+		return "<nil>"
+	}
+	return fmt.Sprint(s.id," ",s.Addr," ",s.client)
+}
+
 var Slaves  map[string]SlaveInfo
+
+func Dprint(level int, arg ...interface{}) {
+	if *DebugLevel >= level {
+		log.Print(arg...)		
+	}
+}
+
+func Dprintln(level int, arg ...interface{}) {
+	if *DebugLevel >= level {
+		log.Println(arg...)		
+	}
+}
+
+func Dprintf(level int, fmt string, arg ...interface{}) {
+	if *DebugLevel >= level {
+		log.Printf(fmt, arg...)		
+	}
+}
+

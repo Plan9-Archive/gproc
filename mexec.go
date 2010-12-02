@@ -86,14 +86,14 @@ func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []
 	files := make([]*os.File, len(cmds))
 	for i := 0; i < len(cmds); i++ {
 		if *DebugLevel > 2 {
-			fmt.Printf("cmd %v\n", cmds[i])
+			log.Printf("cmd %v\n", cmds[i])
 		}
 		if !cmds[i].fi.IsRegular() {
 			continue
 		}
 		files[i], err = os.Open(cmds[i].fullpathname, os.O_RDONLY, 0)
 		if err != nil {
-			fmt.Printf("Open %v failed: %v\n", cmds[i].fullpathname, err)
+			log.Printf("Open %v failed: %v\n", cmds[i].fullpathname, err)
 		}
 		defer files[i].Close()
 		a.totalfilebytes += cmds[i].fi.Size
@@ -145,14 +145,14 @@ func RangeList(l string) []string {
 		var start, end int
 		cnt, err := fmt.Sscanf(ll[0], "%d", &start)
 		if cnt != 1 || err != nil {
-			fmt.Printf("Bad number: %v\n", ll[0])
+			log.Printf("Bad number: %v\n", ll[0])
 		}
 		cnt, err = fmt.Sscanf(ll[1], "%d", &end)
 		if cnt != 1 || err != nil {
-			fmt.Printf("Bad number: %v\n", ll[1])
+			log.Printf("Bad number: %v\n", ll[1])
 		}
 		if start > end {
-			fmt.Printf("%d > %d\n", start, end)
+			log.Printf("%d > %d\n", start, end)
 		}
 		ret = make([]string, end-start+1)
 		for i := start; i <= end; i++ {
@@ -161,7 +161,7 @@ func RangeList(l string) []string {
 	case 1:
 		ret = ll
 	default:
-		fmt.Print("%s: bogus\n", l)
+		log.Print("%s: bogus\n", l)
 		return nil
 	}
 	return ret
@@ -210,8 +210,7 @@ func packfile(l, root string, flist *vector.Vector, dodir bool) os.Error {
 	}
 	_, err := os.Stat(root + l)
 	if err != nil {
-		log.Panic("Bad file: ", root+l, err)
-		return err
+		log.Exit("Bad file: ", root+l, err)
 	}
 	/* Push the file, then its components. Then we pop and get it all back in the right order */
 	curfile := l
