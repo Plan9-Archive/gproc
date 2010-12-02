@@ -10,34 +10,34 @@ DEBUG=0
 
 while getopts rgd: opt ; do
 	case "$opt" in
-			r) 
-				RECOMPILE=1
-				;;
-			g) 
-				RECOMPILEGOB=1
-				RECOMPILE=1
-				;;
-			d) 
-				DEBUG=$OPTARG
-				;;
-			\\?) 
-				echo "Error: unknown flag" >&2 
-				;;
-        esac
+		r) 
+			RECOMPILE=1
+			;;
+		g) 
+			RECOMPILEGOB=1
+			RECOMPILE=1
+			;;
+		d) 
+			DEBUG=$OPTARG
+			;;
+		\\?) 
+			echo "Error: unknown flag" >&2 
+			;;
+	esac
 done
 
 shift `expr $OPTIND - 1`
 
 case $# in
-	1 )
+	1)
 		MASTER=$1
 		IPPREF=${MASTER%%.*%}
 		;;
-	2 )
+	2)
 		MASTER=$1
 		IPPREF=$2
 		;;
-	3 )
+	3)
 		MASTER=$1
 		IPPREF=$2
 		RANGE=$3
