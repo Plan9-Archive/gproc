@@ -9,18 +9,20 @@ RANGE="11 17"
 DEBUG=0
 
 while getopts rgd: opt ; do
-        case "$opt" in
-          r) 
-			RECOMPILE=1
-			;;
-		  g) 
-			RECOMPILEGOB=1
-			RECOMPILE=1
-			;;
-		  d) 
-			DEBUG=$OPTARG
-			;;
-         \\?) echo "Error: unknown flag" >&2 ;;
+	case "$opt" in
+			r) 
+				RECOMPILE=1
+				;;
+			g) 
+				RECOMPILEGOB=1
+				RECOMPILE=1
+				;;
+			d) 
+				DEBUG=$OPTARG
+				;;
+			\\?) 
+				echo "Error: unknown flag" >&2 
+				;;
         esac
 done
 

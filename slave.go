@@ -48,17 +48,13 @@ func slave(rfam, raddr string) {
 		if err != nil {
 			break
 		}
-		if *DebugLevel > 2 {
-			log.Println("slave: arg", arg)
-		}
+		Dprintln("slave: arg", arg)
 		/* we've read the StartArg in but not the data.
 		 * RExec will ForkExec and do that.
 		 */
 		res := new(Res)
 		RExec(arg, client, res)
-		if *DebugLevel > 2 {
-			log.Println("slave: res", res)
-		}
+		Dprintln("slave: res", res)
 		e.Encode(&res)
 	}
 	log.Exit(err)
