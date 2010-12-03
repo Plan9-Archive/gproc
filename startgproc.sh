@@ -109,4 +109,6 @@ if [[ ! -e /tmp/date ]]; then
 fi
 GRANGE=`echo $RANGE | awk '{print 1"-"($2-$1+1)}'`
 ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $GRANGE /tmp/date
+ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $GRANGE /tmp/date
+ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $GRANGE /tmp/date
 

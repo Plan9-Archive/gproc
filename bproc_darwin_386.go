@@ -1,9 +1,7 @@
 package main
 
 import (
-	"os"
 	"net"
-	"fmt"
 	"log"
 	"syscall"
 	"unsafe"
@@ -13,16 +11,12 @@ func connect(Lserver string) int {
 	/* try your best ... */
 	a, err := net.ResolveTCPAddr(Lserver)
 	if err != nil {
-		if *DebugLevel > 2 {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-		}
+		Dprintf(2, "%s\n", err)
 		return -1
 	}
 	sock, e := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_TCP)
 	if sock < 0 {
-		if *DebugLevel > 2 {
-			log.Printf("%v %v\n", sock, e)
-		}
+		Dprintf(2, "%v %v\n", sock, e)
 		return -1
 	}
 	/* format: BE short family, short port, long addr */

@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"log"
-	"gob"
 	"syscall"
 )
 
@@ -23,11 +22,12 @@ import (
  * peerlist as well as to any subnodes. We run a goroutine for
  * each peer and mexecclient for the children.
  */
+
 func run() {
 	var arg StartArg
 	var pathbase = "/tmp/xproc"
-	d := gob.NewDecoder(os.Stdin)
-	d.Decode(&arg)
+	log.SetPrefix("run: ")
+	Recv("run", os.Stdin, &arg)
 	/* make sure the directory exists and then do the private name space mount */
 
 	Dprintf(3, "arg is %v\n", arg)
@@ -63,22 +63,15 @@ func run() {
 	if arg.LocalBin {
 		execpath = arg.Args[0]
 	}
-	log.Println("execpath",execpath)
+	Dprint(2,"execpath: ",execpath)
 	_, err := os.ForkExec(execpath, arg.Args, arg.Env, pathbase, f)
 	n.Close()
 	if err == nil {
-		go func() {
-			var status syscall.WaitStatus
-			for pid, err := syscall.Wait4(-1, &status, 0, nil); err > 0; pid, err = syscall.Wait4(-1, &status, 0, nil) {
-				log.Printf("wait4 returns pid %v status %v\n", pid, status)
-			}
-		}()
+		Wait4()
 	} else {
-		if *DebugLevel > 2 {
-			log.Printf("ForkExec failed: %s\n", err)
-		}
+		log.Exit("run: ", err)
 	}
-	os.Exit(1)
+	os.Exit(0)
 }
 
 
@@ -86,9 +79,7 @@ func writeitout(in *os.File, s string, fi os.FileInfo) (int, os.Error) {
 	var err os.Error
 	var filelen int = 0
 	out := "/tmp/xproc" + s
-	if *DebugLevel > 2 {
-		log.Printf("write out  %s, %v %v\n", out, fi, fi.Mode)
-	}
+	Dprintf(2, "write out  %s, %v %v\n", out, fi, fi.Mode)
 	switch fi.Mode & syscall.S_IFMT {
 	case syscall.S_IFDIR:
 		err = os.Mkdir(out, fi.Mode&0777)
@@ -105,7 +96,7 @@ func writeitout(in *os.File, s string, fi os.FileInfo) (int, os.Error) {
 		defer f.Close()
 		b := make([]byte, 8192)
 		for i := int64(0); i < fi.Size; {
-			var amt int = int(fi.Size - i)
+			amt := int(fi.Size - i)
 			if amt > len(b) {
 				amt = len(b)
 			}

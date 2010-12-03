@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"gob"
 	"container/vector"
 	"net"
 	"strings"
@@ -18,6 +17,8 @@ func mexec(masterAddr, fam, server, nodes string, cmd []string) {
 	cmds := make([]Acmd, 0)
 	var flist vector.Vector
 	allfiles := make(map[string]bool, 1024)
+	
+	log.SetPrefix("mexec: ")
 	workers, l, err := iowaiter(fam, server, len(nodes))
 	if err != nil {
 		log.Exit(err)
@@ -80,14 +81,11 @@ func iowaiter(fam, server string, nw int) (workers chan int, l net.Listener, err
 
 func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []string, l net.Listener, workers chan int) os.Error {
 	nworkers := len(nodes) + len(peers)
-	var ans Res
 	var err os.Error
 	a := StartArg{Lfam: string(l.Addr().Network()), Lserver: string(l.Addr().String()), cmds: nil, LocalBin: *localbin}
 	files := make([]*os.File, len(cmds))
 	for i := 0; i < len(cmds); i++ {
-		if *DebugLevel > 2 {
-			log.Printf("cmd %v\n", cmds[i])
-		}
+		Dprintf(2,"cmd %v\n", cmds[i])
 		if !cmds[i].fi.IsRegular() {
 			continue
 		}
@@ -98,9 +96,7 @@ func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []
 		defer files[i].Close()
 		a.totalfilebytes += cmds[i].fi.Size
 	}
-	if *DebugLevel > 2 {
-		log.Printf("Total file bytes: %v\n", a.totalfilebytes)
-	}
+	Dprintf(2, "a.totalfilebytes: %v\n", a.totalfilebytes)
 	a.Args = make([]string, 1)
 	a.Args = args
 	a.Env = make([]string, 1)
@@ -112,14 +108,7 @@ func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []
 	if err != nil {
 		log.Exit("dialing:", fam, server, err)
 	}
-
-	e := gob.NewEncoder(client)
-	e.Encode(&a)
-
-	if err != nil {
-		log.Exit("error:", err)
-	}
-
+	Send("mexeclient",client, a)
 	for i := 0; i < len(files); i++ {
 		if !cmds[i].fi.IsRegular() {
 			continue
@@ -129,9 +118,7 @@ func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []
 			return nil
 		}
 	}
-	d := gob.NewDecoder(client)
-	d.Decode(&ans)
-
+	Recv("mexeclient", client, &Res{})
 	for ; nworkers > 0; nworkers-- {
 		<-workers
 	}
@@ -221,9 +208,7 @@ func packfile(l, root string, flist *vector.Vector, dodir bool) os.Error {
 			packdir(curfile, flist, false)
 		}
 		c := Acmd{curfile, root + curfile, 0, *fi}
-		if *DebugLevel > 2 {
-			log.Printf("Push %v stat %v\n", c.name, fi)
-		}
+		Dprintf(2, "Push %v size %d\n", c.name, fi.Size)
 		flist.Push(&c)
 		curfile = strings.TrimRightFunc(curfile, notslash)
 		curfile = strings.TrimRightFunc(curfile, slash)

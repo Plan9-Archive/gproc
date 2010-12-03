@@ -22,7 +22,7 @@ type gpconfig struct {
 
 func usage() {
 	fmt.Fprint(os.Stderr, "usage: gproc m <path>\n")
-	fmt.Fprint(os.Stderr, "usage: gproc s <family> <address>\n")
+	fmt.Fprint(os.Stderr, "usage: gproc s <family> <address> <server address>\n")
 	fmt.Fprint(os.Stderr, "usage: gproc e <server address> <fam> <address> <nodes> <command>\n")
 	fmt.Fprint(os.Stderr, "usage: gproc R\n")
 	flag.PrintDefaults()
@@ -33,7 +33,7 @@ var (
 	Logfile = "/tmp/log"
 
 	localbin       = flag.Bool("localbin", false, "execute local files")
-	DoPrivateMount = flag.Bool("p", true, "Do a private mount")
+	DoPrivateMount = flag.Bool("p", false, "Do a private mount")
 	DebugLevel     = flag.Int("debug", 0, "debug level")
 	/* this one gets me a zero-length string if not set. Phooey. */
 	takeout = flag.String("f", "", "comma-seperated list of files/directories to take along")
@@ -44,7 +44,7 @@ var (
 func main() {
 	flag.Usage = usage
 	flag.Parse()
-
+	log.SetPrefix("newgproc: ")
 	Slaves = make(map[string]SlaveInfo, 1024)
 	//setupLog()
 	//config := getConfig()
@@ -61,10 +61,10 @@ func main() {
 		master(flag.Arg(1))
 	case "WORKER", "worker", "s":
 		/* traditional slave; connect to master, await instructions */
-		if len(flag.Args()) < 3 {
+		if len(flag.Args()) < 4 {
 			flag.Usage()
 		}
-		slave(flag.Arg(1), flag.Arg(2))
+		slave(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	case "EXEC", "exec", "e":
 		if len(flag.Args()) < 6 {
 			flag.Usage()
