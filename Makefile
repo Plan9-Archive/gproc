@@ -14,11 +14,15 @@ GOFILES=\
 	master.go\
 	run.go\
 	slave.go\
+	#	graphviz.go\
 
 include $(GOROOT)/src/Make.cmd
 
-test: $(TARG)
+testwork: $(TARG)
 	./startgproc.sh
+
+testhome: $(TARG)
+	./startgproc.sh -d10 -r 192.168.2.1 192.168.2 3-4,6-10
 
 smoketest: $(TARG)
 	(cd testdata; ./test.sh)

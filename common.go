@@ -106,17 +106,17 @@ type SlaveInfo struct {
 	id     string
 	Addr   string
 	Server string
-	client net.Conn
+	rpc    *RpcClientServer
 }
 
 func (s *SlaveInfo) String() string {
-	if s != nil {
+	if s == nil {
 		return "<nil>"
 	}
-	return fmt.Sprint(s.id, " ", s.Addr, " ", s.client)
+	return fmt.Sprint(s.id, " ", s.Addr)
 }
 
-var Slaves map[string]SlaveInfo
+var Slaves map[string]*SlaveInfo
 
 func Dprint(level int, arg ...interface{}) {
 	if *DebugLevel >= level {
@@ -154,24 +154,96 @@ func RecvPrint(funcname, from interface{}, arg interface{}) {
 	Dprint(1, "		", funcname, ": recv		", IoString(from), ":		", arg)
 }
 
-// depends on gob
-func Send(funcname string, w io.Writer, arg interface{}) {
-	e := gob.NewEncoder(w)
-	SendPrint(funcname, w, arg)
-	err := e.Encode(arg)
+// this group depends on gob
+
+var roleFunc func(role string)
+
+// no, this is stupid.
+
+type RpcClientServer struct {
+	rw io.ReadWriter
+	e  *gob.Encoder
+	d  *gob.Decoder
+}
+
+func NewRpcClientServer(rw io.ReadWriter) *RpcClientServer {
+	return &RpcClientServer{
+		rw: rw,
+		e:  gob.NewEncoder(rw),
+		d:  gob.NewDecoder(rw),
+	}
+}
+
+func (r *RpcClientServer) ReadWriter() io.ReadWriter {
+	return r.rw
+}
+
+var onSendFunc func(funcname string, w io.Writer, arg interface{})
+
+func (r *RpcClientServer) Send(funcname string, arg interface{}) {
+	SendPrint(funcname, r.rw, arg)
+	err := r.e.Encode(arg)
 	if err != nil {
 		log.Exit(funcname, ": ", err)
 	}
 }
 
-func Recv(funcname string, r io.Reader, arg interface{}) {
-	e := gob.NewDecoder(r)
-	RecvPrint(funcname, r, arg)
-	err := e.Decode(arg)
+var onRecvFunc func(funcname string, r io.Reader, arg interface{})
+
+func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
+	err := r.d.Decode(arg)
 	if err != nil {
 		log.Exit(funcname, ": ", err)
 	}
+	RecvPrint(funcname, r.rw, arg)
+	if onRecvFunc != nil {
+		onRecvFunc(funcname, r.rw, arg)
+	}
 }
+
+var onDialFunc func(fam, laddr, raddr string)
+
+func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
+	if onDialFunc != nil {
+		onDialFunc(fam, laddr, raddr)
+	}
+	c, err = net.Dial(fam, laddr, raddr)
+	return
+}
+
+
+type Listener struct {
+	l net.Listener
+}
+
+func (l Listener) Addr() net.Addr {
+	return l.l.Addr()
+}
+
+var onListenFunc func(fam, laddr string)
+
+func Listen(fam, laddr string) (l Listener, err os.Error) {
+	if onListenFunc != nil {
+		onListenFunc(fam, laddr)
+	}
+	ll, err := net.Listen(fam, laddr)
+	l.l = ll
+	return
+}
+
+var onAcceptFunc func(c net.Conn)
+
+func (l Listener) Accept() (c net.Conn, err os.Error) {
+	c, err = l.l.Accept()
+	if err != nil {
+		return
+	}
+	if onAcceptFunc != nil {
+		onAcceptFunc(c)
+	}
+	return
+}
+
 
 // depends on syscall
 func Wait4() {
@@ -181,7 +253,7 @@ func Wait4() {
 	}
 }
 
-func newListenProc(jobname string, job func(c net.Conn), srvaddr string) {
+func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string) {
 	netl, err := net.Listen("tcp4", srvaddr)
 	if err != nil {
 		log.Exit("newListenProc: ", err)
@@ -192,6 +264,6 @@ func newListenProc(jobname string, job func(c net.Conn), srvaddr string) {
 			log.Exit(jobname, ": ", err)
 		}
 		Dprint(2, jobname, ": ", c.RemoteAddr())
-		go job(c)
+		go job(NewRpcClientServer(c))
 	}()
 }

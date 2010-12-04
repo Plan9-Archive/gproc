@@ -5,26 +5,31 @@ import (
 	"log"
 	"os"
 	"container/vector"
-	"net"
 	"strings"
 	"bitbucket.org/npe/ldd"
+	"io"
 )
 
+/*
+
+execute on nodes. 
+
+*/
 
 // should be ...
 func mexec(masterAddr, fam, server, nodes string, cmd []string) {
 	var uniquefiles int = 0
-	cmds := make([]Acmd, 0)
-	var flist vector.Vector
+	var cmds []Acmd
 	allfiles := make(map[string]bool, 1024)
-	
-	log.SetPrefix("mexec: ")
+
+	log.SetPrefix("mexec " + *prefix + ": ")
 	workers, l, err := iowaiter(fam, server, len(nodes))
 	if err != nil {
 		log.Exit(err)
 	}
-	
+
 	nodelist := NodeList(nodes)
+	var flist vector.Vector
 	if len(*takeout) > 0 {
 		takeaway := strings.Split(*takeout, ",", -1)
 		for _, s := range takeaway {
@@ -54,10 +59,10 @@ func mexec(masterAddr, fam, server, nodes string, cmd []string) {
 	mexecclient("unix", masterAddr, nodelist, []string{}, cmds[0:uniquefiles], cmd, l, workers)
 }
 
-func iowaiter(fam, server string, nw int) (workers chan int, l net.Listener, err os.Error) {
+func iowaiter(fam, server string, nw int) (workers chan int, l Listener, err os.Error) {
 	workers = make(chan int, nw)
 	Workers := make([]*Worker, nw)
-	l, err = net.Listen(fam, server)
+	l, err = Listen(fam, server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Listen: %v\n", err)
 		return
@@ -79,13 +84,13 @@ func iowaiter(fam, server string, nw int) (workers chan int, l net.Listener, err
 }
 
 
-func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []string, l net.Listener, workers chan int) os.Error {
+func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []string, l Listener, workers chan int) os.Error {
 	nworkers := len(nodes) + len(peers)
 	var err os.Error
 	a := StartArg{Lfam: string(l.Addr().Network()), Lserver: string(l.Addr().String()), cmds: nil, LocalBin: *localbin}
 	files := make([]*os.File, len(cmds))
 	for i := 0; i < len(cmds); i++ {
-		Dprintf(2,"cmd %v\n", cmds[i])
+		Dprintf(2, "cmd %v\n", cmds[i])
 		if !cmds[i].fi.IsRegular() {
 			continue
 		}
@@ -97,33 +102,33 @@ func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []
 		a.totalfilebytes += cmds[i].fi.Size
 	}
 	Dprintf(2, "a.totalfilebytes: %v\n", a.totalfilebytes)
-	a.Args = make([]string, 1)
 	a.Args = args
-	a.Env = make([]string, 1)
-	a.Env[0] = "LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"
+	a.Env = []string{"LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"}
 	a.Nodes = make([]string, len(nodes))
 	a.Nodes = nodes
 	a.cmds = cmds
-	client, err := net.Dial(fam, "", server)
+	client, err := Dial(fam, "", server)
 	if err != nil {
-		log.Exit("dialing:", fam, server, err)
+		log.Exit("mexecclient: dialing: ", fam, " ", server, " ", err)
 	}
-	Send("mexeclient",client, a)
+	r := NewRpcClientServer(client)
+	r.Send("mexecclient", a)
 	for i := 0; i < len(files); i++ {
 		if !cmds[i].fi.IsRegular() {
 			continue
 		}
-		err = transfer(files[i], client, int(cmds[i].fi.Size))
+		_, err = io.Copyn(r.ReadWriter(), files[i], cmds[i].fi.Size)
 		if err != nil {
 			return nil
 		}
 	}
-	Recv("mexeclient", client, &Res{})
+	r.Recv("mexecclient", &Res{})
 	for ; nworkers > 0; nworkers-- {
 		<-workers
 	}
 	return nil
 }
+
 func RangeList(l string) []string {
 	var ret []string
 	ll := strings.Split(l, "-", -1)
@@ -208,7 +213,7 @@ func packfile(l, root string, flist *vector.Vector, dodir bool) os.Error {
 			packdir(curfile, flist, false)
 		}
 		c := Acmd{curfile, root + curfile, 0, *fi}
-		Dprintf(2, "Push %v size %d\n", c.name, fi.Size)
+		Dprintf(2, "packfile: push %v size %d\n", c.name, fi.Size)
 		flist.Push(&c)
 		curfile = strings.TrimRightFunc(curfile, notslash)
 		curfile = strings.TrimRightFunc(curfile, slash)

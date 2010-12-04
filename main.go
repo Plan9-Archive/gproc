@@ -32,6 +32,7 @@ func usage() {
 var (
 	Logfile = "/tmp/log"
 
+	prefix       = flag.String("prefix", "", "logging prefix")
 	localbin       = flag.Bool("localbin", false, "execute local files")
 	DoPrivateMount = flag.Bool("p", false, "Do a private mount")
 	DebugLevel     = flag.Int("debug", 0, "debug level")
@@ -44,8 +45,8 @@ var (
 func main() {
 	flag.Usage = usage
 	flag.Parse()
-	log.SetPrefix("newgproc: ")
-	Slaves = make(map[string]SlaveInfo, 1024)
+	log.SetPrefix("newgproc "+*prefix+": ")
+	Slaves = make(map[string]*SlaveInfo)
 	//setupLog()
 	//config := getConfig()
 	Dprintln(2, "starting:", os.Args,"debuglevel", *DebugLevel)
@@ -58,7 +59,7 @@ func main() {
 		if len(flag.Args()) < 2 {
 			flag.Usage()
 		}
-		master(flag.Arg(1))
+		startMaster(flag.Arg(1))
 	case "WORKER", "worker", "s":
 		/* traditional slave; connect to master, await instructions */
 		if len(flag.Args()) < 4 {
@@ -98,7 +99,7 @@ func SetDebugLevelRPC(fam, server, newlevel string) {
 	a := SetDebugLevel{level} // Synchronous call
 	client, err := rpc.DialHTTP(fam, server)
 	if err != nil {
-		log.Exit("dialing:", err)
+		log.Exit("SetDebugLevelRPC: dialing: ", err)
 	}
 	err = client.Call("Node.Debug", a, &ans)
 	if err != nil {

@@ -18,9 +18,9 @@ func buildcmds(file, root, libs string) []Acmd {
 	return cmds
 }
 
-func netwaiter(fam, server string, nw int, c net.Conn) (chan int, net.Listener) {
+func netwaiter(fam, server string, nw int, c net.Conn) (chan int, Listener) {
 	workers := make(chan int, nw)
-	l, err := net.Listen(fam, server)
+	l, err := Listen(fam, server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Listen: %s\n", err)
 		return nil, nil

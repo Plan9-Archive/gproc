@@ -4,6 +4,7 @@ import (
 	"os"
 	"log"
 	"syscall"
+	"io"
 )
 
 
@@ -23,34 +24,38 @@ import (
  * each peer and mexecclient for the children.
  */
 
+func doPrivateMount(pathbase string) {
+	unshare()
+	_ = unmount(pathbase)
+	syscallerr := privatemount(pathbase)
+	if syscallerr != 0 {
+		log.Printf("Mount failed", syscallerr, "\n")
+		os.Exit(1)
+	}
+}
+
 func run() {
 	var arg StartArg
 	var pathbase = "/tmp/xproc"
-	log.SetPrefix("run: ")
-	Recv("run", os.Stdin, &arg)
+	log.SetPrefix("run "+*prefix+": ")
+	r := NewRpcClientServer(os.Stdin)
+	r.Recv("run", &arg)
 	/* make sure the directory exists and then do the private name space mount */
 
-	Dprintf(3, "arg is %v\n", arg)
+	Dprintf(3, "run: arg is %v\n", arg)
 	os.Mkdir(pathbase, 0700)
 	if *DoPrivateMount == true {
-		unshare()
-		_ = unmount(pathbase)
-		syscallerr := privatemount(pathbase)
-		if syscallerr != 0 {
-			log.Printf("Mount failed", syscallerr, "\n")
-			os.Exit(1)
-		}
+		doPrivateMount(pathbase)
 	}
-
 	for _, s := range arg.cmds {
-		Dprintf(2, "Localbin %v cmd %v:", arg.LocalBin, s)
+		Dprintf(2, "run: Localbin %v cmd %v:", arg.LocalBin, s)
 		Dprintf(2, "%s\n", s.name)
-		_, err := writeitout(os.Stdin, s.name, s.fi)
+		_, err := writeStreamIntoFile(os.Stdin, s.name, s.fi)
 		if err != nil {
 			break
 		}
 	}
-	Dprintf(2, "Connect to %v\n", arg.Lserver)
+	Dprintf(2, "run: connect to %v\n", arg.Lserver)
 
 	sock := connect(arg.Lserver)
 
@@ -63,7 +68,7 @@ func run() {
 	if arg.LocalBin {
 		execpath = arg.Args[0]
 	}
-	Dprint(2,"execpath: ",execpath)
+	Dprint(2,"run: execpath: ",execpath)
 	_, err := os.ForkExec(execpath, arg.Args, arg.Env, pathbase, f)
 	n.Close()
 	if err == nil {
@@ -75,11 +80,11 @@ func run() {
 }
 
 
-func writeitout(in *os.File, s string, fi os.FileInfo) (int, os.Error) {
+func writeStreamIntoFile(stream *os.File, s string, fi os.FileInfo) (int, os.Error) {
 	var err os.Error
 	var filelen int = 0
 	out := "/tmp/xproc" + s
-	Dprintf(2, "write out  %s, %v %v\n", out, fi, fi.Mode)
+	Dprintf(2, "writeStreamIntoFile:  %s, %v %v\n", out, fi, fi.Mode)
 	switch fi.Mode & syscall.S_IFMT {
 	case syscall.S_IFDIR:
 		err = os.Mkdir(out, fi.Mode&0777)
@@ -94,24 +99,10 @@ func writeitout(in *os.File, s string, fi os.FileInfo) (int, os.Error) {
 			return -1, err
 		}
 		defer f.Close()
-		b := make([]byte, 8192)
-		for i := int64(0); i < fi.Size; {
-			amt := int(fi.Size - i)
-			if amt > len(b) {
-				amt = len(b)
-			}
-			amt, _ = in.Read(b[0:amt])
-			amt, err = f.Write(b[0:amt])
-			if err != nil {
-				return -1, err
-			}
-			i += int64(amt)
-			if *DebugLevel > 5 {
-				log.Printf("Processed %d of %d\n", i, fi.Size)
-			}
-		}
-		if *DebugLevel > 5 {
-			log.Printf("Done %v\n", out)
+		n, err := io.Copyn(f, stream, fi.Size)
+		Dprint(5, "writeStreamIntoFile: copied ",n)
+		if err != nil {
+			log.Exit("writeStreamIntoFile: ",err)
 		}
 		if err != nil {
 			err = os.Chown(out, fi.Uid, fi.Gid)
@@ -120,8 +111,6 @@ func writeitout(in *os.File, s string, fi os.FileInfo) (int, os.Error) {
 		return -1, nil
 	}
 
-	if *DebugLevel > 2 {
-		log.Printf("Finished %v\n", out)
-	}
+	Dprint(2, "writeStreamIntoFile: finished ", out)
 	return filelen, nil
 }

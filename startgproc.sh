@@ -7,8 +7,9 @@ MASTER=10.12.0.7
 IPPREF=10.12.0
 RANGE="11 17"
 DEBUG=0
+LOC=/home/root
 
-while getopts rgd: opt ; do
+while getopts rgd:l: opt ; do
 	case "$opt" in
 		r) 
 			RECOMPILE=1
@@ -19,6 +20,9 @@ while getopts rgd: opt ; do
 			;;
 		d) 
 			DEBUG=$OPTARG
+			;;
+		l)
+			LOC=$OPTARG
 			;;
 		\\?) 
 			echo "Error: unknown flag" >&2 
@@ -44,17 +48,30 @@ case $# in
 		;;		
 esac
 
+expandrange()
+{
+	echo $1 | awk -F, -v 'pref='192.168.2 '
+	{
+		for(i = 1; i <= NF; i++){
+			split($i, a, "-")
+			for(j = a[1]; j <= a[2]; j++)
+				print j
+		}	
+	}
+	'
+}
+
 killgprocs()
 {
 	ssh -q $MASTER killall gproc 2>/dev/null >/dev/null
-	for i in `seq $RANGE`; do
+	for i in `expandrange $RANGE`; do
 		ssh -q root@$IPPREF.$i killall gproc 2>/dev/null >/dev/null &
 	done
 	wait
 }
 
 killgprocs
-trap "killgprocs;exit 1" SIGHUP SIGINT SIGKILL SIGTERM SIGSTOP
+trap "killgprocs;rm $SOCKNAME;exit 1" SIGHUP SIGINT SIGKILL SIGTERM SIGSTOP
 
 GOOS=darwin
 GOARCH=386
@@ -74,8 +91,8 @@ if [[ -n $RECOMPILE ]]; then
 	GOOS=linux
 	GOARCH=arm
 	(cd $GOROOT/src/cmd/gproc && make clean >/dev/null && make >/dev/null) || exit 1
-	for i in `seq $RANGE`; do
-		scp gproc root@$IPPREF.$i:/home/root/ >/dev/null &
+	for i in `expandrange $RANGE`; do
+		scp gproc root@$IPPREF.$i:$LOC >/dev/null &
 	done
 	wait
 fi
@@ -100,15 +117,17 @@ ssh $MASTER gproc  -debug=$DEBUG MASTER $SOCKNAME &
 sleep 1
 PORT=`cat $SRVADDR`
 PORT=${PORT//*:/}
-for i in `seq $RANGE`; do
-	ssh root@$IPPREF.$i /home/root/gproc -debug=$DEBUG  WORKER tcp4 $MASTER:$PORT &
+for i in `expandrange $RANGE`; do
+	ssh root@$IPPREF.$i $LOC/gproc -debug=$DEBUG  WORKER tcp4 $MASTER:$PORT 0.0.0.0:0 &
 done
 sleep 1
 if [[ ! -e /tmp/date ]]; then
-	scp root@$IPPREF.${RANGE// */}:/bin/date /tmp
+	scp root@$IPPREF.`expandrange $RANGE | sed 1q`:/bin/date /tmp
 fi
-GRANGE=`echo $RANGE | awk '{print 1"-"($2-$1+1)}'`
-ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $GRANGE /tmp/date
+GRANGE=`expandrange $RANGE | wc -l | awk '{print "1-"$1}'`
 ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $GRANGE /tmp/date
 ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $GRANGE /tmp/date
 
+# ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date
+# ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date
+rm $SOCKNAME
