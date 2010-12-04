@@ -10,20 +10,20 @@ import (
 	"syscall"
 )
 
-type SlaveRes struct {
+type SlaveResp struct {
 	id string
 }
 
-func (s SlaveRes) String() string {
+func (s SlaveResp) String() string {
 	return fmt.Sprint("id: ", s.id)
 }
 
 
-type Res struct {
+type Resp struct {
 	Msg []byte
 }
 
-func (r Res) String() string {
+func (r Resp) String() string {
 	if len(r.Msg) == 0 {
 		return "<nil>"
 	}
@@ -31,14 +31,14 @@ func (r Res) String() string {
 }
 
 
-type SlaveArg struct {
+type SlaveReq struct {
 	a      string
 	id     string
 	Msg    []byte
 	Server string
 }
 
-func (s SlaveArg) String() string {
+func (s SlaveReq) String() string {
 	if s.id == "" {
 		return "<needid>"
 	}
@@ -50,19 +50,20 @@ type SetDebugLevel struct {
 	level int
 }
 
-type Acmd struct {
+type cmdToExec struct {
 	name         string
 	fullpathname string
 	local        int
 	fi           os.FileInfo
+	file         *os.File
 }
 
-func (a Acmd) String() string {
+func (a *cmdToExec) String() string {
 	return fmt.Sprint(a.name)
 }
 
 
-/* a StartArg is a description of what to run and where to run it.
+/* a StartReq is a description of what to run and where to run it.
  * The Nodes are "node numbers" in your "node name space" -- i.e.
  * nodes that have contacted you to tell them who they are.
  * The Peers are "IP address/port" strings from your master
@@ -74,11 +75,11 @@ func (a Acmd) String() string {
  * yourself. This replaces the bproc "-1" node number which was
  * always a bit of a hack. For now we'll use the -1 numbering
  * for the bpsh command to indicate "local execute" but just
- * set ThisNode in the StartArg when the actual command goes out.
+ * set ThisNode in the StartReq when the actual command goes out.
  * This struct is sent, and following it is the data for the files,
  * as a simple stream of bytes.
  */
-type StartArg struct {
+type StartReq struct {
 	Nodes          []string
 	Peers          []string
 	ThisNode       bool
@@ -88,10 +89,10 @@ type StartArg struct {
 	Lfam, Lserver  string
 	totalfilebytes int64
 	uid, gid       int
-	cmds           []Acmd
+	cmds           []*cmdToExec
 }
 
-func (s *StartArg) String() string {
+func (s *StartReq) String() string {
 	return fmt.Sprint(s.Nodes, " ", s.Peers, " ", s.Args, " ", s.cmds)
 }
 
@@ -238,6 +239,7 @@ func (l Listener) Accept() (c net.Conn, err os.Error) {
 	if err != nil {
 		return
 	}
+	Dprint(2, "accepted ", c.RemoteAddr())
 	if onAcceptFunc != nil {
 		onAcceptFunc(c)
 	}

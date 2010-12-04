@@ -21,7 +21,7 @@ import (
  * files and a copy of the data in memory. (the files are in ram too).
  * So this function is responsible for issuing the commands to our
  * peerlist as well as to any subnodes. We run a goroutine for
- * each peer and mexecclient for the children.
+ * each peer and sendCommandsAndWriteOutFiles for the children.
  */
 
 func doPrivateMount(pathbase string) {
@@ -35,7 +35,7 @@ func doPrivateMount(pathbase string) {
 }
 
 func run() {
-	var arg StartArg
+	var arg StartReq
 	var pathbase = "/tmp/xproc"
 	log.SetPrefix("run "+*prefix+": ")
 	r := NewRpcClientServer(os.Stdin)
@@ -56,8 +56,9 @@ func run() {
 		}
 	}
 	Dprintf(2, "run: connect to %v\n", arg.Lserver)
-
+	// percolates down from startExecution
 	sock := connect(arg.Lserver)
+	Dprintf(2, "run: connected to %v\n", arg.Lserver)
 
 	if sock < 0 {
 		os.Exit(1)

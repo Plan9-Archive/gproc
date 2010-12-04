@@ -118,16 +118,16 @@ sleep 1
 PORT=`cat $SRVADDR`
 PORT=${PORT//*:/}
 for i in `expandrange $RANGE`; do
-	ssh root@$IPPREF.$i $LOC/gproc -debug=$DEBUG  WORKER tcp4 $MASTER:$PORT 0.0.0.0:0 &
+	ssh root@$IPPREF.$i $LOC/gproc -debug=$DEBUG  WORKER tcp4 $MASTER:$PORT 0.0.0.0:$PORT &
 done
 sleep 1
 if [[ ! -e /tmp/date ]]; then
 	scp root@$IPPREF.`expandrange $RANGE | sed 1q`:/bin/date /tmp
 fi
 GRANGE=`expandrange $RANGE | wc -l | awk '{print "1-"$1}'`
-ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $GRANGE /tmp/date
-ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $GRANGE /tmp/date
-ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $GRANGE /tmp/date
+ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+# ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+# ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date

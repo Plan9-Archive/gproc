@@ -2,13 +2,13 @@ package main
 
 
 /* let's be nice and do an Ldd on each file. That's helpful to people. Later. */
-func buildcmds(file, root, libs string) []Acmd {
+func buildcmds(file, root, libs string) []*cmdToExec {
 	e, _ := ldd.Ldd(file, root, libs)
 	/* now we have a list of file names. From this, we create the in-memory
 	 * packed set of files/symlinks/directory descriptions. We also need to track
 	 * what weve made and might have made earlier, to avoid duplicates.
 	 */
-	cmds := make([]Acmd, len(e))
+	cmds := make([]*cmdToExec, len(e))
 	for i, s := range e {
 		cmds[i].name = s
 		cmds[i].fullpathname = root + s
@@ -18,8 +18,8 @@ func buildcmds(file, root, libs string) []Acmd {
 	return cmds
 }
 
-func netwaiter(fam, server string, nw int, c net.Conn) (chan int, Listener) {
-	workers := make(chan int, nw)
+func netwaiter(fam, server string, numWorkers int, c net.Conn) (chan int, Listener) {
+	workers := make(chan int, numWorkers)
 	l, err := Listen(fam, server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Listen: %s\n", err)
@@ -27,7 +27,7 @@ func netwaiter(fam, server string, nw int, c net.Conn) (chan int, Listener) {
 	}
 
 	go func() {
-		for ; nw > 0; nw-- {
+		for ; numWorkers > 0; numWorkers-- {
 			conn, err := l.Accept()
 			if err != nil {
 				log.Printf("%s\n", err)
@@ -71,13 +71,13 @@ type Arg struct {
 	Msg []byte
 }
 
-func Ping(arg *Arg, res *Res) os.Error {
-	res.Msg = arg.Msg
+func Ping(arg *Arg, resp *Resp) os.Error {
+	resp.Msg = arg.Msg
 	return nil
 }
 
-func Debug(arg *SetDebugLevel, res *SetDebugLevel) os.Error {
-	res.level = *DebugLevel
+func Debug(arg *SetDebugLevel, resp *SetDebugLevel) os.Error {
+	resp.level = *DebugLevel
 	*DebugLevel = arg.level
 	return nil
 }

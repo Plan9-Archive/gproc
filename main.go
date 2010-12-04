@@ -37,7 +37,7 @@ var (
 	DoPrivateMount = flag.Bool("p", false, "Do a private mount")
 	DebugLevel     = flag.Int("debug", 0, "debug level")
 	/* this one gets me a zero-length string if not set. Phooey. */
-	takeout = flag.String("f", "", "comma-seperated list of files/directories to take along")
+	filesToTakeAlong = flag.String("f", "", "comma-seperated list of files/directories to take along")
 	root    = flag.String("r", "", "root for finding binaries")
 	libs    = flag.String("L", "/lib:/usr/lib", "library path")
 )
@@ -65,12 +65,12 @@ func main() {
 		if len(flag.Args()) < 4 {
 			flag.Usage()
 		}
-		slave(flag.Arg(1), flag.Arg(2), flag.Arg(3))
+		startSlave(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	case "EXEC", "exec", "e":
 		if len(flag.Args()) < 6 {
 			flag.Usage()
 		}
-		mexec(flag.Arg(1), flag.Arg(2), flag.Arg(3), flag.Arg(4), flag.Args()[5:])
+		startExecution(flag.Arg(1), flag.Arg(2), flag.Arg(3), flag.Arg(4), flag.Args()[5:])
 	case "RUN", "run", "R":
 		run()
 	default:

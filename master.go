@@ -45,7 +45,7 @@ func startMaster(addr string) {
 
 func unixServe(l Listener) os.Error {
 	for {
-		var a StartArg
+		var a StartReq
 		c, err := l.Accept()
 		if err != nil {
 			log.Exitf("unixServe: accept on (%v) failed %v\n", l, err)
@@ -55,7 +55,7 @@ func unixServe(l Listener) os.Error {
 			r.Recv("unixServe", &a)
 			// get credentials later
 			MExec(&a, r)
-			r.Send("unixServe", Res{Msg: []byte("MExec finished")})
+			r.Send("unixServe", Resp{Msg: []byte("MExec finished")})
 		}()
 	}
 	return nil
@@ -71,7 +71,7 @@ func masterServe(l Listener) os.Error {
 			log.Exit("masterServe:", err)
 		}
 		r := NewRpcClientServer(c)
-		var a SlaveArg
+		var a SlaveReq
 		r.Recv("masterServe", &a)
 		r.Send("masterServe", newSlave(&a, r))
 	}
@@ -79,8 +79,8 @@ func masterServe(l Listener) os.Error {
 }
 
 
-func newStartArg(arg *StartArg) *StartArg {
-	return &StartArg{
+func newStartReq(arg *StartReq) *StartReq {
+	return &StartReq{
 		ThisNode:       true,
 		LocalBin:       arg.LocalBin,
 		Args:           arg.Args,
@@ -92,7 +92,7 @@ func newStartArg(arg *StartArg) *StartArg {
 	}
 }
 
-func MExec(arg *StartArg, r *RpcClientServer) os.Error {
+func MExec(arg *StartReq, r *RpcClientServer) os.Error {
 	Dprint(2, "MExec: ", arg.Nodes, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	// buffer files on master
@@ -116,7 +116,7 @@ func MExec(arg *StartArg, r *RpcClientServer) os.Error {
 			log.Printf("No slave %v\n", n)
 			continue
 		}
-		larg := newStartArg(arg)
+		larg := newStartReq(arg)
 		s.rpc.Send("MExec", larg)
 		Dprintf(2, "totalfilebytes %v localbin %v\n", arg.totalfilebytes, arg.LocalBin)
 		if arg.LocalBin {
@@ -135,7 +135,7 @@ func MExec(arg *StartArg, r *RpcClientServer) os.Error {
 }
 
 
-func newSlave(arg *SlaveArg, r *RpcClientServer) (res SlaveRes) {
+func newSlave(arg *SlaveReq, r *RpcClientServer) (resp SlaveResp) {
 	var s *SlaveInfo
 	if arg.id != "" {
 		s = Slaves[arg.id]
@@ -149,8 +149,8 @@ func newSlave(arg *SlaveArg, r *RpcClientServer) (res SlaveRes) {
 		Slaves[s.id] = s
 	}
 
-	Dprintln(2, "newSlave: id: ", s)
-	res.id = s.id
+	Dprintln(2, "startSlave: id: ", s)
+	resp.id = s.id
 	return
 }
 

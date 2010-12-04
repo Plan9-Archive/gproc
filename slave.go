@@ -8,35 +8,36 @@ import (
 )
 
 var id string
-func slaveserv(r *RpcClientServer) {
+func slaveProc(r *RpcClientServer) {
 	for {
-		arg := &StartArg{}
-		r.Recv("slaveserv", arg)
-		RExec(arg, r)
-		r.Send("slaveserv", Res{Msg: []byte("slave finished")})
+		req := &StartReq{}
+		// receives from MExec?
+		r.Recv("slaveProc", req)
+		RExec(req, r)
+		r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
 	}
 }
 
-func slave(rfam, raddr, srvaddr string) {
-	newListenProc("slaveserv", slaveserv, srvaddr)
+func startSlave(rfam, raddr, srvaddr string) {
+	newListenProc("slaveProc", slaveProc, srvaddr)
 	client, err := Dial(rfam, "", raddr)
 	if err != nil {
 		log.Exit("dialing:", err)
 	}
 	r := NewRpcClientServer(client)
-	a := &SlaveArg{}
-	r.Send("slave", a)
-	ans := &SlaveRes{}
-	r.Recv("slave", &ans)
-	id = ans.id
+	req := &SlaveReq{}
+	r.Send("startSlave", req)
+	resp := &SlaveResp{}
+	r.Recv("startSlave", &resp)
+	id = resp.id
 	log.SetPrefix("slave " + id + ": ")
-	slaveserv(r)
+	slaveProc(r)
 }
 
 
 /* rexec will create a listener and then relay the results. We do this go get an IO hierarchy. */
-func RExec(arg *StartArg, rpc *RpcClientServer) (err os.Error) {
-	Dprintln(2, "RExec: ", arg.Nodes, "fileServer: ", arg)
+func RExec(req *StartReq, rpc *RpcClientServer) (err os.Error) {
+	Dprintln(2, "RExec: ", req.Nodes, "fileServer: ", req)
 	/* set up a pipe */
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -54,12 +55,11 @@ func RExec(arg *StartArg, rpc *RpcClientServer) (err os.Error) {
 	go Wait4()
 
 	/* relay data to the child */
-	if arg.LocalBin {
-		Dprintf(2, "RExec arg.LocalBin %v arg.cmds %v\n", arg.LocalBin, arg.cmds)
+	if req.LocalBin {
+		Dprintf(2, "RExec arg.LocalBin %v arg.cmds %v\n", req.LocalBin, req.cmds)
 	}
-//	rpc.Send("RExec", arg)
 	rrpc := NewRpcClientServer(w)
-	rrpc.Send("RExec", arg)
+	rrpc.Send("RExec", req)
 	Dprintf(2, "clone pid %d err %v\n", pid, err)
 	n, err := io.Copy(rrpc.ReadWriter(), rpc.ReadWriter())
 	Dprint(2, "RExec copy wrote", n)
