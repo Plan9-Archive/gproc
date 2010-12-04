@@ -1,0 +1,10 @@
+It's possible to make arbitrary extensions to gproc for debugging, visualization etc... for gproc by using the function pointers:
+
+var roleFunc func(role string)
+var onSendFunc func(funcname string, w io.Writer, arg interface{})
+var onRecvFunc func(funcname string, r io.Reader, arg interface{})
+var onDialFunc func(fam, laddr, raddr string)
+var onListenFunc func(fam, laddr string)
+var onAcceptFunc func(c net.Conn)
+
+they are called with their namesake functions defined in common.go. This implementation is similar to debug.go in the "gob" package. Please look at graphviz.go for a reference implementation.

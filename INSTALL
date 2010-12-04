@@ -1,0 +1,6 @@
+goinstall bitbucket.org/npe/ldd
+cd $GOROOT/src/cmd && 
+hg clone http://bitbucket.org/npe/gproc &&
+cd gproc &&
+make install 
+# make test

@@ -84,13 +84,32 @@ func iowaiter(fam, server string, nw int) (workers chan int, l Listener, err os.
 }
 
 
+/* rewrite this so it uses an interface. This is C code in a Go program. */
+func ioreader(w *Worker) {
+	data := make([]byte, 1024)
+	for {
+		n, err := w.Conn.Read(data)
+		if n <= 0 {
+			break
+		}
+		if err != nil {
+			log.Printf("%s\n", err)
+			break
+		}
+
+		log.Printf(string(data[0:n]))
+	}
+	w.Status <- 1
+}
+
+
 func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []string, l Listener, workers chan int) os.Error {
 	nworkers := len(nodes) + len(peers)
 	var err os.Error
 	a := StartArg{Lfam: string(l.Addr().Network()), Lserver: string(l.Addr().String()), cmds: nil, LocalBin: *localbin}
 	files := make([]*os.File, len(cmds))
 	for i := 0; i < len(cmds); i++ {
-		Dprintf(2, "cmd %v\n", cmds[i])
+		Dprintf(2, "mexecclient: cmd %v\n", cmds[i])
 		if !cmds[i].fi.IsRegular() {
 			continue
 		}
@@ -117,6 +136,7 @@ func mexecclient(fam, server string, nodes, peers []string, cmds []Acmd, args []
 		if !cmds[i].fi.IsRegular() {
 			continue
 		}
+		Dprint(2, "mexecclient: copying ", cmds[i].fi.Size)
 		_, err = io.Copyn(r.ReadWriter(), files[i], cmds[i].fi.Size)
 		if err != nil {
 			return nil
