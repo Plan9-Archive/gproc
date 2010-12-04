@@ -8,8 +8,9 @@ IPPREF=10.12.0
 RANGE="11 17"
 DEBUG=0
 LOC=/home/root
+TIMESERVER=be.pool.ntp.org
 
-while getopts rgd:l: opt ; do
+while getopts rgd:l:t: opt ; do
 	case "$opt" in
 		r) 
 			RECOMPILE=1
@@ -23,6 +24,9 @@ while getopts rgd:l: opt ; do
 			;;
 		l)
 			LOC=$OPTARG
+			;;
+		t)
+			TIMESERVER=$OPTARG
 			;;
 		\\?) 
 			echo "Error: unknown flag" >&2 
@@ -93,6 +97,7 @@ if [[ -n $RECOMPILE ]]; then
 	(cd $GOROOT/src/cmd/gproc && make clean >/dev/null && make >/dev/null) || exit 1
 	for i in `expandrange $RANGE`; do
 		scp gproc root@$IPPREF.$i:$LOC >/dev/null &
+		ssh root@$IPPREF.$i ntpdate $TIMESERVER
 	done
 	wait
 fi

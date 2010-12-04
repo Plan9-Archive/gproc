@@ -78,6 +78,7 @@ func addFiles(cmds []*cmdToExec) (totalfilebytes int64) {
 
 func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 	for _, c := range(cmds) {
+		defer c.file.Close()
 		if !c.fi.IsRegular() {
 			continue
 		}
@@ -86,15 +87,14 @@ func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 		if err != nil {
 			log.Exit("writeOutFiles: copyn: ", err)
 		}
-		c.file.Close()
 	}
 }
 
 func sendCommandsAndWriteOutFiles(fam, server string, nodes, peers []string, cmds []*cmdToExec, args []string, l Listener, workers chan int) (err os.Error) {
 	numWorkers := len(nodes) + len(peers)
 	a := StartReq{
-		Lfam:           string(l.Addr().Network()),
-		Lserver:        string(l.Addr().String()),
+		Lfam:           l.Addr().Network(),
+		Lserver:        l.Addr().String(),
 		LocalBin:       *localbin,
 		Args:           args,
 		totalfilebytes: addFiles(cmds),
@@ -110,8 +110,9 @@ func sendCommandsAndWriteOutFiles(fam, server string, nodes, peers []string, cmd
 	r.Send("sendCommandsAndWriteOutFiles", a)
 	writeOutFiles(r, cmds)
 	r.Recv("sendCommandsAndWriteOutFiles", &Resp{})
-	for ; numWorkers > 0; numWorkers-- {
+	for numWorkers > 0  {
 		<-workers
+		numWorkers--
 	}
 	return nil
 }
