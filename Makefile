@@ -32,3 +32,11 @@ testtrace1: $(TARG)
 
 smoketest: $(TARG)
 	(cd testdata; ./test.sh)
+
+testlocal: $(TARG)
+	rm -f /tmp/g && ./gproc -debug=8 master /tmp/g &
+	sleep 3
+	./gproc  -debug=8 worker tcp4 127.0.0.1:`cat /tmp/srvaddr | sed 's/^.*://g'` 127.0.0.1:0 &
+	sleep 3
+	time ./gproc -debug=8 exec /tmp/g tcp4 127.0.0.1:0 1 /bin/date
+	rm -f /tmp/g

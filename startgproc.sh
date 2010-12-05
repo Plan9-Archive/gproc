@@ -80,21 +80,19 @@ killgprocs()
 killgprocs
 trap "killgprocs;rm $SOCKNAME;exit 1" SIGHUP SIGINT SIGKILL SIGTERM SIGSTOP
 
-GOOS=darwin
-GOARCH=386
+OLDGOOS=$GOOS
+OLDGOARCH=$GOARCH
 if [[ -n $RECOMPILEGOB ]]; then
 	GOOS=linux
 	GOARCH=arm
 	(cd $GOROOT/src/pkg/gob && make clean >/dev/null && make install >/dev/null) || exit 1
-	GOOS=darwin
-	GOARCH=386
+	GOOS=$OLDGOOS
+	GOARCH=$OLDGOARCH
 	(cd $GOROOT/src/pkg/gob && make clean >/dev/null && make install >/dev/null) || exit 1
 fi
 
 # in a subshell to make sure we don't corrupt the working directory
 if [[ -n $RECOMPILE ]]; then
-	(cd $GOROOT/src/cmd/gproc && make install) || exit 1
-	scp gproc $MASTER:$GOROOT/bin >/dev/null
 	GOOS=linux
 	GOARCH=arm
 	(cd $GOROOT/src/cmd/gproc && make clean >/dev/null && make) || exit 1
@@ -102,6 +100,10 @@ if [[ -n $RECOMPILE ]]; then
 		scp gproc root@$IPPREF.$i:$LOC >/dev/null &
 		ssh root@$IPPREF.$i ntpdate $TIMESERVER &
 	done
+	GOOS=$OLDGOOS
+	GOARCH=$OLDGOARCH
+	(cd $GOROOT/src/cmd/gproc && make install) || exit 1
+	scp gproc $MASTER:$GOROOT/bin >/dev/null
 	wait
 fi
 

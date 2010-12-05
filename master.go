@@ -97,7 +97,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error 
 
 	// buffer files on master
 	data := bytes.NewBuffer(make([]byte,0))
-	Dprint(2, "cacheRelayFilesAndDelegateExec: doing copyn")
+	Dprint(2, "cacheRelayFilesAndDelegateExec: doing copying ", arg.totalfilebytes)
 	n, err := io.Copyn(data, r.ReadWriter(), arg.totalfilebytes)
 	Dprint(2, "cacheRelayFilesAndDelegateExec readbytes ", data.Bytes()[0:64])
 	Dprint(2, "cacheRelayFilesAndDelegateExec: copied ", n, " total ", arg.totalfilebytes)

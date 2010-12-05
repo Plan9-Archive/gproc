@@ -33,6 +33,7 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 	e, _ := ldd.Ldd(cmd[0], *root, *libs)
 	if !*localbin {
 		for _, s := range e {
+			Dprint(4, "startExecution: not local walking ", *root+s)
 			path.Walk(*root+s, pv, nil)
 		}
 	}
@@ -170,7 +171,22 @@ func newPackVisitor() (p *packVisitor) {
 	return &packVisitor{alreadyVisited: make(map[string]bool)}
 }
 
-func (p *packVisitor) VisitDir(path string, f *os.FileInfo) bool {
+func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
+	if p.alreadyVisited[filePath] {
+		return false
+	}
+	// _, file := path.Split(filePath)
+	c := &cmdToExec{
+		name: filePath,
+		// name:         file,
+		fullpathname: filePath,
+		local:        0,
+		fi:           f,
+	}
+	Dprint(4, "VisitDir: appending ", filePath)
+	p.cmds = append(p.cmds, c)
+	p.totalfilebytes += f.Size
+	p.alreadyVisited[filePath] = true
 	return true
 }
 
@@ -178,13 +194,16 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	if p.alreadyVisited[filePath] {
 		return
 	}
-	_, file := path.Split(filePath)
+	// _, file := path.Split(filePath)
 	c := &cmdToExec{
-		name:         file,
+		name: filePath,
+		// name:         file,
 		fullpathname: filePath,
 		local:        0,
 		fi:           f,
 	}
+	Dprint(4, "VisitFile: appending ", filePath)
+
 	p.cmds = append(p.cmds, c)
 	p.totalfilebytes += f.Size
 	p.alreadyVisited[filePath] = true

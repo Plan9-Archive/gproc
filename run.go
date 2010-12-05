@@ -5,6 +5,7 @@ import (
 	"log"
 	"syscall"
 	"io"
+	"path"
 )
 
 
@@ -52,7 +53,7 @@ func run() {
 		Dprintf(2, "%s\n", s.name)
 		_, err := writeStreamIntoFile(os.Stdin, s.name, s.fi)
 		if err != nil {
-			break
+			log.Exit("run: writeStreamIntoFile: ", err)
 		}
 	}
 	Dprintf(2, "run: connect to %v\n", arg.Lserver)
@@ -83,37 +84,46 @@ func doPrivateMount(pathbase string) {
 	}
 }
 
-func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (int, os.Error) {
-	var err os.Error
-	var filelen int = 0
-	out := "/tmp/xproc/" + s
+func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (n int64, err os.Error) {
+	out := "/tmp/xproc" + s
 	Dprintf(2, "writeStreamIntoFile:  %s, %v %v\n", out, fi, fi.Mode)
 	switch fi.Mode & syscall.S_IFMT {
 	case syscall.S_IFDIR:
+		Dprint(5, "writeStreamIntoFile: is dir")
 		err = os.Mkdir(out, fi.Mode&0777)
 		if err != nil {
 			err = os.Chown(out, fi.Uid, fi.Gid)
 		}
 	case syscall.S_IFLNK:
+		Dprint(5, "writeStreamIntoFile: is link")
+		
 		err = os.Symlink(out, "/tmp/xproc"+fi.Name)
 	case syscall.S_IFREG:
+		Dprint(5, "writeStreamIntoFile: is regular file")
+		dir, _ := path.Split(out)
+		_, err = os.Lstat(dir)
+		if err != nil {
+			os.Mkdir(dir, 0777)
+			err = nil
+		}
 		f, err := os.Open(out, os.O_RDWR|os.O_CREAT, 0777)
 		if err != nil {
-			return -1, err
+			return
 		}
 		defer f.Close()
-		n, err := io.Copyn(f, stream, fi.Size)
+		Dprint(5, "writeStreamIntoFile: copying ",fi.Size)
+		n, err = io.Copyn(f, stream, fi.Size)
 		Dprint(5, "writeStreamIntoFile: copied ",n)
 		if err != nil {
-			log.Exit("writeStreamIntoFile: ",err)
+			log.Exit("writeStreamIntoFile: copyn: ",err)
 		}
 		if err != nil {
 			err = os.Chown(out, fi.Uid, fi.Gid)
 		}
 	default:
-		return -1, nil
+		return
 	}
 
 	Dprint(2, "writeStreamIntoFile: finished ", out)
-	return filelen, nil
+	return
 }
