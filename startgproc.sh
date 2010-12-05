@@ -97,7 +97,7 @@ if [[ -n $RECOMPILE ]]; then
 	(cd $GOROOT/src/cmd/gproc && make clean >/dev/null && make >/dev/null) || exit 1
 	for i in `expandrange $RANGE`; do
 		scp gproc root@$IPPREF.$i:$LOC >/dev/null &
-		ssh root@$IPPREF.$i ntpdate $TIMESERVER
+		ssh root@$IPPREF.$i ntpdate $TIMESERVER &
 	done
 	wait
 fi

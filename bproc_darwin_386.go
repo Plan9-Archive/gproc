@@ -9,6 +9,7 @@ import (
 
 func connect(Lserver string) int {
 	/* try your best ... */
+	Dprintf(2, "connect: connecting ", Lserver)
 	a, err := net.ResolveTCPAddr(Lserver)
 	if err != nil {
 		Dprintf(2, "connect: %s\n", err)
@@ -41,6 +42,7 @@ func connect(Lserver string) int {
 		}
 		return -1
 	}
+	Dprintf(2, "connect: connnected %s\n", int(e1))
 	return int(e1)
 
 }

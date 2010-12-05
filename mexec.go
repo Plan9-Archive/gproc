@@ -7,16 +7,10 @@ import (
 	"container/vector"
 	"strings"
 	"bitbucket.org/npe/ldd"
+	"strconv"
 	"io"
 )
 
-/*
-
-execute on nodes. 
-
-*/
-
-// should be ...
 func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 	var uniquefiles int = 0
 	var cmds []*cmdToExec
@@ -28,7 +22,11 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 		log.Exit(err)
 	}
 
-	nodelist := NodeList(nodes)
+	nodelist, err := NodeList(nodes)
+	if err != nil {
+		log.Exit("startExecution: bad nodelist: ", err)
+	}
+	
 	var flist vector.Vector
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
@@ -55,8 +53,31 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 			}
 		}
 	}
-
-	sendCommandsAndWriteOutFiles("unix", masterAddr, nodelist, []string{}, cmds[0:uniquefiles], cmd, l, workers)
+	cmds = cmds[0:uniquefiles]
+	req := StartReq{
+		Lfam:           l.Addr().Network(),
+		Lserver:        l.Addr().String(),
+		LocalBin:       *localbin,
+		Args:           cmd,
+		totalfilebytes: addFiles(cmds),
+		Env:            []string{"LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"},
+		Nodes:          nodelist,
+		cmds:           cmds,
+	}
+	client, err := Dial("unix", "", masterAddr)
+	if err != nil {
+		log.Exit("startExecution: dialing: ", fam, " ", server, " ", err)
+	}
+	r := NewRpcClientServer(client)
+	r.Send("startExecution", req)
+	writeOutFiles(r, cmds)
+	r.Recv("startExecution", &Resp{})
+	peers := []string{} // TODO
+	numWorkers := len(nodes) + len(peers)
+	for numWorkers > 0 {
+		<-workers
+		numWorkers--
+	}
 }
 
 func addFiles(cmds []*cmdToExec) (totalfilebytes int64) {
@@ -77,7 +98,7 @@ func addFiles(cmds []*cmdToExec) (totalfilebytes int64) {
 }
 
 func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
-	for _, c := range(cmds) {
+	for _, c := range cmds {
 		defer c.file.Close()
 		if !c.fi.IsRegular() {
 			continue
@@ -88,33 +109,6 @@ func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 			log.Exit("writeOutFiles: copyn: ", err)
 		}
 	}
-}
-
-func sendCommandsAndWriteOutFiles(fam, server string, nodes, peers []string, cmds []*cmdToExec, args []string, l Listener, workers chan int) (err os.Error) {
-	numWorkers := len(nodes) + len(peers)
-	a := StartReq{
-		Lfam:           l.Addr().Network(),
-		Lserver:        l.Addr().String(),
-		LocalBin:       *localbin,
-		Args:           args,
-		totalfilebytes: addFiles(cmds),
-		Env:            []string{"LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"},
-		Nodes:          nodes,
-		cmds:           cmds,
-	}
-	client, err := Dial(fam, "", server)
-	if err != nil {
-		log.Exit("sendCommandsAndWriteOutFiles: dialing: ", fam, " ", server, " ", err)
-	}
-	r := NewRpcClientServer(client)
-	r.Send("sendCommandsAndWriteOutFiles", a)
-	writeOutFiles(r, cmds)
-	r.Recv("sendCommandsAndWriteOutFiles", &Resp{})
-	for numWorkers > 0  {
-		<-workers
-		numWorkers--
-	}
-	return nil
 }
 
 func ioProxy(fam, server string, numWorkers int) (workers chan int, l Listener, err os.Error) {
@@ -151,54 +145,50 @@ func ioProxy(fam, server string, numWorkers int) (workers chan int, l Listener, 
 	return
 }
 
-
-func RangeList(l string) []string {
-	var ret []string
-	ll := strings.Split(l, "-", -1)
-	switch len(ll) {
-	case 2:
-		var start, end int
-		cnt, err := fmt.Sscanf(ll[0], "%d", &start)
-		if cnt != 1 || err != nil {
-			log.Printf("Bad number: %v\n", ll[0])
-		}
-		cnt, err = fmt.Sscanf(ll[1], "%d", &end)
-		if cnt != 1 || err != nil {
-			log.Printf("Bad number: %v\n", ll[1])
-		}
-		if start > end {
-			log.Printf("%d > %d\n", start, end)
-		}
-		ret = make([]string, end-start+1)
-		for i := start; i <= end; i++ {
-			ret[i-start] = fmt.Sprint(i)
-		}
-	case 1:
-		ret = ll
-	default:
-		log.Print("%s: bogus\n", l)
-		return nil
-	}
-	return ret
+func isNum(c byte) bool {
+	return '0' <= c && c <= '9'
 }
-func NodeList(l string) []string {
-	var ret []string
-	l = strings.Trim(l, " ,")
-	ll := strings.Split(l, ",", -1)
 
-	for _, s := range ll {
-		newlist := RangeList(s)
-		if newlist == nil {
-			continue
+var (
+	BadRangeErr = os.NewError("bad range format")
+)
+
+func NodeList(l string) (rl []string, err os.Error) {
+	for i := 0; i < len(l); {
+		switch {
+		case isNum(l[i]):
+			j := i+1
+			for j < len(l) && isNum(l[j]) {
+				j++
+			}
+			beg, _ := strconv.Atoi(l[i:j])
+			end := beg
+			i = j
+			if i < len(l) && l[i] == '-' {
+				i++
+				j = i
+				for j < len(l) && isNum(l[j]) {
+					j++
+				}
+				end, _ = strconv.Atoi(l[i:j])
+				i = j
+			}
+			for k := beg; k <= end; k++ {
+				rl = append(rl, strconv.Itoa(k))
+			}
+			if i < len(l) && l[i] == ',' {
+				i++
+			}else if i < len(l) {				
+				goto BadRange
+			}
+		default:
+			goto BadRange
 		}
-		nextret := make([]string, len(ret)+len(newlist))
-		if ret != nil {
-			copy(nextret[0:], ret[0:])
-		}
-		copy(nextret[len(ret):], newlist[0:])
-		ret = nextret
 	}
-	return ret
+	return
+BadRange:
+	err = BadRangeErr
+	return
 }
 
 func notslash(c int) bool {

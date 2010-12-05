@@ -11,9 +11,9 @@ var id string
 func slaveProc(r *RpcClientServer) {
 	for {
 		req := &StartReq{}
-		// receives from MExec?
+		// receives from cacheRelayFilesAndDelegateExec?
 		r.Recv("slaveProc", req)
-		RExec(req, r)
+		ForkAndRelay(req, r)
 		r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
 	}
 }
@@ -36,36 +36,37 @@ func startSlave(rfam, raddr, srvaddr string) {
 
 
 /* rexec will create a listener and then relay the results. We do this go get an IO hierarchy. */
-func RExec(req *StartReq, rpc *RpcClientServer) (err os.Error) {
-	Dprintln(2, "RExec: ", req.Nodes, "fileServer: ", req)
+func ForkAndRelay(req *StartReq, rpc *RpcClientServer) {
+	Dprintln(2, "ForkAndRelay: ", req.Nodes, "fileServer: ", req)
 	/* set up a pipe */
 	r, w, err := os.Pipe()
 	if err != nil {
-		log.Exit("RExec: ", err)
+		log.Exit("ForkAndRelay: ", err)
 	}	
 	bugger := fmt.Sprintf("-debug=%d", *DebugLevel)
 	private := fmt.Sprintf("-p=%v", *DoPrivateMount)
-	pid, err := os.ForkExec("./gproc", []string{"gproc", bugger, private, "-prefix="+id, "R"}, []string{""}, ".", []*os.File{r, os.Stdout, os.Stdout})
-	r.Close()
+	argv := []string{"gproc", bugger, private, "-prefix="+id, "R"}
+	// pid, err := os.ForkExec("./gproc", argv, []string{""}, "", []*os.File{r, os.Stdout, os.Stdout})
+	pid, err := os.ForkExec("./gproc", argv, []string{""}, "", []*os.File{r, w, w})
+	defer r.Close()
 	defer w.Close()
 	if err != nil {
-		log.Exit("RExec: ", err)
+		log.Exit("ForkAndRelay: ", err)
 	}
 	Dprintf(2, "forked %d\n", pid)
 	go Wait4()
 
 	/* relay data to the child */
 	if req.LocalBin {
-		Dprintf(2, "RExec arg.LocalBin %v arg.cmds %v\n", req.LocalBin, req.cmds)
+		Dprintf(2, "ForkAndRelay arg.LocalBin %v arg.cmds %v\n", req.LocalBin, req.cmds)
 	}
 	rrpc := NewRpcClientServer(w)
-	rrpc.Send("RExec", req)
+	rrpc.Send("ForkAndRelay", req)
 	Dprintf(2, "clone pid %d err %v\n", pid, err)
 	n, err := io.Copy(rrpc.ReadWriter(), rpc.ReadWriter())
-	Dprint(2, "RExec copy wrote", n)
+	Dprint(2, "ForkAndRelay copy wrote", n)
 	if err != nil {
-		log.Exit("RExec: ", err)
+		log.Exit("ForkAndRelay: ", err)
 	}
-	Dprint(2, "RExec: end")
-	return
+	Dprint(2, "ForkAndRelay: end")
 }

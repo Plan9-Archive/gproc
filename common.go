@@ -209,6 +209,7 @@ func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
 		onDialFunc(fam, laddr, raddr)
 	}
 	c, err = net.Dial(fam, laddr, raddr)
+	Dprint(2, "dial connect ", c.LocalAddr(),"->", c.RemoteAddr())
 	return
 }
 
@@ -239,7 +240,7 @@ func (l Listener) Accept() (c net.Conn, err os.Error) {
 	if err != nil {
 		return
 	}
-	Dprint(2, "accepted ", c.RemoteAddr())
+	Dprint(2, "accepted ", c.RemoteAddr(), "->", c.LocalAddr())
 	if onAcceptFunc != nil {
 		onAcceptFunc(c)
 	}

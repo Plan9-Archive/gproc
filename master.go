@@ -54,8 +54,8 @@ func unixServe(l Listener) os.Error {
 		go func() {
 			r.Recv("unixServe", &a)
 			// get credentials later
-			MExec(&a, r)
-			r.Send("unixServe", Resp{Msg: []byte("MExec finished")})
+			cacheRelayFilesAndDelegateExec(&a, r)
+			r.Send("unixServe", Resp{Msg: []byte("cacheRelayFilesAndDelegateExec finished")})
 		}()
 	}
 	return nil
@@ -92,15 +92,15 @@ func newStartReq(arg *StartReq) *StartReq {
 	}
 }
 
-func MExec(arg *StartReq, r *RpcClientServer) os.Error {
-	Dprint(2, "MExec: ", arg.Nodes, " fileServer: ", arg.Lfam, arg.Lserver)
+func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error {
+	Dprint(2, "cacheRelayFilesAndDelegateExec: ", arg.Nodes, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	// buffer files on master
 	data := bytes.NewBuffer(make([]byte,0))
-	Dprint(2, "MExec: doing copyn")
+	Dprint(2, "cacheRelayFilesAndDelegateExec: doing copyn")
 	n, err := io.Copyn(data, r.ReadWriter(), arg.totalfilebytes)
-	Dprint(2, "MExec readbytes ", data.Bytes()[0:64])
-	Dprint(2, "MExec: copied ", n, " total ", arg.totalfilebytes)
+	Dprint(2, "cacheRelayFilesAndDelegateExec readbytes ", data.Bytes()[0:64])
+	Dprint(2, "cacheRelayFilesAndDelegateExec: copied ", n, " total ", arg.totalfilebytes)
 	if err != nil {
 		log.Exit("Mexec: copyn: ", err)
 	}
@@ -108,7 +108,7 @@ func MExec(arg *StartReq, r *RpcClientServer) os.Error {
 	/* this is explicitly for sending to remote nodes. So we actually just pick off one node at a time
 	 * and call execclient with it. Later we will group nodes.
 	 */
-	Dprint(2, "MExec nodes ", arg.Nodes)
+	Dprint(2, "cacheRelayFilesAndDelegateExec nodes ", arg.Nodes)
 	for _, n := range arg.Nodes {
 		s, ok := Slaves[n]
 		Dprintf(2, "node %v == slave %v\n", n, s)
@@ -117,16 +117,16 @@ func MExec(arg *StartReq, r *RpcClientServer) os.Error {
 			continue
 		}
 		larg := newStartReq(arg)
-		s.rpc.Send("MExec", larg)
+		s.rpc.Send("cacheRelayFilesAndDelegateExec", larg)
 		Dprintf(2, "totalfilebytes %v localbin %v\n", arg.totalfilebytes, arg.LocalBin)
 		if arg.LocalBin {
 			Dprintf(2, "cmds %v\n", arg.cmds)
 		}
-		Dprint(2, "MExec bytes ", data.Bytes()[0:64])
+		Dprint(2, "cacheRelayFilesAndDelegateExec bytes ", data.Bytes()[0:64])
 		n, err := io.Copyn(s.rpc.ReadWriter(), bytes.NewBuffer(data.Bytes()), arg.totalfilebytes)
-		Dprint(2, "MExec: wrote ", n)
+		Dprint(2, "cacheRelayFilesAndDelegateExec: wrote ", n)
 		if err != nil {
-			log.Exit("MExec: iocopy: ", err)
+			log.Exit("cacheRelayFilesAndDelegateExec: iocopy: ", err)
 		}
 		/* at this point it is out of our hands */
 	}
