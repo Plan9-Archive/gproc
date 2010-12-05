@@ -97,7 +97,7 @@ func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (n int64, e
 	case syscall.S_IFLNK:
 		Dprint(5, "writeStreamIntoFile: is link")
 		
-		err = os.Symlink(out, "/tmp/xproc"+fi.Name)
+		err = os.Symlink(out, "/tmp/xproc/"+fi.Name)
 	case syscall.S_IFREG:
 		Dprint(5, "writeStreamIntoFile: is regular file")
 		dir, _ := path.Split(out)
