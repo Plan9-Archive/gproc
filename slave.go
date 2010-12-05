@@ -8,15 +8,6 @@ import (
 )
 
 var id string
-func slaveProc(r *RpcClientServer) {
-	for {
-		req := &StartReq{}
-		// receives from cacheRelayFilesAndDelegateExec?
-		r.Recv("slaveProc", req)
-		ForkAndRelay(req, r)
-		r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
-	}
-}
 
 func startSlave(rfam, raddr, srvaddr string) {
 	newListenProc("slaveProc", slaveProc, srvaddr)
@@ -34,8 +25,16 @@ func startSlave(rfam, raddr, srvaddr string) {
 	slaveProc(r)
 }
 
+func slaveProc(r *RpcClientServer) {
+	for {
+		req := &StartReq{}
+		// receives from cacheRelayFilesAndDelegateExec?
+		r.Recv("slaveProc", req)
+		ForkAndRelay(req, r)
+		r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
+	}
+}
 
-/* rexec will create a listener and then relay the results. We do this go get an IO hierarchy. */
 func ForkAndRelay(req *StartReq, rpc *RpcClientServer) {
 	Dprintln(2, "ForkAndRelay: ", req.Nodes, "fileServer: ", req)
 	/* set up a pipe */
@@ -46,7 +45,6 @@ func ForkAndRelay(req *StartReq, rpc *RpcClientServer) {
 	bugger := fmt.Sprintf("-debug=%d", *DebugLevel)
 	private := fmt.Sprintf("-p=%v", *DoPrivateMount)
 	argv := []string{"gproc", bugger, private, "-prefix="+id, "R"}
-	// pid, err := os.ForkExec("./gproc", argv, []string{""}, "", []*os.File{r, os.Stdout, os.Stdout})
 	pid, err := os.ForkExec("./gproc", argv, []string{""}, "", []*os.File{r, w, w})
 	defer r.Close()
 	defer w.Close()
@@ -64,7 +62,7 @@ func ForkAndRelay(req *StartReq, rpc *RpcClientServer) {
 	rrpc.Send("ForkAndRelay", req)
 	Dprintf(2, "clone pid %d err %v\n", pid, err)
 	n, err := io.Copy(rrpc.ReadWriter(), rpc.ReadWriter())
-	Dprint(2, "ForkAndRelay copy wrote", n)
+	Dprint(2, "ForkAndRelay: copy wrote ", n)
 	if err != nil {
 		log.Exit("ForkAndRelay: ", err)
 	}

@@ -4,65 +4,47 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"container/vector"
 	"strings"
 	"bitbucket.org/npe/ldd"
 	"strconv"
 	"io"
+	"path"
 )
 
 func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
-	var uniquefiles int = 0
-	var cmds []*cmdToExec
-	allfiles := make(map[string]bool, 1024)
-
 	log.SetPrefix("mexec " + *prefix + ": ")
-	workers, l, err := ioProxy(fam, server, len(nodes))
+	workerChan, l, err := ioProxy(fam, server, len(nodes))
 	if err != nil {
-		log.Exit(err)
+		log.Exit("startExecution: ioproxy: ", err)
 	}
 
 	nodelist, err := NodeList(nodes)
 	if err != nil {
 		log.Exit("startExecution: bad nodelist: ", err)
 	}
-	
-	var flist vector.Vector
+
+	pv := newPackVisitor()
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
 		for _, f := range files {
-			packFile(f, "", &flist, true)
+			path.Walk(f, pv, nil)
 		}
 	}
 	e, _ := ldd.Ldd(cmd[0], *root, *libs)
 	if !*localbin {
 		for _, s := range e {
-			packFile(s, *root, &flist, false)
+			path.Walk(*root+s, pv, nil)
 		}
 	}
-	if len(flist) > 0 {
-		cmds = make([]*cmdToExec, len(flist))
-		listlen := flist.Len()
-		uniquefiles = 0
-		for i := 0; i < listlen; i++ {
-			x := flist.Pop().(*cmdToExec)
-			if _, ok := allfiles[x.name]; !ok {
-				cmds[uniquefiles] = x
-				uniquefiles++
-				allfiles[x.name] = true
-			}
-		}
-	}
-	cmds = cmds[0:uniquefiles]
 	req := StartReq{
 		Lfam:           l.Addr().Network(),
 		Lserver:        l.Addr().String(),
 		LocalBin:       *localbin,
 		Args:           cmd,
-		totalfilebytes: addFiles(cmds),
+		totalfilebytes: pv.totalfilebytes,
 		Env:            []string{"LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"},
 		Nodes:          nodelist,
-		cmds:           cmds,
+		cmds:           pv.cmds,
 	}
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
@@ -70,61 +52,48 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 	}
 	r := NewRpcClientServer(client)
 	r.Send("startExecution", req)
-	writeOutFiles(r, cmds)
+	writeOutFiles(r, pv.cmds)
 	r.Recv("startExecution", &Resp{})
 	peers := []string{} // TODO
 	numWorkers := len(nodes) + len(peers)
 	for numWorkers > 0 {
-		<-workers
+		<-workerChan
 		numWorkers--
 	}
 }
 
-func addFiles(cmds []*cmdToExec) (totalfilebytes int64) {
+func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 	for _, c := range cmds {
-		Dprintf(2, "sendCommandsAndWriteOutFiles: cmd %v\n", c)
 		if !c.fi.IsRegular() {
 			continue
 		}
-		var err os.Error
-		c.file, err = os.Open(c.fullpathname, os.O_RDONLY, 0)
+		f, err := os.Open(c.fullpathname, os.O_RDONLY, 0)
 		if err != nil {
 			log.Printf("Open %v failed: %v\n", c.fullpathname, err)
 		}
-		totalfilebytes += c.fi.Size
-	}
-	Dprintf(2, "totalfilebytes: %v\n", totalfilebytes)
-	return
-}
-
-func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
-	for _, c := range cmds {
-		defer c.file.Close()
-		if !c.fi.IsRegular() {
-			continue
-		}
-		Dprint(2, "writeOutFiles: copying ", c.fi.Size, " from ", c.file)
-		_, err := io.Copyn(r.ReadWriter(), c.file, c.fi.Size)
+		Dprint(2, "writeOutFiles: copying ", c.fi.Size, " from ", f)
+		_, err = io.Copyn(r.ReadWriter(), f, c.fi.Size)
+		f.Close()
 		if err != nil {
 			log.Exit("writeOutFiles: copyn: ", err)
 		}
 	}
 }
 
-func ioProxy(fam, server string, numWorkers int) (workers chan int, l Listener, err os.Error) {
+func ioProxy(fam, server string, numWorkers int) (workerChan chan int, l Listener, err os.Error) {
 	l, err = Listen(fam, server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Listen: %v\n", err)
 		return
 	}
 
-	workers = make(chan int, numWorkers)
+	workerChan = make(chan int, numWorkers)
 	Workers := make([]*Worker, numWorkers)
 	go func() {
 		for i, _ := range Workers {
 			conn, err := l.Accept()
 			Dprint(2, "ioProxy: connected by ", conn.RemoteAddr())
-			w := &Worker{Alive: true, Conn: conn, Status: workers}
+			w := &Worker{Alive: true, Conn: conn, Status: workerChan}
 			Workers[i] = w
 			if err != nil {
 				Dprint(2, "ioProxy: accept:", err)
@@ -157,7 +126,7 @@ func NodeList(l string) (rl []string, err os.Error) {
 	for i := 0; i < len(l); {
 		switch {
 		case isNum(l[i]):
-			j := i+1
+			j := i + 1
 			for j < len(l) && isNum(l[j]) {
 				j++
 			}
@@ -178,7 +147,7 @@ func NodeList(l string) (rl []string, err os.Error) {
 			}
 			if i < len(l) && l[i] == ',' {
 				i++
-			}else if i < len(l) {				
+			} else if i < len(l) {
 				goto BadRange
 			}
 		default:
@@ -191,64 +160,32 @@ BadRange:
 	return
 }
 
-func notslash(c int) bool {
-	if c != '/' {
-		return true
-	}
-	return false
+type packVisitor struct {
+	cmds           []*cmdToExec
+	alreadyVisited map[string]bool
+	totalfilebytes int64
 }
 
-func slash(c int) bool {
-	if c == '/' {
-		return true
-	}
-	return false
+func newPackVisitor() (p *packVisitor) {
+	return &packVisitor{alreadyVisited: make(map[string]bool)}
 }
 
-/* we do the files here. We push the files and then the directories. We just push them on,
- * duplicates and all, and do the dedup later when we pop them.
- */
-func packFile(l, root string, flist *vector.Vector, dodir bool) os.Error {
-	/* what a hack we need to fix this idiocy */
-	if len(l) < 1 {
-		return nil
-	}
-	_, err := os.Stat(root + l)
-	if err != nil {
-		log.Exit("Bad file: ", root+l, err)
-	}
-	/* Push the file, then its components. Then we pop and get it all back in the right order */
-	curfile := l
-	for len(curfile) > 0 {
-		fi, _ := os.Stat(root + curfile)
-		/* if it is a directory, and we're following them, do the elements first. */
-		if dodir && fi.IsDirectory() {
-			packdir(curfile, flist, false)
-		}
-		c := cmdToExec{curfile, root + curfile, 0, *fi, nil}
-		Dprintf(2, "packFile: push %v size %d\n", c.name, fi.Size)
-		flist.Push(&c)
-		curfile = strings.TrimRightFunc(curfile, notslash)
-		curfile = strings.TrimRightFunc(curfile, slash)
-		/* we don't dodir on our parents. */
-		dodir = false
-	}
-	return nil
+func (p *packVisitor) VisitDir(path string, f *os.FileInfo) bool {
+	return true
 }
 
-func packdir(l string, flist *vector.Vector, dodir bool) os.Error {
-	f, err := os.Open(l, 0, 0)
-	if err != nil {
-		return err
+func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
+	if p.alreadyVisited[filePath] {
+		return
 	}
-	list, err := f.Readdirnames(-1)
-
-	if err != nil {
-		return err
+	_, file := path.Split(filePath)
+	c := &cmdToExec{
+		name:         file,
+		fullpathname: filePath,
+		local:        0,
+		fi:           f,
 	}
-
-	for _, s := range list {
-		packFile(l+"/"+s, "", flist, false)
-	}
-	return nil
+	p.cmds = append(p.cmds, c)
+	p.totalfilebytes += f.Size
+	p.alreadyVisited[filePath] = true
 }

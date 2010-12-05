@@ -54,8 +54,7 @@ type cmdToExec struct {
 	name         string
 	fullpathname string
 	local        int
-	fi           os.FileInfo
-	file         *os.File
+	fi           *os.FileInfo
 }
 
 func (a *cmdToExec) String() string {
@@ -137,10 +136,21 @@ func Dprintf(level int, fmt string, arg ...interface{}) {
 	}
 }
 
-func IoString(i interface{}) string {
+const (
+	Send = iota
+	Recv
+)
+
+
+func IoString(i interface{}, dir int) string {
 	switch i.(type) {
 	case net.Conn:
-		return fmt.Sprint(i.(net.Conn).RemoteAddr())
+		switch dir {
+		case Send:
+			return fmt.Sprintf("%8s -> %8s", i.(net.Conn).LocalAddr(), i.(net.Conn).RemoteAddr())
+		case Recv:
+			return fmt.Sprintf("%8s <- %8s", i.(net.Conn).LocalAddr(), i.(net.Conn).RemoteAddr())
+		}
 	case *os.File:
 		return fmt.Sprint(i.(*os.File).Fd())
 	}
@@ -148,11 +158,11 @@ func IoString(i interface{}) string {
 }
 
 func SendPrint(funcname, to interface{}, arg interface{}) {
-	Dprint(1, "		", funcname, ": send 				", IoString(to), ":		", arg)
+	Dprintf(1, "%15s send %25s: %s\n", funcname, IoString(to, Send), arg)
 }
 
 func RecvPrint(funcname, from interface{}, arg interface{}) {
-	Dprint(1, "		", funcname, ": recv		", IoString(from), ":		", arg)
+	Dprintf(1, "%15s recv %25s: %s\n", funcname, IoString(from, Recv), arg)
 }
 
 // this group depends on gob
@@ -209,6 +219,9 @@ func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
 		onDialFunc(fam, laddr, raddr)
 	}
 	c, err = net.Dial(fam, laddr, raddr)
+	if err != nil {
+		return
+	}
 	Dprint(2, "dial connect ", c.LocalAddr(),"->", c.RemoteAddr())
 	return
 }

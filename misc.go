@@ -19,7 +19,7 @@ func buildcmds(file, root, libs string) []*cmdToExec {
 }
 
 func netwaiter(fam, server string, numWorkers int, c net.Conn) (chan int, Listener) {
-	workers := make(chan int, numWorkers)
+	workerChan := make(chan int, numWorkers)
 	l, err := Listen(fam, server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Listen: %s\n", err)
@@ -33,13 +33,13 @@ func netwaiter(fam, server string, numWorkers int, c net.Conn) (chan int, Listen
 				log.Printf("%s\n", err)
 				continue
 			}
-			go netrelay(conn, workers, c)
+			go netrelay(conn, workerChan, c)
 		}
 	}()
-	return workers, l
+	return workerChan, l
 }
 
-func netrelay(c net.Conn, workers chan int, client net.Conn) {
+func netrelay(c net.Conn, workerChan chan int, client net.Conn) {
 	data := make([]byte, 1024)
 	for {
 		n, _ := c.Read(data)
@@ -56,7 +56,7 @@ func netrelay(c net.Conn, workers chan int, client net.Conn) {
 			break
 		}
 	}
-	workers <- 1
+	workerChan <- 1
 }
 
 func readitin(s, root string) ([]byte, os.FileInfo, os.Error) {

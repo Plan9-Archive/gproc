@@ -82,10 +82,10 @@ GOARCH=386
 if [[ -n $RECOMPILEGOB ]]; then
 	GOOS=linux
 	GOARCH=arm
-	make clean >/dev/null && make install >/dev/null || exit 1
+	(cd $GOROOT/src/pkg/gob && make clean >/dev/null && make install >/dev/null) || exit 1
 	GOOS=darwin
 	GOARCH=386
-	(cd $GOROOT/src/pkg/gob && make install >/dev/null) || exit 1
+	(cd $GOROOT/src/pkg/gob && make clean >/dev/null && make install >/dev/null) || exit 1
 fi
 
 # in a subshell to make sure we don't corrupt the working directory
@@ -130,7 +130,8 @@ if [[ ! -e /tmp/date ]]; then
 	scp root@$IPPREF.`expandrange $RANGE | sed 1q`:/bin/date /tmp
 fi
 GRANGE=`expandrange $RANGE | wc -l | awk '{print "1-"$1}'`
-ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+time gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+#ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 

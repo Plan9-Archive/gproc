@@ -81,7 +81,7 @@ func run() {
 }
 
 
-func writeStreamIntoFile(stream *os.File, s string, fi os.FileInfo) (int, os.Error) {
+func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (int, os.Error) {
 	var err os.Error
 	var filelen int = 0
 	out := "/tmp/xproc" + s
