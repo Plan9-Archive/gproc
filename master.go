@@ -22,8 +22,7 @@ func startMaster(addr string) {
 	log.SetPrefix("master " + *prefix + ": ")
 	Dprintln(2, "starting master")
 
-
-	go unixServe()
+	go unixServe(addr)
 
 	netl, err := Listen("tcp4", "0.0.0.0:0")
 	if err != nil {
@@ -40,7 +39,7 @@ func startMaster(addr string) {
 
 }
 
-func unixServe() os.Error {
+func unixServe(addr string) os.Error {
 	l, err := Listen("unix", addr)
 	if err != nil {
 		log.Exit("listen error:", err)
@@ -97,7 +96,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error 
 	Dprint(2, "cacheRelayFilesAndDelegateExec: ", arg.Nodes, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	// buffer files on master
-	data := bytes.NewBuffer(make([]byte,0))
+	data := bytes.NewBuffer(make([]byte, 0))
 	Dprint(2, "cacheRelayFilesAndDelegateExec: copying ", arg.totalfilebytes)
 	n, err := io.Copyn(data, r.ReadWriter(), arg.totalfilebytes)
 	Dprint(2, "cacheRelayFilesAndDelegateExec readbytes ", data.Bytes()[0:64])
@@ -154,4 +153,3 @@ func newSlave(arg *SlaveReq, r *RpcClientServer) (resp SlaveResp) {
 	resp.id = s.id
 	return
 }
-
