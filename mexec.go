@@ -73,7 +73,8 @@ func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 			log.Printf("Open %v failed: %v\n", c.fullpathname, err)
 		}
 		Dprint(2, "writeOutFiles: copying ", c.fi.Size, " from ", f)
-		_, err = io.Copyn(r.ReadWriter(), f, c.fi.Size)
+		n, err := io.Copyn(r.ReadWriter(), f, c.fi.Size)
+		Dprint(2, "writeOutFiles: wrote ", n)
 		f.Close()
 		if err != nil {
 			log.Exit("writeOutFiles: copyn: ", err)

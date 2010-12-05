@@ -21,12 +21,9 @@ var Workers []Worker
 func startMaster(addr string) {
 	log.SetPrefix("master " + *prefix + ": ")
 	Dprintln(2, "starting master")
-	l, err := Listen("unix", addr)
-	if err != nil {
-		log.Exit("listen error:", err)
-	}
 
-	go unixServe(l)
+
+	go unixServe()
 
 	netl, err := Listen("tcp4", "0.0.0.0:0")
 	if err != nil {
@@ -43,7 +40,11 @@ func startMaster(addr string) {
 
 }
 
-func unixServe(l Listener) os.Error {
+func unixServe() os.Error {
+	l, err := Listen("unix", addr)
+	if err != nil {
+		log.Exit("listen error:", err)
+	}
 	for {
 		var a StartReq
 		c, err := l.Accept()
@@ -97,7 +98,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error 
 
 	// buffer files on master
 	data := bytes.NewBuffer(make([]byte,0))
-	Dprint(2, "cacheRelayFilesAndDelegateExec: doing copying ", arg.totalfilebytes)
+	Dprint(2, "cacheRelayFilesAndDelegateExec: copying ", arg.totalfilebytes)
 	n, err := io.Copyn(data, r.ReadWriter(), arg.totalfilebytes)
 	Dprint(2, "cacheRelayFilesAndDelegateExec readbytes ", data.Bytes()[0:64])
 	Dprint(2, "cacheRelayFilesAndDelegateExec: copied ", n, " total ", arg.totalfilebytes)
