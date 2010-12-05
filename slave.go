@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"io"
+	"exec"
 )
 
 var id string
@@ -37,34 +37,31 @@ func slaveProc(r *RpcClientServer) {
 
 func ForkAndRelay(req *StartReq, rpc *RpcClientServer) {
 	Dprintln(2, "ForkAndRelay: ", req.Nodes, "fileServer: ", req)
-	/* set up a pipe */
-	r, w, err := os.Pipe()
-	if err != nil {
-		log.Exit("ForkAndRelay: ", err)
-	}	
-	bugger := fmt.Sprintf("-debug=%d", *DebugLevel)
-	private := fmt.Sprintf("-p=%v", *DoPrivateMount)
-	argv := []string{"gproc", bugger, private, "-prefix="+id, "R"}
-	pid, err := os.ForkExec("./gproc", argv, []string{""}, "", []*os.File{r, w, w})
-	defer r.Close()
-	defer w.Close()
-	if err != nil {
-		log.Exit("ForkAndRelay: ", err)
+	argv := []string{"gproc",
+		fmt.Sprintf("-debug=%d", *DebugLevel),
+		fmt.Sprintf("-p=%v", *DoPrivateMount),
+		"-prefix=" + id,
+		"R",
 	}
-	Dprintf(2, "forked %d\n", pid)
-	go Wait4()
+	nilEnv := []string{""}
+	p, err := exec.Run("./gproc", argv, nilEnv, "", exec.Pipe, exec.Pipe, exec.PassThrough)
+	if err != nil {
+		log.Exit("ForkAndRelay: run: ", err)
+	}
+	Dprintf(2, "forked %d\n", p.Pid)
+	go WaitAllChildren()
 
 	/* relay data to the child */
 	if req.LocalBin {
 		Dprintf(2, "ForkAndRelay arg.LocalBin %v arg.cmds %v\n", req.LocalBin, req.cmds)
 	}
-	rrpc := NewRpcClientServer(w)
+	rrpc := NewRpcClientServer(p.Stdin)
 	rrpc.Send("ForkAndRelay", req)
-	Dprintf(2, "clone pid %d err %v\n", pid, err)
+	Dprintf(2, "clone pid %d err %v\n", p.Pid, err)
 	n, err := io.Copy(rrpc.ReadWriter(), rpc.ReadWriter())
 	Dprint(2, "ForkAndRelay: copy wrote ", n)
 	if err != nil {
-		log.Exit("ForkAndRelay: ", err)
+		log.Exit("ForkAndRelay: copy: ", err)
 	}
 	Dprint(2, "ForkAndRelay: end")
 }

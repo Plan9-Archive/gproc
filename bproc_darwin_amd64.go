@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-func connect(Lserver string) int {
+func tcpSockDial(Lserver string) int {
 	/* try your best ... */
 	a, err := net.ResolveTCPAddr(Lserver)
 	if err != nil {

@@ -1,28 +1,22 @@
 package main
 
 import (
-	"os"
 	"net"
-	"fmt"
 	"syscall"
 	"unsafe"
 	"log"
 )
 
-func connect(Lserver string) int {
-	/* try your best ... */
+func tcpSockDial(Lserver string) int {
+	Dprint(2, "tcpSockDial: connect ", Lserver)
 	a, err := net.ResolveTCPAddr(Lserver)
 	if err != nil {
-		if *DebugLevel > 2 {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-		}
+		Dprintf(2, "tcpSockDial: ResolveTCPAddr: %s\n", err)
 		return -1
 	}
 	sock, e := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_TCP)
 	if sock < 0 {
-		if *DebugLevel > 2 {
-			log.Printf("%v %v\n", sock, e)
-		}
+		Dprintf(2, "tcpSockDial: %v %v\n", sock, e)
 		return -1
 	}
 	/* format: BE short family, short port, long addr */
@@ -41,11 +35,10 @@ func connect(Lserver string) int {
 	addr[7] = uint8(rawaddr[15])
 	_, _, e1 := syscall.Syscall(syscall.SYS_CONNECT, uintptr(sock), uintptr(unsafe.Pointer(&addr[0])), uintptr(addrlen))
 	if e1 < 0 {
-		if *DebugLevel > 2 {
-			log.Printf("%v %v\n", sock, e)
-		}
+		Dprintf(2, "tcpSockDial: %v %v\n", sock, e)
 		return -1
 	}
+	Dprint(2, "tcpSockDial: connnected ", int(e1))
 	return int(sock)
 
 }

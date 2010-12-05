@@ -10,7 +10,7 @@ DEBUG=0
 LOC=/home/root
 TIMESERVER=be.pool.ntp.org
 
-while getopts rgd:l:t: opt ; do
+while getopts rgd:l:st: opt ; do
 	case "$opt" in
 		r) 
 			RECOMPILE=1
@@ -24,6 +24,9 @@ while getopts rgd:l:t: opt ; do
 			;;
 		l)
 			LOC=$OPTARG
+			;;
+		s)
+			TRACE='strace -f'
 			;;
 		t)
 			TIMESERVER=$OPTARG
@@ -90,11 +93,11 @@ fi
 
 # in a subshell to make sure we don't corrupt the working directory
 if [[ -n $RECOMPILE ]]; then
-	(cd $GOROOT/src/cmd/gproc && make install >/dev/null) || exit 1
+	(cd $GOROOT/src/cmd/gproc && make install) || exit 1
 	scp gproc $MASTER:$GOROOT/bin >/dev/null
 	GOOS=linux
 	GOARCH=arm
-	(cd $GOROOT/src/cmd/gproc && make clean >/dev/null && make >/dev/null) || exit 1
+	(cd $GOROOT/src/cmd/gproc && make clean >/dev/null && make) || exit 1
 	for i in `expandrange $RANGE`; do
 		scp gproc root@$IPPREF.$i:$LOC >/dev/null &
 		ssh root@$IPPREF.$i ntpdate $TIMESERVER &
@@ -123,7 +126,7 @@ sleep 1
 PORT=`cat $SRVADDR`
 PORT=${PORT//*:/}
 for i in `expandrange $RANGE`; do
-	ssh root@$IPPREF.$i $LOC/gproc -debug=$DEBUG  WORKER tcp4 $MASTER:$PORT 0.0.0.0:$PORT &
+	ssh root@$IPPREF.$i $TRACE $LOC/gproc -debug=$DEBUG  WORKER tcp4 $MASTER:$PORT 0.0.0.0:$PORT &
 done
 sleep 1
 if [[ ! -e /tmp/date ]]; then

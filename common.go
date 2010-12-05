@@ -262,10 +262,15 @@ func (l Listener) Accept() (c net.Conn, err os.Error) {
 
 
 // depends on syscall
-func Wait4() {
+func WaitAllChildren() {
 	var status syscall.WaitStatus
-	for pid, err := syscall.Wait4(-1, &status, 0, nil); err > 0; pid, err = syscall.Wait4(-1, &status, 0, nil) {
+	for {
+		pid, err := syscall.Wait4(-1, &status, 0, nil)
+		if err <= 0 {
+			break
+		}
 		log.Printf("wait4 returns pid %v status %v\n", pid, status)
+		
 	}
 }
 

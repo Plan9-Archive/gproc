@@ -24,5 +24,11 @@ testwork: $(TARG)
 testhome: $(TARG)
 	./startgproc.sh -d10 -r 192.168.2.1 192.168.2 3-4,6-10
 
+testtrace: $(TARG)
+		./startgproc.sh -s -r 192.168.2.1 192.168.2 3-4,6-10
+
+testtrace1: $(TARG)
+		./startgproc.sh -s -r 192.168.2.1 192.168.2 3-3
+
 smoketest: $(TARG)
 	(cd testdata; ./test.sh)

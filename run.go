@@ -24,14 +24,14 @@ import (
  * each peer and sendCommandsAndWriteOutFiles for the children.
  */
 
-func doPrivateMount(pathbase string) {
-	unshare()
-	_ = unmount(pathbase)
-	syscallerr := privatemount(pathbase)
-	if syscallerr != 0 {
-		log.Printf("Mount failed", syscallerr, "\n")
-		os.Exit(1)
+func fileTcpDial(server string) *os.File {
+	// percolates down from startExecution
+	sock := tcpSockDial(server)
+	Dprintf(2, "run: connected to %v\n", server)
+	if sock < 0 {
+		log.Exit("fileTcpDial: connect to %s failed", server)
 	}
+	return os.NewFile(sock, "child_process_socket")
 }
 
 func run() {
@@ -56,14 +56,7 @@ func run() {
 		}
 	}
 	Dprintf(2, "run: connect to %v\n", arg.Lserver)
-	// percolates down from startExecution
-	sock := connect(arg.Lserver)
-	Dprintf(2, "run: connected to %v\n", arg.Lserver)
-
-	if sock < 0 {
-		os.Exit(1)
-	}
-	n := os.NewFile(sock, "child_process_socket")
+	n := fileTcpDial(arg.Lserver)
 	f := []*os.File{n, n, n}
 	execpath := pathbase + arg.Args[0]
 	if arg.LocalBin {
@@ -73,18 +66,27 @@ func run() {
 	_, err := os.ForkExec(execpath, arg.Args, arg.Env, pathbase, f)
 	n.Close()
 	if err == nil {
-		Wait4()
+		WaitAllChildren()
 	} else {
 		log.Exit("run: ", err)
 	}
 	os.Exit(0)
 }
 
+func doPrivateMount(pathbase string) {
+	unshare()
+	_ = unmount(pathbase)
+	syscallerr := privatemount(pathbase)
+	if syscallerr != 0 {
+		log.Printf("Mount failed", syscallerr, "\n")
+		os.Exit(1)
+	}
+}
 
 func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (int, os.Error) {
 	var err os.Error
 	var filelen int = 0
-	out := "/tmp/xproc" + s
+	out := "/tmp/xproc/" + s
 	Dprintf(2, "writeStreamIntoFile:  %s, %v %v\n", out, fi, fi.Mode)
 	switch fi.Mode & syscall.S_IFMT {
 	case syscall.S_IFDIR:

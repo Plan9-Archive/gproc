@@ -7,17 +7,17 @@ import (
 	"unsafe"
 )
 
-func connect(Lserver string) int {
+func tcpSockDial(Lserver string) int {
 	/* try your best ... */
-	Dprintf(2, "connect: connecting ", Lserver)
+	Dprintf(2, "tcpSockDial: connect ", Lserver)
 	a, err := net.ResolveTCPAddr(Lserver)
 	if err != nil {
-		Dprintf(2, "connect: %s\n", err)
+		Dprintf(2, "tcpSockDial: %s\n", err)
 		return -1
 	}
 	sock, e := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_TCP)
 	if sock < 0 {
-		Dprintf(2, "connect: %v %v\n", sock, e)
+		Dprintf(2, "tcpSockDial: %v %v\n", sock, e)
 		return -1
 	}
 	/* format: BE short family, short port, long addr */
@@ -38,11 +38,11 @@ func connect(Lserver string) int {
 	_, _, e1 := syscall.Syscall(syscall.SYS_CONNECT, uintptr(sock), uintptr(unsafe.Pointer(&addr[0])), uintptr(addrlen))
 	if e1 < 0 {
 		if *DebugLevel > 2 {
-			log.Printf("connect: %v %v\n", sock, e)
+			log.Printf("tcpSockDial: %v %v\n", sock, e)
 		}
 		return -1
 	}
-	Dprintf(2, "connect: connnected %s\n", int(e1))
+	Dprintf(2, "tcpSockDial: connnected %s\n", int(e1))
 	return int(e1)
 
 }
