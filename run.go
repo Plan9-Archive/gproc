@@ -25,15 +25,7 @@ import (
  * each peer and sendCommandsAndWriteOutFiles for the children.
  */
 
-func fileTcpDial(server string) *os.File {
-	// percolates down from startExecution
-	sock := tcpSockDial(server)
-	Dprintf(2, "run: connected to %v\n", server)
-	if sock < 0 {
-		log.Exit("fileTcpDial: connect to %s failed", server)
-	}
-	return os.NewFile(sock, "child_process_socket")
-}
+
 
 func run() {
 	var arg StartReq
@@ -74,6 +66,17 @@ func run() {
 	os.Exit(0)
 }
 
+func fileTcpDial(server string) *os.File {
+	// percolates down from startExecution
+	sock := tcpSockDial(server)
+	Dprintf(2, "run: connected to %v\n", server)
+	if sock < 0 {
+		log.Exit("fileTcpDial: connect to %s failed", server)
+	}
+	return os.NewFile(sock, "child_process_socket")
+}
+
+
 func doPrivateMount(pathbase string) {
 	unshare()
 	_ = unmount(pathbase)
@@ -113,6 +116,7 @@ func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (n int64, e
 		defer f.Close()
 		Dprint(5, "writeStreamIntoFile: copying ",fi.Size)
 		n, err = io.Copyn(f, stream, fi.Size)
+//		n, err = io.Copy(f, stream)
 		Dprint(5, "writeStreamIntoFile: copied ",n)
 		if err != nil {
 			log.Exit("writeStreamIntoFile: copyn: ",err)

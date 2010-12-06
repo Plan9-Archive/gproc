@@ -5,7 +5,7 @@
 # new gproc executables
 MASTER=10.12.0.7 
 IPPREF=10.12.0
-RANGE="11 17"
+RANGE="11-17"
 DEBUG=0
 LOC=/home/root
 TIMESERVER=be.pool.ntp.org
@@ -57,7 +57,7 @@ esac
 
 expandrange()
 {
-	echo $1 | awk -F, -v 'pref='192.168.2 '
+	echo $1 | awk -F, -v 'pref='$IPPREF '
 	{
 		for(i = 1; i <= NF; i++){
 			split($i, a, "-")
@@ -70,9 +70,10 @@ expandrange()
 
 killgprocs()
 {
-	ssh -q $MASTER killall gproc 2>/dev/null >/dev/null
+	ssh -q root@$MASTER killall gproc 2>/dev/null >/dev/null
 	for i in `expandrange $RANGE`; do
 		ssh -q root@$IPPREF.$i killall gproc 2>/dev/null >/dev/null &
+		ssh -q root@$IPPREF.$i rm -rf /tmp/xproc 2>/dev/null >/dev/null &
 	done
 	wait
 }
@@ -80,8 +81,10 @@ killgprocs()
 killgprocs
 trap "killgprocs;rm $SOCKNAME;exit 1" SIGHUP SIGINT SIGKILL SIGTERM SIGSTOP
 
-OLDGOOS=$GOOS
-OLDGOARCH=$GOARCH
+OLDGOOS=`ssh root@$MASTER 'echo $GOOS'`
+OLDGOARCH=`ssh root@$MASTER 'echo $GOARCH'`
+OLDGOOS=linux
+OLDGOARCH=arm
 if [[ -n $RECOMPILEGOB ]]; then
 	GOOS=linux
 	GOARCH=arm
@@ -95,23 +98,26 @@ fi
 if [[ -n $RECOMPILE ]]; then
 	GOOS=linux
 	GOARCH=arm
-	(cd $GOROOT/src/cmd/gproc && make clean >/dev/null && make) || exit 1
+	(cd $GOROOT/src/cmd/gproc && make clean >/dev/null && make && file gproc) || exit 1
+	
 	for i in `expandrange $RANGE`; do
 		scp gproc root@$IPPREF.$i:$LOC >/dev/null &
 		ssh root@$IPPREF.$i ntpdate $TIMESERVER &
 	done
+	wait
 	GOOS=$OLDGOOS
 	GOARCH=$OLDGOARCH
-	(cd $GOROOT/src/cmd/gproc && make install) || exit 1
-	scp gproc $MASTER:$GOROOT/bin >/dev/null
-	wait
+	(cd $GOROOT/src/cmd/gproc && make clean && make install && file gproc) || exit 1
+	scp gproc root@$MASTER:$LOC >/dev/null
 fi
 
-SOCKNAME=`mktemp /tmp/g.XXXXXX`
+PORT=`ssh root@$MASTER rm $SRVADDR`
+
+SOCKNAME=`ssh root@$MASTER mktemp /tmp/g.XXXXXX`
 SRVADDR=/tmp/srvaddr
 
-rm $SOCKNAME
-ssh $MASTER gproc  -debug=$DEBUG MASTER $SOCKNAME &
+ssh root@$MASTER rm $SOCKNAME
+ssh root@$MASTER $LOC/gproc  -debug=$DEBUG MASTER $SOCKNAME &
 
 # hg pull http://bitbucket.org/npe/gproc # should be goinstall -c bitbucket.org/npe/gproc
 # for i in `seq 11 17`; do
@@ -125,7 +131,7 @@ ssh $MASTER gproc  -debug=$DEBUG MASTER $SOCKNAME &
 # is there a scalable way for the master to advertise itself?
 
 sleep 1
-PORT=`cat $SRVADDR`
+PORT=`ssh root@$MASTER cat $SRVADDR`
 PORT=${PORT//*:/}
 for i in `expandrange $RANGE`; do
 	ssh root@$IPPREF.$i $TRACE $LOC/gproc -debug=$DEBUG  WORKER tcp4 $MASTER:$PORT 0.0.0.0:$PORT &
@@ -135,11 +141,12 @@ if [[ ! -e /tmp/date ]]; then
 	scp root@$IPPREF.`expandrange $RANGE | sed 1q`:/bin/date /tmp
 fi
 GRANGE=`expandrange $RANGE | wc -l | awk '{print "1-"$1}'`
-time gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+#time ssh root@$MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+time ssh root@$MASTER $LOC/gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:3463 $GRANGE /tmp/date
 #ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date
-rm $SOCKNAME
+ssh root@$MASTER rm $SOCKNAME

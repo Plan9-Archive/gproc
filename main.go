@@ -46,7 +46,6 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 	log.SetPrefix("newgproc "+*prefix+": ")
-	Slaves = make(map[string]*SlaveInfo)
 	//setupLog()
 	//config := getConfig()
 	Dprintln(2, "starting:", os.Args,"debuglevel", *DebugLevel)

@@ -30,13 +30,13 @@ func slaveProc(r *RpcClientServer) {
 		req := &StartReq{}
 		// receives from cacheRelayFilesAndDelegateExec?
 		r.Recv("slaveProc", req)
-		ForkAndRelay(req, r)
+		ForkRelay(req, r)
 		r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
 	}
 }
 
-func ForkAndRelay(req *StartReq, rpc *RpcClientServer) {
-	Dprintln(2, "ForkAndRelay: ", req.Nodes, "fileServer: ", req)
+func ForkRelay(req *StartReq, rpc *RpcClientServer) {
+	Dprintln(2, "ForkRelay: ", req.Nodes, "fileServer: ", req)
 	argv := []string{"gproc",
 		fmt.Sprintf("-debug=%d", *DebugLevel),
 		fmt.Sprintf("-p=%v", *DoPrivateMount),
@@ -44,24 +44,24 @@ func ForkAndRelay(req *StartReq, rpc *RpcClientServer) {
 		"R",
 	}
 	nilEnv := []string{""}
-	p, err := exec.Run("./gproc", argv, nilEnv, "", exec.Pipe, exec.Pipe, exec.PassThrough)
+	p, err := exec.Run("./gproc", argv, nilEnv, "", exec.Pipe, exec.PassThrough, exec.PassThrough)
 	if err != nil {
-		log.Exit("ForkAndRelay: run: ", err)
+		log.Exit("ForkRelay: run: ", err)
 	}
 	Dprintf(2, "forked %d\n", p.Pid)
 	go WaitAllChildren()
 
 	/* relay data to the child */
 	if req.LocalBin {
-		Dprintf(2, "ForkAndRelay arg.LocalBin %v arg.cmds %v\n", req.LocalBin, req.cmds)
+		Dprintf(2, "ForkRelay arg.LocalBin %v arg.cmds %v\n", req.LocalBin, req.cmds)
 	}
 	rrpc := NewRpcClientServer(p.Stdin)
-	rrpc.Send("ForkAndRelay", req)
+	rrpc.Send("ForkRelay", req)
 	Dprintf(2, "clone pid %d err %v\n", p.Pid, err)
 	n, err := io.Copy(rrpc.ReadWriter(), rpc.ReadWriter())
-	Dprint(2, "ForkAndRelay: copy wrote ", n)
+	Dprint(2, "ForkRelay: copy wrote ", n)
 	if err != nil {
-		log.Exit("ForkAndRelay: copy: ", err)
+		log.Exit("ForkRelay: copy: ", err)
 	}
-	Dprint(2, "ForkAndRelay: end")
+	Dprint(2, "ForkRelay: end")
 }

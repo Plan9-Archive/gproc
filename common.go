@@ -86,7 +86,7 @@ type StartReq struct {
 	Args           []string
 	Env            []string
 	Lfam, Lserver  string
-	totalfilebytes int64
+	bytesToTransfer int64
 	uid, gid       int
 	cmds           []*cmdToExec
 }
@@ -116,7 +116,6 @@ func (s *SlaveInfo) String() string {
 	return fmt.Sprint(s.id, " ", s.Addr)
 }
 
-var Slaves map[string]*SlaveInfo
 
 func Dprint(level int, arg ...interface{}) {
 	if *DebugLevel >= level {

@@ -38,14 +38,14 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 		}
 	}
 	req := StartReq{
-		Lfam:           l.Addr().Network(),
-		Lserver:        l.Addr().String(),
-		LocalBin:       *localbin,
-		Args:           cmd,
-		totalfilebytes: pv.totalfilebytes,
-		Env:            []string{"LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"},
-		Nodes:          nodelist,
-		cmds:           pv.cmds,
+		Lfam:            l.Addr().Network(),
+		Lserver:         l.Addr().String(),
+		LocalBin:        *localbin,
+		Args:            cmd,
+		bytesToTransfer: pv.bytesToTransfer,
+		Env:             []string{"LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"},
+		Nodes:           nodelist,
+		cmds:            pv.cmds,
 	}
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
@@ -65,6 +65,7 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 
 func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 	for _, c := range cmds {
+		Dprint(2, "writeOutFiles: next cmd")
 		if !c.fi.IsRegular() {
 			continue
 		}
@@ -73,13 +74,16 @@ func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 			log.Printf("Open %v failed: %v\n", c.fullpathname, err)
 		}
 		Dprint(2, "writeOutFiles: copying ", c.fi.Size, " from ", f)
+		// send to master to send to others
 		n, err := io.Copyn(r.ReadWriter(), f, c.fi.Size)
+	//	n, err := io.Copy(r.ReadWriter(), f)
 		Dprint(2, "writeOutFiles: wrote ", n)
 		f.Close()
 		if err != nil {
 			log.Exit("writeOutFiles: copyn: ", err)
 		}
 	}
+	Dprint(2, "writeOutFiles: finished")
 }
 
 func ioProxy(fam, server string, numWorkers int) (workerChan chan int, l Listener, err os.Error) {
@@ -163,9 +167,9 @@ BadRange:
 }
 
 type packVisitor struct {
-	cmds           []*cmdToExec
-	alreadyVisited map[string]bool
-	totalfilebytes int64
+	cmds            []*cmdToExec
+	alreadyVisited  map[string]bool
+	bytesToTransfer int64
 }
 
 func newPackVisitor() (p *packVisitor) {
@@ -173,6 +177,9 @@ func newPackVisitor() (p *packVisitor) {
 }
 
 func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
+	filePath = strings.TrimSpace(filePath)
+	filePath = strings.TrimRightFunc(filePath, isNull)
+	
 	if p.alreadyVisited[filePath] {
 		return false
 	}
@@ -184,15 +191,24 @@ func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
 		local:        0,
 		fi:           f,
 	}
-	Dprint(4, "VisitDir: appending ", filePath)
+	Dprint(4, "VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
 	p.cmds = append(p.cmds, c)
-	p.totalfilebytes += f.Size
+	p.bytesToTransfer += f.Size
 	p.alreadyVisited[filePath] = true
+	p.alreadyVisited[filePath] = true
+	
 	return true
 }
 
+func isNull(r int) bool {
+	return r == 0
+}
+
 func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
-	if p.alreadyVisited[filePath] {
+	// shouldn't need to do this, need to fix ldd
+	filePath = strings.TrimSpace(filePath)
+	filePath = strings.TrimRightFunc(filePath, isNull)
+	if  p.alreadyVisited[filePath] {
 		return
 	}
 	// _, file := path.Split(filePath)
@@ -203,9 +219,11 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 		local:        0,
 		fi:           f,
 	}
-	Dprint(4, "VisitFile: appending ", filePath)
+	Dprint(4, "VisitFile: appending ", filePath, " ", f.Size, " ", []byte(filePath), " ", p.alreadyVisited)
 
 	p.cmds = append(p.cmds, c)
-	p.totalfilebytes += f.Size
-	p.alreadyVisited[filePath] = true
+	if f.IsRegular() {
+		p.bytesToTransfer += f.Size
+	}
+	p.alreadyVisited[filePath] = true	
 }

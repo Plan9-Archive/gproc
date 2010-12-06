@@ -19,7 +19,7 @@ GOFILES=\
 include $(GOROOT)/src/Make.cmd
 
 testwork: $(TARG)
-	./startgproc.sh
+	./startgproc.sh -d10 -r
 
 testhome: $(TARG)
 	./startgproc.sh -d10 -r 192.168.2.1 192.168.2 3-4,6-10
@@ -40,3 +40,8 @@ testlocal: $(TARG)
 	sleep 3
 	time ./gproc -debug=8 exec /tmp/g tcp4 127.0.0.1:0 1 /bin/date
 	rm -f /tmp/g
+
+testlinux: $(TARG)
+	./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-17
+testlinux1: $(TARG)
+	./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-12

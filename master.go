@@ -11,36 +11,16 @@ import (
 
 var Workers []Worker
 
-/* the most complex one. Needs to ForkExec itself, after
- * pasting the fd for the accept over the stdin etc.
- * and the complication of course is that net.Conn is
- * not able to do this, we have to relay the data
- * via a pipe. Oh well, at least we get to manage the
- * net.Conn without worrying about child fooling with it. BLEAH.
- */
-func startMaster(addr string) {
+func startMaster(domainSock string) {
 	log.SetPrefix("master " + *prefix + ": ")
 	Dprintln(2, "starting master")
 
-	go unixServe(addr)
-
-	netl, err := Listen("tcp4", "0.0.0.0:0")
-	if err != nil {
-		log.Exit("listen error:", err)
-	}
-	Dprint(2, netl.Addr())
-	fmt.Println(netl.Addr())
-	err = ioutil.WriteFile("/tmp/srvaddr", []byte(netl.Addr().String()), 0644)
-	if err != nil {
-		log.Exit(err)
-	}
-
-	masterServe(netl)
-
+	go receiveCmds(domainSock)
+	registerSlaves()
 }
 
-func unixServe(addr string) os.Error {
-	l, err := Listen("unix", addr)
+func receiveCmds(domainSock string) os.Error {
+	l, err := Listen("unix", domainSock)
 	if err != nil {
 		log.Exit("listen error:", err)
 	}
@@ -48,47 +28,90 @@ func unixServe(addr string) os.Error {
 		var a StartReq
 		c, err := l.Accept()
 		if err != nil {
-			log.Exitf("unixServe: accept on (%v) failed %v\n", l, err)
+			log.Exitf("receiveCmds: accept on (%v) failed %v\n", l, err)
 		}
 		r := NewRpcClientServer(c)
 		go func() {
-			r.Recv("unixServe", &a)
+			r.Recv("receiveCmds", &a)
 			// get credentials later
 			cacheRelayFilesAndDelegateExec(&a, r)
-			r.Send("unixServe", Resp{Msg: []byte("cacheRelayFilesAndDelegateExec finished")})
+			r.Send("receiveCmds", Resp{Msg: []byte("cacheRelayFilesAndDelegateExec finished")})
 		}()
 	}
 	return nil
 }
 
-/* you need to keep making new encode/decoders because the process
- * at the other end is always new
- */
-func masterServe(l Listener) os.Error {
+
+type Slaves struct {
+	slaves map[string]*SlaveInfo
+}
+
+func newSlaves() (s Slaves) {
+	s.slaves = make(map[string]*SlaveInfo)
+	return
+}
+
+func (sv *Slaves) Add(arg *SlaveReq, r *RpcClientServer) (resp SlaveResp) {
+	var s *SlaveInfo
+	if arg.id != "" {
+		s = sv.slaves[arg.id]
+	} else {
+		s = &SlaveInfo{
+			id:     fmt.Sprintf("%d", len(sv.slaves)+1),
+			Addr:   arg.a,
+			Server: arg.Server,
+			rpc:    r,
+		}
+		sv.slaves[s.id] = s
+	}
+	Dprintln(2, "slave Add: id: ", s)
+	resp.id = s.id
+	return
+}
+
+func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
+	s, ok = sv.slaves[n]
+	return
+}
+
+var slaves Slaves
+
+func registerSlaves() os.Error {
+	l, err := Listen("tcp4", "0.0.0.0:0")
+	if err != nil {
+		log.Exit("listen error:", err)
+	}
+	Dprint(2, l.Addr())
+	fmt.Println(l.Addr())
+	err = ioutil.WriteFile("/tmp/srvaddr", []byte(l.Addr().String()), 0644)
+	if err != nil {
+		log.Exit(err)
+	}
+	slaves = newSlaves()
 	for {
 		c, err := l.Accept()
 		if err != nil {
-			log.Exit("masterServe:", err)
+			log.Exit("registerSlaves:", err)
 		}
 		r := NewRpcClientServer(c)
-		var a SlaveReq
-		r.Recv("masterServe", &a)
-		r.Send("masterServe", newSlave(&a, r))
+		var req SlaveReq
+		r.Recv("registerSlaves", &req)
+		resp := slaves.Add(&req, r)
+		r.Send("registerSlaves", resp)
 	}
 	return nil
 }
 
-
 func newStartReq(arg *StartReq) *StartReq {
 	return &StartReq{
-		ThisNode:       true,
-		LocalBin:       arg.LocalBin,
-		Args:           arg.Args,
-		Env:            arg.Env,
-		Lfam:           arg.Lfam,
-		Lserver:        arg.Lserver,
-		cmds:           arg.cmds,
-		totalfilebytes: arg.totalfilebytes,
+		ThisNode:        true,
+		LocalBin:        arg.LocalBin,
+		Args:            arg.Args,
+		Env:             arg.Env,
+		Lfam:            arg.Lfam,
+		Lserver:         arg.Lserver,
+		cmds:            arg.cmds,
+		bytesToTransfer: arg.bytesToTransfer,
 	}
 }
 
@@ -97,10 +120,11 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error 
 
 	// buffer files on master
 	data := bytes.NewBuffer(make([]byte, 0))
-	Dprint(2, "cacheRelayFilesAndDelegateExec: copying ", arg.totalfilebytes)
-	n, err := io.Copyn(data, r.ReadWriter(), arg.totalfilebytes)
+	Dprint(2, "cacheRelayFilesAndDelegateExec: copying ", arg.bytesToTransfer)
+	n, err := io.Copyn(data, r.ReadWriter(), arg.bytesToTransfer)
+	//		n, err := io.Copy(data, r.ReadWriter())
 	Dprint(2, "cacheRelayFilesAndDelegateExec readbytes ", data.Bytes()[0:64])
-	Dprint(2, "cacheRelayFilesAndDelegateExec: copied ", n, " total ", arg.totalfilebytes)
+	Dprint(2, "cacheRelayFilesAndDelegateExec: copied ", n, " total ", arg.bytesToTransfer)
 	if err != nil {
 		log.Exit("Mexec: copyn: ", err)
 	}
@@ -110,7 +134,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error 
 	 */
 	Dprint(2, "cacheRelayFilesAndDelegateExec nodes ", arg.Nodes)
 	for _, n := range arg.Nodes {
-		s, ok := Slaves[n]
+		s, ok := slaves.Get(n)
 		Dprintf(2, "node %v == slave %v\n", n, s)
 		if !ok {
 			log.Printf("No slave %v\n", n)
@@ -118,12 +142,13 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error 
 		}
 		larg := newStartReq(arg)
 		s.rpc.Send("cacheRelayFilesAndDelegateExec", larg)
-		Dprintf(2, "totalfilebytes %v localbin %v\n", arg.totalfilebytes, arg.LocalBin)
+		Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.bytesToTransfer, arg.LocalBin)
 		if arg.LocalBin {
 			Dprintf(2, "cmds %v\n", arg.cmds)
 		}
 		Dprint(2, "cacheRelayFilesAndDelegateExec bytes ", data.Bytes()[0:64])
-		n, err := io.Copyn(s.rpc.ReadWriter(), bytes.NewBuffer(data.Bytes()), arg.totalfilebytes)
+		n, err := io.Copyn(s.rpc.ReadWriter(), bytes.NewBuffer(data.Bytes()), arg.bytesToTransfer)
+		//			n, err := io.Copy(s.rpc.ReadWriter(), bytes.NewBuffer(data.Bytes()))
 		Dprint(2, "cacheRelayFilesAndDelegateExec: wrote ", n)
 		if err != nil {
 			log.Exit("cacheRelayFilesAndDelegateExec: iocopy: ", err)
@@ -132,24 +157,4 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error 
 	}
 
 	return nil
-}
-
-
-func newSlave(arg *SlaveReq, r *RpcClientServer) (resp SlaveResp) {
-	var s *SlaveInfo
-	if arg.id != "" {
-		s = Slaves[arg.id]
-	} else {
-		s = &SlaveInfo{
-			id:     fmt.Sprintf("%d", len(Slaves)+1),
-			Addr:   arg.a,
-			Server: arg.Server,
-			rpc:    r,
-		}
-		Slaves[s.id] = s
-	}
-
-	Dprintln(2, "startSlave: id: ", s)
-	resp.id = s.id
-	return
 }
