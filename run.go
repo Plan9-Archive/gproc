@@ -24,9 +24,6 @@ import (
  * peerlist as well as to any subnodes. We run a goroutine for
  * each peer and sendCommandsAndWriteOutFiles for the children.
  */
-
-
-
 func run() {
 	var arg StartReq
 	var pathbase = "/tmp/xproc"
@@ -71,7 +68,7 @@ func fileTcpDial(server string) *os.File {
 	sock := tcpSockDial(server)
 	Dprintf(2, "run: connected to %v\n", server)
 	if sock < 0 {
-		log.Exit("fileTcpDial: connect to %s failed", server)
+		log.Exitf("fileTcpDial: connect to %s failed", server)
 	}
 	return os.NewFile(sock, "child_process_socket")
 }

@@ -13,15 +13,16 @@ import (
 
 func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 	log.SetPrefix("mexec " + *prefix + ": ")
-	workerChan, l, err := ioProxy(fam, server, len(nodes))
-	if err != nil {
-		log.Exit("startExecution: ioproxy: ", err)
-	}
-
 	nodelist, err := NodeList(nodes)
 	if err != nil {
 		log.Exit("startExecution: bad nodelist: ", err)
 	}
+	workerChan, l, err := ioProxy(fam, server, len(nodelist))
+	if err != nil {
+		log.Exit("startExecution: ioproxy: ", err)
+	}
+
+
 
 	pv := newPackVisitor()
 	if len(*filesToTakeAlong) > 0 {
@@ -56,11 +57,13 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 	writeOutFiles(r, pv.cmds)
 	r.Recv("startExecution", &Resp{})
 	peers := []string{} // TODO
-	numWorkers := len(nodes) + len(peers)
+	numWorkers := len(nodelist) + len(peers)
+	Dprintln(3, "startExecution: waiting for ", numWorkers)
 	for numWorkers > 0 {
 		<-workerChan
 		numWorkers--
 	}
+	Dprintln(3, "startExecution: finished")
 }
 
 func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
@@ -69,9 +72,9 @@ func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 		if !c.fi.IsRegular() {
 			continue
 		}
-		f, err := os.Open(c.fullpathname, os.O_RDONLY, 0)
+		f, err := os.Open(c.fullPath, os.O_RDONLY, 0)
 		if err != nil {
-			log.Printf("Open %v failed: %v\n", c.fullpathname, err)
+			log.Printf("Open %v failed: %v\n", c.fullPath, err)
 		}
 		Dprint(2, "writeOutFiles: copying ", c.fi.Size, " from ", f)
 		// send to master to send to others
@@ -187,7 +190,7 @@ func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
 	c := &cmdToExec{
 		name: filePath,
 		// name:         file,
-		fullpathname: filePath,
+		fullPath: filePath,
 		local:        0,
 		fi:           f,
 	}
@@ -215,7 +218,7 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	c := &cmdToExec{
 		name: filePath,
 		// name:         file,
-		fullpathname: filePath,
+		fullPath: filePath,
 		local:        0,
 		fi:           f,
 	}

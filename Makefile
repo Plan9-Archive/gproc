@@ -42,6 +42,7 @@ testlocal: $(TARG)
 	rm -f /tmp/g
 
 testlinux: $(TARG)
-	./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-17
+	./startgproc.sh 10.12.0.11 10.12.0 12-17
+	#./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-17
 testlinux1: $(TARG)
 	./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-12

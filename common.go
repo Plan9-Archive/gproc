@@ -52,7 +52,7 @@ type SetDebugLevel struct {
 
 type cmdToExec struct {
 	name         string
-	fullpathname string
+	fullPath string
 	local        int
 	fi           *os.FileInfo
 }
