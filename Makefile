@@ -38,11 +38,16 @@ testlocal: $(TARG)
 	sleep 3
 	./gproc  -debug=8 worker tcp4 127.0.0.1:`cat /tmp/srvaddr | sed 's/^.*://g'` 127.0.0.1:0 &
 	sleep 3
+	rm -rf /tmp/xproc
+	time ./gproc -debug=8 exec /tmp/g tcp4 127.0.0.1:0 1 /bin/date
+	rm -rf /tmp/xproc
 	time ./gproc -debug=8 exec /tmp/g tcp4 127.0.0.1:0 1 /bin/date
 	rm -f /tmp/g
 
-testlinux: $(TARG)
-	./startgproc.sh 10.12.0.11 10.12.0 12-17
+testlinuxd: $(TARG)
+	./startgproc.sh -d8  10.12.0.11 10.12.0 12-17
 	#./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-17
+testlinux: $(TARG)
+	./startgproc.sh  10.12.0.11 10.12.0 12-17
 testlinux1: $(TARG)
 	./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-12

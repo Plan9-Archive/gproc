@@ -143,6 +143,8 @@ fi
 GRANGE=`expandrange $RANGE | wc -l | awk '{print "1-"$1}'`
 #time ssh root@$MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 time ssh root@$MASTER $LOC/gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:3463 $GRANGE /tmp/date
+#time ssh root@$MASTER $LOC/gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:3463 $GRANGE /tmp/date
+
 #ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 # ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date

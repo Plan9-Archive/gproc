@@ -194,7 +194,7 @@ func (r *RpcClientServer) Send(funcname string, arg interface{}) {
 	SendPrint(funcname, r.rw, arg)
 	err := r.e.Encode(arg)
 	if err != nil {
-		log.Exit(funcname, ": ", err)
+		log.Exit(funcname, ": Send: ", err)
 	}
 }
 
@@ -203,7 +203,7 @@ var onRecvFunc func(funcname string, r io.Reader, arg interface{})
 func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
 	err := r.d.Decode(arg)
 	if err != nil {
-		log.Exit(funcname, ": ", err)
+		log.Exit(funcname, ": Recv: ", err)
 	}
 	RecvPrint(funcname, r.rw, arg)
 	if onRecvFunc != nil {

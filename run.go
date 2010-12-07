@@ -38,7 +38,7 @@ func run() {
 		doPrivateMount(pathbase)
 	}
 	for _, s := range arg.cmds {
-		Dprintf(2, "run: Localbin %v cmd %v:", arg.LocalBin, s)
+		Dprintf(2, "run: Localbin %v cmd %v: ", arg.LocalBin, s)
 		Dprintf(2, "%s\n", s.name)
 		_, err := writeStreamIntoFile(os.Stdin, s.name, s.fi)
 		if err != nil {
@@ -79,7 +79,7 @@ func doPrivateMount(pathbase string) {
 	_ = unmount(pathbase)
 	syscallerr := privatemount(pathbase)
 	if syscallerr != 0 {
-		log.Printf("Mount failed", syscallerr, "\n")
+		log.Print("Mount failed ", syscallerr)
 		os.Exit(1)
 	}
 }
@@ -89,7 +89,7 @@ func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (n int64, e
 	Dprintf(2, "writeStreamIntoFile:  %s, %v %v\n", out, fi, fi.Mode)
 	switch fi.Mode & syscall.S_IFMT {
 	case syscall.S_IFDIR:
-		Dprint(5, "writeStreamIntoFile: is dir")
+		Dprint(5, "writeStreamIntoFile: is dir ", fi.Name)
 		err = os.Mkdir(out, fi.Mode&0777)
 		if err != nil {
 			err = os.Chown(out, fi.Uid, fi.Gid)
@@ -111,10 +111,9 @@ func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (n int64, e
 			return
 		}
 		defer f.Close()
-		Dprint(5, "writeStreamIntoFile: copying ",fi.Size)
+		Dprint(5, "writeStreamIntoFile: copying ",fi.Name, " ", fi.Size)
 		n, err = io.Copyn(f, stream, fi.Size)
-//		n, err = io.Copy(f, stream)
-		Dprint(5, "writeStreamIntoFile: copied ",n)
+		Dprint(5, "writeStreamIntoFile: copied ",fi.Name, " ",n)
 		if err != nil {
 			log.Exit("writeStreamIntoFile: copyn: ",err)
 		}

@@ -13,16 +13,14 @@ import (
 
 func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 	log.SetPrefix("mexec " + *prefix + ": ")
-	nodelist, err := NodeList(nodes)
+	nodeList, err := parseNodeList(nodes)
 	if err != nil {
-		log.Exit("startExecution: bad nodelist: ", err)
+		log.Exit("startExecution: bad nodeList: ", err)
 	}
-	workerChan, l, err := ioProxy(fam, server, len(nodelist))
+	workerChan, l, err := ioProxy(fam, server, len(nodeList))
 	if err != nil {
 		log.Exit("startExecution: ioproxy: ", err)
 	}
-
-
 
 	pv := newPackVisitor()
 	if len(*filesToTakeAlong) > 0 {
@@ -45,7 +43,7 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 		Args:            cmd,
 		bytesToTransfer: pv.bytesToTransfer,
 		Env:             []string{"LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"},
-		Nodes:           nodelist,
+		Nodes:           nodeList,
 		cmds:            pv.cmds,
 	}
 	client, err := Dial("unix", "", masterAddr)
@@ -57,7 +55,7 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 	writeOutFiles(r, pv.cmds)
 	r.Recv("startExecution", &Resp{})
 	peers := []string{} // TODO
-	numWorkers := len(nodelist) + len(peers)
+	numWorkers := len(nodeList) + len(peers)
 	Dprintln(3, "startExecution: waiting for ", numWorkers)
 	for numWorkers > 0 {
 		<-workerChan
@@ -79,7 +77,7 @@ func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 		Dprint(2, "writeOutFiles: copying ", c.fi.Size, " from ", f)
 		// send to master to send to others
 		n, err := io.Copyn(r.ReadWriter(), f, c.fi.Size)
-	//	n, err := io.Copy(r.ReadWriter(), f)
+		//	n, err := io.Copy(r.ReadWriter(), f)
 		Dprint(2, "writeOutFiles: wrote ", n)
 		f.Close()
 		if err != nil {
@@ -90,15 +88,15 @@ func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 }
 
 func ioProxy(fam, server string, numWorkers int) (workerChan chan int, l Listener, err os.Error) {
+	workerChan = make(chan int, numWorkers)
 	l, err = Listen(fam, server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Listen: %v\n", err)
 		return
 	}
-
-	workerChan = make(chan int, numWorkers)
-	Workers := make([]*Worker, numWorkers)
 	go func() {
+		Workers := make([]*Worker, numWorkers)
+
 		for i, _ := range Workers {
 			conn, err := l.Accept()
 			Dprint(2, "ioProxy: connected by ", conn.RemoteAddr())
@@ -131,7 +129,7 @@ var (
 	BadRangeErr = os.NewError("bad range format")
 )
 
-func NodeList(l string) (rl []string, err os.Error) {
+func parseNodeList(l string) (rl []string, err os.Error) {
 	for i := 0; i < len(l); {
 		switch {
 		case isNum(l[i]):
@@ -182,24 +180,22 @@ func newPackVisitor() (p *packVisitor) {
 func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
 	filePath = strings.TrimSpace(filePath)
 	filePath = strings.TrimRightFunc(filePath, isNull)
-	
+
 	if p.alreadyVisited[filePath] {
 		return false
 	}
-	// _, file := path.Split(filePath)
+	//	_, file := path.Split(filePath)
 	c := &cmdToExec{
-		name: filePath,
-		// name:         file,
+		//		name: file,
+		name:     filePath,
 		fullPath: filePath,
-		local:        0,
-		fi:           f,
+		local:    0,
+		fi:       f,
 	}
 	Dprint(4, "VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
 	p.cmds = append(p.cmds, c)
-	p.bytesToTransfer += f.Size
 	p.alreadyVisited[filePath] = true
-	p.alreadyVisited[filePath] = true
-	
+
 	return true
 }
 
@@ -211,22 +207,39 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	// shouldn't need to do this, need to fix ldd
 	filePath = strings.TrimSpace(filePath)
 	filePath = strings.TrimRightFunc(filePath, isNull)
-	if  p.alreadyVisited[filePath] {
+	if p.alreadyVisited[filePath] {
 		return
 	}
-	// _, file := path.Split(filePath)
 	c := &cmdToExec{
-		name: filePath,
-		// name:         file,
+		//		name: file,
+		name:     filePath,
 		fullPath: filePath,
-		local:        0,
-		fi:           f,
+		local:    0,
+		fi:       f,
 	}
-	Dprint(4, "VisitFile: appending ", filePath, " ", f.Size, " ", []byte(filePath), " ", p.alreadyVisited)
+	Dprint(4, "VisitFile: appending ", f.Name, " ", f.Size, " ", []byte(filePath), " ", p.alreadyVisited)
 
 	p.cmds = append(p.cmds, c)
-	if f.IsRegular() {
+	switch {
+	case f.IsRegular():
 		p.bytesToTransfer += f.Size
+	case f.IsSymlink():
+		path.Walk(resolveLink(filePath), p, nil)
 	}
-	p.alreadyVisited[filePath] = true	
+	p.alreadyVisited[filePath] = true
 }
+
+func resolveLink(filePath string) string {
+	// BUG: what about relative paths in the link?
+	linkPath, err := os.Readlink(filePath)
+	linkDir, linkFile := path.Split(linkPath)
+	if linkDir == "" {
+		linkDir, _ = path.Split(filePath)
+	}
+	Dprint(4, "VisitFile: read link ", filePath, "->", linkDir+linkFile)
+	if err != nil {
+		log.Exit("VisitFile: readlink: ", err)
+	}
+	return linkDir+linkFile
+}
+
