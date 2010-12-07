@@ -233,13 +233,17 @@ func resolveLink(filePath string) string {
 	// BUG: what about relative paths in the link?
 	linkPath, err := os.Readlink(filePath)
 	linkDir, linkFile := path.Split(linkPath)
-	if linkDir == "" {
+	switch {
+	case linkDir == "":
 		linkDir, _ = path.Split(filePath)
+	case linkDir[0] != '/':
+		dir, _ := path.Split(filePath)
+		linkDir = path.Join(dir, linkDir)
 	}
 	Dprint(4, "VisitFile: read link ", filePath, "->", linkDir+linkFile)
 	if err != nil {
 		log.Exit("VisitFile: readlink: ", err)
 	}
-	return linkDir+linkFile
+	return path.Join(linkDir,linkFile)
 }
 

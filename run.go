@@ -84,28 +84,28 @@ func doPrivateMount(pathbase string) {
 }
 
 func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) {
-	xf := "/tmp/xproc" + c.name
+	outputFile := path.Join("/tmp/xproc", c.name)
 	fi := c.fi
-	Dprintf(2, "writeStreamIntoFile: ", xf," ", c)
+	Dprintf(2, "writeStreamIntoFile: ", outputFile," ", c)
 	switch  {
 	case fi.IsDirectory():
 		Dprint(5, "writeStreamIntoFile: is dir ", fi.Name)
-		err = os.Mkdir(xf, fi.Mode&0777)
+		err = os.MkdirAll(outputFile, fi.Mode&0777)
 		if err != nil {
-			err = os.Chown(xf, fi.Uid, fi.Gid)
+			err = os.Chown(outputFile, fi.Uid, fi.Gid)
 		}
 	case fi.IsSymlink():
 		Dprint(5, "writeStreamIntoFile: is link")
-		err = os.Symlink(xf, "/tmp/xproc/"+ c.fullPath)
+		err = os.Symlink(outputFile, "/tmp/xproc/"+ c.fullPath)
 	case fi.IsRegular():
 		Dprint(5, "writeStreamIntoFile: is regular file")
-		dir, _ := path.Split(xf)
+		dir, _ := path.Split(outputFile)
 		_, err = os.Lstat(dir)
 		if err != nil {
-			os.Mkdir(dir, 0777)
+			os.MkdirAll(dir, 0777)
 			err = nil
 		}
-		f, err := os.Open(xf, os.O_RDWR|os.O_CREAT, 0777)
+		f, err := os.Open(outputFile, os.O_RDWR|os.O_CREAT, 0777)
 		if err != nil {
 			return
 		}
@@ -117,12 +117,12 @@ func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) 
 			log.Exit("writeStreamIntoFile: copyn: ",err)
 		}
 		if err != nil {
-			err = os.Chown(xf, fi.Uid, fi.Gid)
+			err = os.Chown(outputFile, fi.Uid, fi.Gid)
 		}
 	default:
 		return
 	}
 
-	Dprint(2, "writeStreamIntoFile: finished ", xf)
+	Dprint(2, "writeStreamIntoFile: finished ", outputFile)
 	return
 }
