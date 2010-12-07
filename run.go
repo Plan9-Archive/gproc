@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"log"
-	"syscall"
 	"io"
 	"path"
 )
@@ -25,35 +24,35 @@ import (
  * each peer and sendCommandsAndWriteOutFiles for the children.
  */
 func run() {
-	var arg StartReq
 	var pathbase = "/tmp/xproc"
 	log.SetPrefix("run "+*prefix+": ")
 	r := NewRpcClientServer(os.Stdin)
-	r.Recv("run", &arg)
+	var req StartReq
+	r.Recv("run", &req)
 	/* make sure the directory exists and then do the private name space mount */
 
-	Dprintf(3, "run: arg is %v\n", arg)
+	Dprintf(3, "run: req is %v\n", req)
 	os.Mkdir(pathbase, 0700)
 	if *DoPrivateMount == true {
 		doPrivateMount(pathbase)
 	}
-	for _, s := range arg.cmds {
-		Dprintf(2, "run: Localbin %v cmd %v: ", arg.LocalBin, s)
-		Dprintf(2, "%s\n", s.name)
-		_, err := writeStreamIntoFile(os.Stdin, s.name, s.fi)
+	for _, c := range req.cmds {
+		Dprintf(2, "run: Localbin %v cmd %v: ", req.LocalBin, c)
+		Dprintf(2, "%s\n", c.name)
+		_, err := writeStreamIntoFile(os.Stdin, c)
 		if err != nil {
 			log.Exit("run: writeStreamIntoFile: ", err)
 		}
 	}
-	Dprintf(2, "run: connect to %v\n", arg.Lserver)
-	n := fileTcpDial(arg.Lserver)
+	Dprintf(2, "run: connect to %v\n", req.Lserver)
+	n := fileTcpDial(req.Lserver)
 	f := []*os.File{n, n, n}
-	execpath := pathbase + arg.Args[0]
-	if arg.LocalBin {
-		execpath = arg.Args[0]
+	execpath := pathbase + req.Args[0]
+	if req.LocalBin {
+		execpath = req.Args[0]
 	}
 	Dprint(2,"run: execpath: ",execpath)
-	_, err := os.ForkExec(execpath, arg.Args, arg.Env, pathbase, f)
+	_, err := os.ForkExec(execpath, req.Args, req.Env, pathbase, f)
 	n.Close()
 	if err == nil {
 		WaitAllChildren()
@@ -84,29 +83,29 @@ func doPrivateMount(pathbase string) {
 	}
 }
 
-func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (n int64, err os.Error) {
-	out := "/tmp/xproc" + s
-	Dprintf(2, "writeStreamIntoFile:  %s, %v %v\n", out, fi, fi.Mode)
-	switch fi.Mode & syscall.S_IFMT {
-	case syscall.S_IFDIR:
+func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) {
+	xf := "/tmp/xproc" + c.name
+	fi := c.fi
+	Dprintf(2, "writeStreamIntoFile: ", xf," ", c)
+	switch  {
+	case fi.IsDirectory():
 		Dprint(5, "writeStreamIntoFile: is dir ", fi.Name)
-		err = os.Mkdir(out, fi.Mode&0777)
+		err = os.Mkdir(xf, fi.Mode&0777)
 		if err != nil {
-			err = os.Chown(out, fi.Uid, fi.Gid)
+			err = os.Chown(xf, fi.Uid, fi.Gid)
 		}
-	case syscall.S_IFLNK:
+	case fi.IsSymlink():
 		Dprint(5, "writeStreamIntoFile: is link")
-		
-		err = os.Symlink(out, "/tmp/xproc/"+fi.Name)
-	case syscall.S_IFREG:
+		err = os.Symlink(xf, "/tmp/xproc/"+ c.fullPath)
+	case fi.IsRegular():
 		Dprint(5, "writeStreamIntoFile: is regular file")
-		dir, _ := path.Split(out)
+		dir, _ := path.Split(xf)
 		_, err = os.Lstat(dir)
 		if err != nil {
 			os.Mkdir(dir, 0777)
 			err = nil
 		}
-		f, err := os.Open(out, os.O_RDWR|os.O_CREAT, 0777)
+		f, err := os.Open(xf, os.O_RDWR|os.O_CREAT, 0777)
 		if err != nil {
 			return
 		}
@@ -118,12 +117,12 @@ func writeStreamIntoFile(stream *os.File, s string, fi *os.FileInfo) (n int64, e
 			log.Exit("writeStreamIntoFile: copyn: ",err)
 		}
 		if err != nil {
-			err = os.Chown(out, fi.Uid, fi.Gid)
+			err = os.Chown(xf, fi.Uid, fi.Gid)
 		}
 	default:
 		return
 	}
 
-	Dprint(2, "writeStreamIntoFile: finished ", out)
+	Dprint(2, "writeStreamIntoFile: finished ", xf)
 	return
 }

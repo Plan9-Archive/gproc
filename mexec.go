@@ -11,13 +11,13 @@ import (
 	"path"
 )
 
-func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
+func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cmd []string) {
 	log.SetPrefix("mexec " + *prefix + ": ")
-	nodeList, err := parseNodeList(nodes)
+	slaveNodes, err := parseNodeList(slaveNodeList)
 	if err != nil {
-		log.Exit("startExecution: bad nodeList: ", err)
+		log.Exit("startExecution: bad slaveNodeList: ", err)
 	}
-	workerChan, l, err := ioProxy(fam, server, len(nodeList))
+	workerChan, l, err := ioProxy(fam, ioProxyListenAddr, len(slaveNodes))
 	if err != nil {
 		log.Exit("startExecution: ioproxy: ", err)
 	}
@@ -43,19 +43,19 @@ func startExecution(masterAddr, fam, server, nodes string, cmd []string) {
 		Args:            cmd,
 		bytesToTransfer: pv.bytesToTransfer,
 		Env:             []string{"LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"},
-		Nodes:           nodeList,
+		Nodes:           slaveNodes,
 		cmds:            pv.cmds,
 	}
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
-		log.Exit("startExecution: dialing: ", fam, " ", server, " ", err)
+		log.Exit("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
 	}
 	r := NewRpcClientServer(client)
 	r.Send("startExecution", req)
 	writeOutFiles(r, pv.cmds)
 	r.Recv("startExecution", &Resp{})
 	peers := []string{} // TODO
-	numWorkers := len(nodeList) + len(peers)
+	numWorkers := len(slaveNodes) + len(peers)
 	Dprintln(3, "startExecution: waiting for ", numWorkers)
 	for numWorkers > 0 {
 		<-workerChan
@@ -75,9 +75,8 @@ func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
 			log.Printf("Open %v failed: %v\n", c.fullPath, err)
 		}
 		Dprint(2, "writeOutFiles: copying ", c.fi.Size, " from ", f)
-		// send to master to send to others
+		// us -> master -> slaves
 		n, err := io.Copyn(r.ReadWriter(), f, c.fi.Size)
-		//	n, err := io.Copy(r.ReadWriter(), f)
 		Dprint(2, "writeOutFiles: wrote ", n)
 		f.Close()
 		if err != nil {
@@ -224,7 +223,8 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	case f.IsRegular():
 		p.bytesToTransfer += f.Size
 	case f.IsSymlink():
-		path.Walk(resolveLink(filePath), p, nil)
+		c.fullPath = resolveLink(filePath)
+		path.Walk(c.fullPath, p, nil)
 	}
 	p.alreadyVisited[filePath] = true
 }
