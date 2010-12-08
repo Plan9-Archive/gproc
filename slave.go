@@ -10,18 +10,18 @@ import (
 var id string
 
 func startSlave(fam, masterAddr, peerAddr string) {
-	newListenProc("slaveProc", slaveProc, peerAddr)
+	serverAddr := newListenProc("slaveProc", slaveProc, peerAddr)
 	client, err := Dial(fam, "", masterAddr)
 	if err != nil {
 		log.Exit("dialing:", err)
 	}
 	r := NewRpcClientServer(client)
-	initSlave(r)
+	initSlave(r, serverAddr)
 	slaveProc(r)
 }
 
-func initSlave(r *RpcClientServer) {
-	req := &SlaveReq{}
+func initSlave(r *RpcClientServer, serverAddr string) {
+	req := &SlaveReq{Server: serverAddr}
 	r.Send("startSlave", req)
 	resp := &SlaveResp{}
 	r.Recv("startSlave", &resp)

@@ -273,7 +273,10 @@ func WaitAllChildren() {
 	}
 }
 
-func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string) {
+func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string) string {
+	/* it is important to return the listen address, if this function was called
+	 * with port 0
+	 */
 	netl, err := net.Listen("tcp4", srvaddr)
 	if err != nil {
 		log.Exit("newListenProc: ", err)
@@ -286,4 +289,5 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 		Dprint(2, jobname, ": ", c.RemoteAddr())
 		go job(NewRpcClientServer(c))
 	}()
+	return netl.Addr().String()
 }
