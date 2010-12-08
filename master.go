@@ -5,8 +5,6 @@ import (
 	"log"
 	"fmt"
 	"io/ioutil"
-	"io"
-	"bytes"
 )
 
 var Workers []Worker
@@ -118,17 +116,6 @@ func newStartReq(arg *StartReq) *StartReq {
 func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error {
 	Dprint(2, "cacheRelayFilesAndDelegateExec: ", arg.Nodes, " fileServer: ", arg.Lfam, arg.Lserver)
 
-	// buffer files on master
-	data := bytes.NewBuffer(make([]byte, 0))
-	Dprint(2, "cacheRelayFilesAndDelegateExec: copying ", arg.bytesToTransfer)
-	n, err := io.Copyn(data, r.ReadWriter(), arg.bytesToTransfer)
-	//		n, err := io.Copy(data, r.ReadWriter())
-	Dprint(2, "cacheRelayFilesAndDelegateExec readbytes ", data.Bytes()[0:64])
-	Dprint(2, "cacheRelayFilesAndDelegateExec: copied ", n, " total ", arg.bytesToTransfer)
-	if err != nil {
-		log.Exit("Mexec: copyn: ", err)
-	}
-
 	/* this is explicitly for sending to remote nodes. So we actually just pick off one node at a time
 	 * and call execclient with it. Later we will group nodes.
 	 */
@@ -146,13 +133,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error 
 		if arg.LocalBin {
 			Dprintf(2, "cmds %v\n", arg.cmds)
 		}
-		Dprint(2, "cacheRelayFilesAndDelegateExec bytes ", data.Bytes()[0:64])
-		n, err := io.Copyn(s.rpc.ReadWriter(), bytes.NewBuffer(data.Bytes()), arg.bytesToTransfer)
-		//			n, err := io.Copy(s.rpc.ReadWriter(), bytes.NewBuffer(data.Bytes()))
-		Dprint(2, "cacheRelayFilesAndDelegateExec: wrote ", n)
-		if err != nil {
-			log.Exit("cacheRelayFilesAndDelegateExec: iocopy: ", err)
-		}
+		writeOutFiles(s.rpc, arg.cmds)
 		/* at this point it is out of our hands */
 	}
 

@@ -96,6 +96,12 @@ func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) 
 		}
 	case fi.IsSymlink():
 		Dprint(5, "writeStreamIntoFile: is link")
+		dir, _ := path.Split(outputFile)
+		_, err = os.Lstat(dir)
+		if err != nil {
+			os.MkdirAll(dir, 0777)
+			err = nil
+		}
 		err = os.Symlink(outputFile, "/tmp/xproc/"+ c.fullPath)
 	case fi.IsRegular():
 		Dprint(5, "writeStreamIntoFile: is regular file")

@@ -52,7 +52,6 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 	}
 	r := NewRpcClientServer(client)
 	r.Send("startExecution", req)
-	writeOutFiles(r, pv.cmds)
 	r.Recv("startExecution", &Resp{})
 	peers := []string{} // TODO
 	numWorkers := len(slaveNodes) + len(peers)
