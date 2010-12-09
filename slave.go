@@ -17,7 +17,9 @@ func startSlave(fam, masterAddr, peerAddr string) {
 	}
 	r := NewRpcClientServer(client)
 	initSlave(r, serverAddr)
-	slaveProc(r)
+	for {
+		slaveProc(r)
+	}
 }
 
 func initSlave(r *RpcClientServer, serverAddr string) {
@@ -30,13 +32,11 @@ func initSlave(r *RpcClientServer, serverAddr string) {
 }
 
 func slaveProc(r *RpcClientServer) {
-	for {
 		req := &StartReq{}
 		// receives from cacheRelayFilesAndDelegateExec?
 		r.Recv("slaveProc", req)
 		ForkRelay(req, r)
 		r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
-	}
 }
 
 func ForkRelay(req *StartReq, rpc *RpcClientServer) {

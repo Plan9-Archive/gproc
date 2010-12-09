@@ -39,6 +39,32 @@ func receiveCmds(domainSock string) os.Error {
 	return nil
 }
 
+func registerSlaves() os.Error {
+	l, err := Listen("tcp4", "0.0.0.0:0")
+	if err != nil {
+		log.Exit("listen error:", err)
+	}
+	Dprint(2, l.Addr())
+	fmt.Println(l.Addr())
+	err = ioutil.WriteFile("/tmp/srvaddr", []byte(l.Addr().String()), 0644)
+	if err != nil {
+		log.Exit(err)
+	}
+	slaves = newSlaves()
+	for {
+		c, err := l.Accept()
+		if err != nil {
+			log.Exit("registerSlaves:", err)
+		}
+		r := NewRpcClientServer(c)
+		var req SlaveReq
+		r.Recv("registerSlaves", &req)
+		resp := slaves.Add(&req, r)
+		r.Send("registerSlaves", resp)
+	}
+	return nil
+}
+
 
 type Slaves struct {
 	slaves map[string]*SlaveInfo
@@ -74,31 +100,7 @@ func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
 
 var slaves Slaves
 
-func registerSlaves() os.Error {
-	l, err := Listen("tcp4", "0.0.0.0:0")
-	if err != nil {
-		log.Exit("listen error:", err)
-	}
-	Dprint(2, l.Addr())
-	fmt.Println(l.Addr())
-	err = ioutil.WriteFile("/tmp/srvaddr", []byte(l.Addr().String()), 0644)
-	if err != nil {
-		log.Exit(err)
-	}
-	slaves = newSlaves()
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			log.Exit("registerSlaves:", err)
-		}
-		r := NewRpcClientServer(c)
-		var req SlaveReq
-		r.Recv("registerSlaves", &req)
-		resp := slaves.Add(&req, r)
-		r.Send("registerSlaves", resp)
-	}
-	return nil
-}
+
 
 func newStartReq(arg *StartReq) *StartReq {
 	return &StartReq{
@@ -128,12 +130,17 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error 
 			continue
 		}
 		larg := newStartReq(arg)
-		s.rpc.Send("cacheRelayFilesAndDelegateExec", larg)
+		client, err := Dial("tcp4", "", s.Server)
+		if err != nil {
+			log.Exit("dialing:", err)
+		}
+		rpc := NewRpcClientServer(client)
+		rpc.Send("cacheRelayFilesAndDelegateExec", larg)
 		Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.bytesToTransfer, arg.LocalBin)
 		if arg.LocalBin {
 			Dprintf(2, "cmds %v\n", arg.cmds)
 		}
-		writeOutFiles(s.rpc, arg.cmds)
+		writeOutFiles(rpc, arg.cmds)
 		/* at this point it is out of our hands */
 	}
 

@@ -282,12 +282,14 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 		log.Exit("newListenProc: ", err)
 	}
 	go func() {
-		c, err := netl.Accept()
-		if err != nil {
-			log.Exit(jobname, ": ", err)
+		for {
+			c, err := netl.Accept()
+			if err != nil {
+				log.Exit(jobname, ": ", err)
+			}
+			Dprint(2, jobname, ": ", c.RemoteAddr())
+			go job(NewRpcClientServer(c))
 		}
-		Dprint(2, jobname, ": ", c.RemoteAddr())
-		go job(NewRpcClientServer(c))
 	}()
 	return netl.Addr().String()
 }
