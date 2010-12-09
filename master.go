@@ -141,12 +141,8 @@ func newStartReq(arg *StartReq) *StartReq {
 }
 
 func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error {
-	Dprint(2, "cacheRelayFilesAndDelegateExec: ", arg.Nodes, " fileServer: ", arg.Lfam, arg.Lserver)
+	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
 
-	/* this is explicitly for sending to remote nodes. So we actually just pick off one node at a time
-	 * and call execclient with it. Later we will group nodes.
-	 */
-	Dprint(2, "cacheRelayFilesAndDelegateExec nodes ", Server)
 	larg := newStartReq(arg)
 	client, err := Dial("tcp4", "", Server)
 	if err != nil {
@@ -161,6 +157,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 		Dprintf(2, "cmds %v\n", arg.cmds)
 	}
 	writeOutFiles(rpc, root, arg.cmds)
+	Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
 	/* at this point it is out of our hands */
 
 	return nil

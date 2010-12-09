@@ -67,6 +67,7 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 }
 
 func writeOutFiles(r *RpcClientServer, root string, cmds []*cmdToExec) {
+	Dprint(2, "writeOutFiles: cmds: ", cmds)
 	for _, c := range cmds {
 		Dprint(2, "writeOutFiles: next cmd")
 		if !c.fi.IsRegular() {

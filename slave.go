@@ -52,7 +52,7 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.bytesToTransfer)
 	Dprint(2, "ForkRelay: copy wrote ", n)
 	if err != nil {
-		log.Exit("ForkRelay: copy: ", err)
+		log.Exit("ForkRelay: io.Copyn write error: ", err)
 	}
 	Dprint(2, "ForkRelay: end")
 }
