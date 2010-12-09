@@ -24,6 +24,8 @@ import (
  * each peer and sendCommandsAndWriteOutFiles for the children.
  */
 func run() {
+	var workerChan chan int
+	var numWorkers int
 	var pathbase = *binRoot
 	log.SetPrefix("run "+*prefix+": ")
 	r := NewRpcClientServer(os.Stdin)
@@ -70,15 +72,30 @@ func run() {
 			copy(newPeers, larg.Peers[1:])
 			larg. Peers = newPeers
 			Dprint(2,"run: chain to ", p, " chain workers: ", newPeers)
-			go cacheRelayFilesAndDelegateExec(larg, *binRoot, p)	
+			workerChan = make(chan int, 1)
+			numWorkers = 1
+			go func (w chan int) {
+				cacheRelayFilesAndDelegateExec(larg, *binRoot, p)
+				w <- 1
+			}(workerChan)
 		} else {
+			numWorkers = len(req.Peers)
+			workerChan = make(chan int, numWorkers)
 			for _, p := range req.Peers {
-				go cacheRelayFilesAndDelegateExec(&req, *binRoot, p)	
+				go func (w chan int) {
+					cacheRelayFilesAndDelegateExec(&req, *binRoot, p)
+					w <- 1
+				}(workerChan)
+
 			}
 		}
 	}
 
 	WaitAllChildren()
+	for numWorkers > 0 {
+		<-workerChan
+		numWorkers--
+	}
 	os.Exit(0)
 }
 
