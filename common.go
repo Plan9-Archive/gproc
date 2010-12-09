@@ -89,6 +89,11 @@ type StartReq struct {
 	bytesToTransfer int64
 	uid, gid       int
 	cmds           []*cmdToExec
+	/* testing: The master and worker nodes, given a list, will take the head
+	 * of the list, and send the rest of the list of Peers on to the next victim. 
+	 * this will result in a chain of delegations. 
+	 */
+	chainWorkers bool
 }
 
 func (s *StartReq) String() string {

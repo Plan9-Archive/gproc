@@ -42,10 +42,13 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 		LocalBin:        *localbin,
 		Args:            cmd,
 		bytesToTransfer: pv.bytesToTransfer,
-		Env:             []string{"LD_LIBRARY_PATH=/tmp/xproc/lib:/tmp/xproc/lib64"},
+		Env:             []string{"LD_LIBRARY_PATH="+*binRoot+"/lib:"+*binRoot+"/lib64"},
 		Nodes:           slaveNodes,
 		cmds:            pv.cmds,
+		chainWorkers: *chainWorkers,
 	}
+
+	
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
 		log.Exit("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
@@ -63,15 +66,16 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 	Dprintln(3, "startExecution: finished")
 }
 
-func writeOutFiles(r *RpcClientServer, cmds []*cmdToExec) {
+func writeOutFiles(r *RpcClientServer, root string, cmds []*cmdToExec) {
 	for _, c := range cmds {
 		Dprint(2, "writeOutFiles: next cmd")
 		if !c.fi.IsRegular() {
 			continue
 		}
-		f, err := os.Open(c.fullPath, os.O_RDONLY, 0)
+		fullpath := root + c.fullPath
+		f, err := os.Open(fullpath, os.O_RDONLY, 0)
 		if err != nil {
-			log.Printf("Open %v failed: %v\n", c.fullPath, err)
+			log.Printf("Open %v failed: %v\n", fullpath, err)
 		}
 		Dprint(2, "writeOutFiles: copying ", c.fi.Size, " from ", f)
 		// us -> master -> slaves

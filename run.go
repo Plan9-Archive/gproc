@@ -14,7 +14,7 @@ import (
  * we almost certainly exec it. Then we send all those
  * files right back out again to other nodes if needed
  * (later).
- * We always make and mount /tmp/xproc, and chdir to it, so the
+ * We always make and mount binRoot, and chdir to it, so the
  * programs have a safe place to stash files that might go away after
  * all is done.
  * Due to memory footprint issues, we really can not have both the
@@ -24,7 +24,7 @@ import (
  * each peer and sendCommandsAndWriteOutFiles for the children.
  */
 func run() {
-	var pathbase = "/tmp/xproc"
+	var pathbase = *binRoot
 	log.SetPrefix("run "+*prefix+": ")
 	r := NewRpcClientServer(os.Stdin)
 	var req StartReq
@@ -54,11 +54,31 @@ func run() {
 	Dprint(2,"run: execpath: ",execpath)
 	_, err := os.ForkExec(execpath, req.Args, req.Env, pathbase, f)
 	n.Close()
-	if err == nil {
-		WaitAllChildren()
-	} else {
+
+	if err != nil {
 		log.Exit("run: ", err)
 	}
+	
+	if req.Peers != nil {
+		Dprint(2,"run: Peers: ",req.Peers)
+		/* this might be a test */
+		if req.chainWorkers {
+			/* this is quite inefficient but rarely used so I'm not that concerned */
+			larg := newStartReq(&req)
+			p := larg.Peers[0]
+			newPeers := make([]string, len(larg.Peers)-1)
+			copy(newPeers, larg.Peers[1:])
+			larg. Peers = newPeers
+			Dprint(2,"run: chain to ", p, " chain workers: ", newPeers)
+			go cacheRelayFilesAndDelegateExec(larg, *binRoot, p)	
+		} else {
+			for _, p := range req.Peers {
+				go cacheRelayFilesAndDelegateExec(&req, *binRoot, p)	
+			}
+		}
+	}
+
+	WaitAllChildren()
 	os.Exit(0)
 }
 
@@ -84,7 +104,7 @@ func doPrivateMount(pathbase string) {
 }
 
 func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) {
-	outputFile := path.Join("/tmp/xproc", c.name)
+	outputFile := path.Join(*binRoot, c.name)
 	fi := c.fi
 	Dprintf(2, "writeStreamIntoFile: ", outputFile," ", c)
 	switch  {
@@ -102,7 +122,7 @@ func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) 
 			os.MkdirAll(dir, 0777)
 			err = nil
 		}
-		err = os.Symlink(outputFile, "/tmp/xproc/"+ c.fullPath)
+		err = os.Symlink(outputFile, *binRoot+ c.fullPath)
 	case fi.IsRegular():
 		Dprint(5, "writeStreamIntoFile: is regular file")
 		dir, _ := path.Split(outputFile)

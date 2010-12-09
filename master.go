@@ -32,8 +32,31 @@ func receiveCmds(domainSock string) os.Error {
 		go func() {
 			r.Recv("receiveCmds", &a)
 			// get credentials later
-			cacheRelayFilesAndDelegateExec(&a, r)
-			r.Send("receiveCmds", Resp{Msg: []byte("cacheRelayFilesAndDelegateExec finished")})
+			if a.chainWorkers {
+				newPeers := make([]string, len(a.Nodes)-1)
+				for index, n := range a.Nodes[1:] {
+					s, ok := slaves.Get(n)
+					Dprintf(2, "node %v == slave %v\n", n, s)
+					if !ok {
+						log.Printf("No slave %v\n", n)
+						continue
+					}
+					newPeers[index] = s.Server
+				}
+				a.Nodes = []string{a.Nodes[0]}
+				a. Peers = newPeers
+				Dprintf(2, "chain workers: ", newPeers)
+			}
+			for _, n := range a.Nodes {
+				s, ok := slaves.Get(n)
+				Dprintf(2, "node %v == slave %v\n", n, s)
+				if !ok {
+					log.Printf("No slave %v\n", n)
+					continue
+				}
+				cacheRelayFilesAndDelegateExec(&a, "", s.Server)
+				r.Send("receiveCmds", Resp{Msg: []byte("cacheRelayFilesAndDelegateExec finished")})
+			}
 		}()
 	}
 	return nil
@@ -104,45 +127,41 @@ var slaves Slaves
 
 func newStartReq(arg *StartReq) *StartReq {
 	return &StartReq{
-		ThisNode:        true,
-		LocalBin:        arg.LocalBin,
-		Args:            arg.Args,
-		Env:             arg.Env,
-		Lfam:            arg.Lfam,
-		Lserver:         arg.Lserver,
-		cmds:            arg.cmds,
-		bytesToTransfer: arg.bytesToTransfer,
-	}
+ 		ThisNode:        true,
+ 		LocalBin:        arg.LocalBin,
+		Peers:	arg.Peers,
+ 		Args:            arg.Args,
+ 		Env:             arg.Env,
+ 		Lfam:            arg.Lfam,
+ 		Lserver:         arg.Lserver,
+ 		cmds:            arg.cmds,
+ 		bytesToTransfer: arg.bytesToTransfer,
+		chainWorkers: arg.chainWorkers,
+ 	}
 }
 
-func cacheRelayFilesAndDelegateExec(arg *StartReq, r *RpcClientServer) os.Error {
+func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error {
 	Dprint(2, "cacheRelayFilesAndDelegateExec: ", arg.Nodes, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	/* this is explicitly for sending to remote nodes. So we actually just pick off one node at a time
 	 * and call execclient with it. Later we will group nodes.
 	 */
-	Dprint(2, "cacheRelayFilesAndDelegateExec nodes ", arg.Nodes)
-	for _, n := range arg.Nodes {
-		s, ok := slaves.Get(n)
-		Dprintf(2, "node %v == slave %v\n", n, s)
-		if !ok {
-			log.Printf("No slave %v\n", n)
-			continue
-		}
-		larg := newStartReq(arg)
-		client, err := Dial("tcp4", "", s.Server)
-		if err != nil {
-			log.Exit("dialing:", err)
-		}
-		rpc := NewRpcClientServer(client)
-		rpc.Send("cacheRelayFilesAndDelegateExec", larg)
-		Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.bytesToTransfer, arg.LocalBin)
-		if arg.LocalBin {
-			Dprintf(2, "cmds %v\n", arg.cmds)
-		}
-		writeOutFiles(rpc, arg.cmds)
-		/* at this point it is out of our hands */
+	Dprint(2, "cacheRelayFilesAndDelegateExec nodes ", Server)
+	larg := newStartReq(arg)
+	client, err := Dial("tcp4", "", Server)
+	if err != nil {
+		log.Exit("dialing:", err)
 	}
+	Dprintf(2, "connected to %v\n", client)
+	rpc := NewRpcClientServer(client)
+	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
+	rpc.Send("cacheRelayFilesAndDelegateExec", larg)
+	Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.bytesToTransfer, arg.LocalBin)
+	if arg.LocalBin {
+		Dprintf(2, "cmds %v\n", arg.cmds)
+	}
+	writeOutFiles(rpc, root, arg.cmds)
+	/* at this point it is out of our hands */
 
 	return nil
 }
