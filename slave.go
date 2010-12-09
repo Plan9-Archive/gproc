@@ -36,7 +36,12 @@ func slaveProc(r *RpcClientServer) {
 		// receives from cacheRelayFilesAndDelegateExec?
 		r.Recv("slaveProc", req)
 		ForkRelay(req, r)
+		/* well, *maybe* we should do this, but we're commenting it out for now ...
+		 * none of the clients look for this message and in the case of a delegation
+		 * we're getting EPIPE
+		 *
 		r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
+		  */
 }
 
 func ForkRelay(req *StartReq, rpc *RpcClientServer) {
