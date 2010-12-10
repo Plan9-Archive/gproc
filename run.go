@@ -47,7 +47,7 @@ func run() {
 		}
 	}
 	Dprintf(2, "run: connect to %v\n", req.Lserver)
-	n := fileTcpDial(req.Lserver)
+	n := fileTcpDial(req.Lserver) // connect to the ioproxy.
 	f := []*os.File{n, n, n}
 	execpath := pathbase + req.Args[0]
 	if req.LocalBin {
@@ -64,10 +64,14 @@ func run() {
 	if req.Peers != nil {
 		Dprint(2, "run: Peers: ", req.Peers)
 		/* this might be a test */
+		workerChan, l, err := ioProxy(req.Lfam, req.Lserver, len(req.Peers))
+		if err != nil {
+			log.Exitf("run: ioproxy: ", err)
+		}
+		req.Lfam = l.Addr().Network()
+		req.Lserver = l.Addr().String()
 		switch {
 		default:
-			numWorkers = len(req.Peers)
-			workerChan = make(chan int, numWorkers)
 			for _, p := range req.Peers {
 				go func(w chan int) {
 					cacheRelayFilesAndDelegateExec(&req, *binRoot, p)
