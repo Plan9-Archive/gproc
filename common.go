@@ -93,7 +93,7 @@ type StartReq struct {
 	 * of the list, and send the rest of the list of Peers on to the next victim. 
 	 * this will result in a chain of delegations. 
 	 */
-	chainWorkers bool
+	chainWorkers int
 }
 
 func (s *StartReq) String() string {

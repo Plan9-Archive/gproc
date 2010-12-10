@@ -40,7 +40,7 @@ var (
 	filesToTakeAlong = flag.String("f", "", "comma-seperated list of files/directories to take along")
 	root    = flag.String("r", "", "root for finding binaries")
 	libs    = flag.String("L", "/lib:/usr/lib", "library path")
-	chainWorkers = flag.Bool("chain", false, "chain workers to test delegation")
+	chainWorkers = flag.Int("chain", 0, "chain workers to test delegation")
 	binRoot = flag.String("binRoot", "/tmp/xproc", "Where to put binaries and libraries")
 )
 

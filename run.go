@@ -64,7 +64,7 @@ func run() {
 	if req.Peers != nil {
 		Dprint(2,"run: Peers: ",req.Peers)
 		/* this might be a test */
-		if req.chainWorkers {
+		if req.chainWorkers > 0 {
 			/* this is quite inefficient but rarely used so I'm not that concerned */
 			larg := newStartReq(&req)
 			p := larg.Peers[0]

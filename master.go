@@ -32,7 +32,7 @@ func receiveCmds(domainSock string) os.Error {
 		go func() {
 			r.Recv("receiveCmds", &a)
 			// get credentials later
-			if a.chainWorkers {
+			if a.chainWorkers > 0 {
 				newPeers := make([]string, len(a.Nodes)-1)
 				for index, n := range a.Nodes[1:] {
 					s, ok := slaves.Get(n)
