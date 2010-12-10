@@ -46,17 +46,11 @@ func receiveCmds(domainSock string) os.Error {
 				if Peer == "" {
 					Peer = s.Server
 					newPeers = []string(nil)
-					if *chainWorkers == 0 {
-						na := a
-						a.Nodes = nil
-						a.Peers = newPeers
-						cacheRelayFilesAndDelegateExec(&na, "", Peer)
-						Peer = ""
-					}
-					continue
+					peerCount++
+				} else {
+					newPeers = append(newPeers, s.Server)
+					peerCount++
 				}
-				newPeers = append(newPeers, s.Server)
-				peerCount++
 				if peerCount >= *chainWorkers {
 						na := a
 						a.Nodes = nil
