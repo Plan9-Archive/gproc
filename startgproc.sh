@@ -9,8 +9,9 @@ RANGE="11-17"
 DEBUG=0
 LOC=/home/root
 TIMESERVER=be.pool.ntp.org
+PEERS=0
 
-while getopts rgd:l:st: opt ; do
+while getopts rgd:l:p:st: opt ; do
 	case "$opt" in
 		r) 
 			RECOMPILE=1
@@ -27,6 +28,9 @@ while getopts rgd:l:st: opt ; do
 			;;
 		s)
 			TRACE='strace -f'
+			;;
+		p)
+			PEERS=$OPTARG
 			;;
 		t)
 			TIMESERVER=$OPTARG
@@ -117,7 +121,7 @@ SOCKNAME=`ssh root@$MASTER mktemp /tmp/g.XXXXXX`
 SRVADDR=/tmp/srvaddr
 
 ssh root@$MASTER rm $SOCKNAME
-ssh root@$MASTER $LOC/gproc  -debug=$DEBUG MASTER $SOCKNAME &
+ssh root@$MASTER $LOC/gproc  -npeers=$PEERS -debug=$DEBUG MASTER $SOCKNAME &
 
 # hg pull http://bitbucket.org/npe/gproc # should be goinstall -c bitbucket.org/npe/gproc
 # for i in `seq 11 17`; do
@@ -134,21 +138,21 @@ sleep 1
 PORT=`ssh root@$MASTER cat $SRVADDR`
 PORT=${PORT//*:/}
 for i in `expandrange $RANGE`; do
-	ssh root@$IPPREF.$i $TRACE $LOC/gproc -debug=$DEBUG  WORKER tcp4 $MASTER:$PORT 0.0.0.0:$PORT &
+	ssh root@$IPPREF.$i $TRACE $LOC/gproc -npeers=$PEERS -debug=$DEBUG  WORKER tcp4 $MASTER:$PORT $IPPREF.$i:$PORT &
 done
 sleep 1
 if [[ ! -e /tmp/date ]]; then
 	scp root@$IPPREF.`expandrange $RANGE | sed 1q`:/bin/date /tmp
 fi
 GRANGE=`expandrange $RANGE | wc -l | awk '{print "1-"$1}'`
-#time ssh root@$MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
-time ssh root@$MASTER $LOC/gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:3463 $GRANGE /tmp/date
-#time ssh root@$MASTER $LOC/gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:3463 $GRANGE /tmp/date
+#time ssh root@$MASTER gproc -npeers=$PEERS -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+time ssh root@$MASTER $LOC/gproc -npeers=$PEERS -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:3463 $GRANGE /tmp/date
+#time ssh root@$MASTER $LOC/gproc -npeers=$PEERS -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:3463 $GRANGE /tmp/date
 
-#ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
-# ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
-# ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+#ssh $MASTER gproc -npeers=$PEERS -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+# ssh $MASTER gproc -npeers=$PEERS -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
+# ssh $MASTER gproc -npeers=$PEERS -debug=$DEBUG EXEC $SOCKNAME tcp $MASTER:$PORT $GRANGE /tmp/date
 
-# ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date
-# ssh $MASTER gproc -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date
+# ssh $MASTER gproc -npeers=$PEERS -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date
+# ssh $MASTER gproc -npeers=$PEERS -debug=$DEBUG EXEC $SOCKNAME tcp 0.0.0.0:0 $RANGE /tmp/date
 ssh root@$MASTER rm $SOCKNAME
