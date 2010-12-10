@@ -93,7 +93,7 @@ type StartReq struct {
 	 * of the list, and send the rest of the list of Peers on to the next victim. 
 	 * this will result in a chain of delegations. 
 	 */
-	chainWorkers int
+	peerGroupSize int
 }
 
 func (s *StartReq) String() string {
@@ -298,3 +298,27 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 	}()
 	return netl.Addr().String()
 }
+
+func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error {
+	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
+
+	larg := newStartReq(arg)
+	client, err := Dial("tcp4", "", Server)
+	if err != nil {
+		log.Exit("dialing:", err)
+	}
+	Dprintf(2, "connected to %v\n", client)
+	rpc := NewRpcClientServer(client)
+	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
+	rpc.Send("cacheRelayFilesAndDelegateExec", larg)
+	Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.bytesToTransfer, arg.LocalBin)
+	if arg.LocalBin {
+		Dprintf(2, "cmds %v\n", arg.cmds)
+	}
+	writeOutFiles(rpc, root, arg.cmds)
+	Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
+	/* at this point it is out of our hands */
+
+	return nil
+}
+
