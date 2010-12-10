@@ -32,16 +32,18 @@ func initSlave(r *RpcClientServer, serverAddr string) {
 }
 
 func slaveProc(r *RpcClientServer) {
-		req := &StartReq{}
-		// receives from cacheRelayFilesAndDelegateExec?
-		r.Recv("slaveProc", req)
-		ForkRelay(req, r)
-		/* well, *maybe* we should do this, but we're commenting it out for now ...
-		 * none of the clients look for this message and in the case of a delegation
-		 * we're getting EPIPE
-		 *
-		r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
-		  */
+	req := &StartReq{}
+	// receives from cacheRelayFilesAndDelegateExec?
+	r.Recv("slaveProc", req)
+	ForkRelay(req, r)
+	/* well, *maybe* we should do this, but we're commenting it out for now ...
+	 * none of the clients look for this message and in the case of a delegation
+	 * we're getting EPIPE
+	 *
+	r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
+	*/
+	Dprintln(2, "slaveProc: ", req, " ends\n")
+
 }
 
 func ForkRelay(req *StartReq, rpc *RpcClientServer) {
@@ -75,7 +77,7 @@ func startRelay() *exec.Cmd {
 	p, err := exec.Run("./gproc", argv, nilEnv, "", exec.Pipe, exec.Pipe, exec.PassThrough)
 	if err != nil {
 		log.Exit("startRelay: run: ", err)
-	}	
+	}
 	Dprintf(2, "startRelay: forked %d\n", p.Pid)
 	go WaitAllChildren()
 	return p

@@ -30,33 +30,50 @@ func receiveCmds(domainSock string) os.Error {
 		}
 		r := NewRpcClientServer(c)
 		go func() {
+			var Peer string = ""
+			var newPeers []string
+			var peerCount int
 			r.Recv("receiveCmds", &a)
 			// get credentials later
-			if a.chainWorkers > 0 {
-				newPeers := make([]string, len(a.Nodes)-1)
-				for index, n := range a.Nodes[1:] {
-					s, ok := slaves.Get(n)
-					Dprintf(2, "node %v == slave %v\n", n, s)
-					if !ok {
-						log.Printf("No slave %v\n", n)
-						continue
-					}
-					newPeers[index] = s.Server
-				}
-				a.Nodes = []string{a.Nodes[0]}
-				a. Peers = newPeers
-				Dprintf(2, "chain workers: ", newPeers)
-			}
+			/* Ye Olde State Machinee */
 			for _, n := range a.Nodes {
 				s, ok := slaves.Get(n)
-				Dprintf(2, "node %v == slave %v\n", n, s)
 				if !ok {
 					log.Printf("No slave %v\n", n)
 					continue
 				}
-				cacheRelayFilesAndDelegateExec(&a, "", s.Server)
-				r.Send("receiveCmds", Resp{Msg: []byte("cacheRelayFilesAndDelegateExec finished")})
+				Dprintf(2, "node %v == slave %v\n", n, s)
+				if Peer == "" {
+					Peer = s.Server
+					newPeers = []string(nil)
+					if *chainWorkers == 0 {
+						na := a
+						a.Nodes = nil
+						a.Peers = newPeers
+						cacheRelayFilesAndDelegateExec(&na, "", Peer)
+						Peer = ""
+					}
+					continue
+				}
+				newPeers = append(newPeers, s.Server)
+				peerCount++
+				if peerCount >= *chainWorkers {
+						na := a
+						a.Nodes = nil
+						a.Peers = newPeers
+						cacheRelayFilesAndDelegateExec(&na, "", Peer)
+						Peer = ""
+						peerCount = 0
+				}
 			}
+
+			if Peer != "" {
+					na := a
+					a.Nodes = nil
+					a.Peers = newPeers
+					cacheRelayFilesAndDelegateExec(&na, "", Peer)
+			}
+			r.Send("receiveCmds", Resp{Msg: []byte("cacheRelayFilesAndDelegateExec finished")})
 		}()
 	}
 	return nil
