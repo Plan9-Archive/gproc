@@ -51,7 +51,7 @@ func receiveCmds(domainSock string) os.Error {
 					newPeers = append(newPeers, s.Server)
 					peerCount++
 				}
-				if peerCount >= *chainWorkers {
+				if peerCount >= *peerGroupSize {
 						na := a
 						a.Nodes = nil
 						a.Peers = newPeers
@@ -147,29 +147,7 @@ func newStartReq(arg *StartReq) *StartReq {
  		Lserver:         arg.Lserver,
  		cmds:            arg.cmds,
  		bytesToTransfer: arg.bytesToTransfer,
-		chainWorkers: arg.chainWorkers,
+		peerGroupSize: arg.peerGroupSize,
  	}
 }
 
-func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error {
-	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
-
-	larg := newStartReq(arg)
-	client, err := Dial("tcp4", "", Server)
-	if err != nil {
-		log.Exit("dialing:", err)
-	}
-	Dprintf(2, "connected to %v\n", client)
-	rpc := NewRpcClientServer(client)
-	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
-	rpc.Send("cacheRelayFilesAndDelegateExec", larg)
-	Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.bytesToTransfer, arg.LocalBin)
-	if arg.LocalBin {
-		Dprintf(2, "cmds %v\n", arg.cmds)
-	}
-	writeOutFiles(rpc, root, arg.cmds)
-	Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
-	/* at this point it is out of our hands */
-
-	return nil
-}
