@@ -42,13 +42,12 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 		LocalBin:        *localbin,
 		Args:            cmd,
 		bytesToTransfer: pv.bytesToTransfer,
-		Env:             []string{"LD_LIBRARY_PATH="+*binRoot+"/lib:"+*binRoot+"/lib64"},
+		Env:             []string{"LD_LIBRARY_PATH=" + *binRoot + "/lib:" + *binRoot + "/lib64"},
 		Nodes:           slaveNodes,
 		cmds:            pv.cmds,
-		peerGroupSize: *peerGroupSize,
+		peerGroupSize:   *peerGroupSize,
 	}
 
-	
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
 		log.Exit("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
@@ -247,6 +246,5 @@ func resolveLink(filePath string) string {
 	if err != nil {
 		log.Exit("VisitFile: readlink: ", err)
 	}
-	return path.Join(linkDir,linkFile)
+	return path.Join(linkDir, linkFile)
 }
-
