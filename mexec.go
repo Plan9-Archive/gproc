@@ -45,7 +45,7 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 		Env:             []string{"LD_LIBRARY_PATH="+*binRoot+"/lib:"+*binRoot+"/lib64"},
 		Nodes:           slaveNodes,
 		cmds:            pv.cmds,
-		chainWorkers: *chainWorkers,
+		peerGroupSize: *peerGroupSize,
 	}
 
 	
@@ -67,7 +67,6 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 }
 
 func writeOutFiles(r *RpcClientServer, root string, cmds []*cmdToExec) {
-	Dprint(2, "writeOutFiles: cmds: ", cmds)
 	for _, c := range cmds {
 		Dprint(2, "writeOutFiles: next cmd")
 		if !c.fi.IsRegular() {

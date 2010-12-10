@@ -27,7 +27,7 @@ func run() {
 	var workerChan chan int
 	var numWorkers int
 	var pathbase = *binRoot
-	log.SetPrefix("run "+*prefix+": ")
+	log.SetPrefix("run " + *prefix + ": ")
 	r := NewRpcClientServer(os.Stdin)
 	var req StartReq
 	r.Recv("run", &req)
@@ -53,41 +53,39 @@ func run() {
 	if req.LocalBin {
 		execpath = req.Args[0]
 	}
-	Dprint(2,"run: execpath: ",execpath)
+	Dprint(2, "run: execpath: ", execpath)
 	_, err := os.ForkExec(execpath, req.Args, req.Env, pathbase, f)
 	n.Close()
 
 	if err != nil {
 		log.Exit("run: ", err)
 	}
-	
+
 	if req.Peers != nil {
-		Dprint(2,"run: Peers: ",req.Peers)
+		Dprint(2, "run: Peers: ", req.Peers)
 		/* this might be a test */
-		if req.chainWorkers > 0 {
-			/* this is quite inefficient but rarely used so I'm not that concerned */
-			larg := newStartReq(&req)
-			p := larg.Peers[0]
-			newPeers := make([]string, len(larg.Peers)-1)
-			copy(newPeers, larg.Peers[1:])
-			larg. Peers = newPeers
-			Dprint(2,"run: chain to ", p, " chain workers: ", newPeers)
-			workerChan = make(chan int, 1)
-			numWorkers = 1
-			go func (w chan int) {
-				cacheRelayFilesAndDelegateExec(larg, *binRoot, p)
-				w <- 1
-			}(workerChan)
-		} else {
+		switch {
+		default:
 			numWorkers = len(req.Peers)
 			workerChan = make(chan int, numWorkers)
 			for _, p := range req.Peers {
-				go func (w chan int) {
+				go func(w chan int) {
 					cacheRelayFilesAndDelegateExec(&req, *binRoot, p)
 					w <- 1
 				}(workerChan)
-
 			}
+		case req.peerGroupSize > 0:
+			/* this is quite inefficient but rarely used so I'm not that concerned */
+			larg := newStartReq(&req)
+			server := ""
+			server, larg.Peers = larg.Peers[0], larg.Peers[1:]
+			Dprint(2, "run: chain to ", server, " chain workers: ", larg.Peers)
+			numWorkers = 1
+			workerChan = make(chan int, numWorkers)
+			go func(w chan int) {
+				cacheRelayFilesAndDelegateExec(larg, *binRoot, server)
+				w <- 1
+			}(workerChan)
 		}
 	}
 
@@ -123,8 +121,8 @@ func doPrivateMount(pathbase string) {
 func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) {
 	outputFile := path.Join(*binRoot, c.name)
 	fi := c.fi
-	Dprintf(2, "writeStreamIntoFile: ", outputFile," ", c)
-	switch  {
+	Dprintf(2, "writeStreamIntoFile: ", outputFile, " ", c)
+	switch {
 	case fi.IsDirectory():
 		Dprint(5, "writeStreamIntoFile: is dir ", fi.Name)
 		err = os.MkdirAll(outputFile, fi.Mode&0777)
@@ -139,7 +137,7 @@ func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) 
 			os.MkdirAll(dir, 0777)
 			err = nil
 		}
-		err = os.Symlink(outputFile, *binRoot+ c.fullPath)
+		err = os.Symlink(outputFile, *binRoot+c.fullPath)
 	case fi.IsRegular():
 		Dprint(5, "writeStreamIntoFile: is regular file")
 		dir, _ := path.Split(outputFile)
@@ -153,11 +151,11 @@ func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) 
 			return
 		}
 		defer f.Close()
-		Dprint(5, "writeStreamIntoFile: copying ",fi.Name, " ", fi.Size)
+		Dprint(5, "writeStreamIntoFile: copying ", fi.Name, " ", fi.Size)
 		n, err = io.Copyn(f, stream, fi.Size)
-		Dprint(5, "writeStreamIntoFile: copied ",fi.Name, " ",n)
+		Dprint(5, "writeStreamIntoFile: copied ", fi.Name, " ", n)
 		if err != nil {
-			log.Exit("writeStreamIntoFile: copyn: ",err)
+			log.Exit("writeStreamIntoFile: copyn: ", err)
 		}
 		if err != nil {
 			err = os.Chown(outputFile, fi.Uid, fi.Gid)

@@ -49,5 +49,9 @@ testlinuxd: $(TARG)
 	#./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-17
 testlinux: $(TARG)
 	./startgproc.sh  10.12.0.11 10.12.0 12-17
+testlinuxp: $(TARG)
+		./startgproc.sh -p3  10.12.0.11 10.12.0 12-17
+testlinuxpd: $(TARG)
+		./startgproc.sh -p3 -d8  10.12.0.11 10.12.0 12-17
 testlinux1: $(TARG)
 	./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-12

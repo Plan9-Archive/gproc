@@ -23,55 +23,42 @@ func receiveCmds(domainSock string) os.Error {
 		log.Exit("listen error:", err)
 	}
 	for {
-		var a StartReq
 		c, err := l.Accept()
 		if err != nil {
 			log.Exitf("receiveCmds: accept on (%v) failed %v\n", l, err)
 		}
 		r := NewRpcClientServer(c)
 		go func() {
-			var Peer string = ""
-			var newPeers []string
-			var peerCount int
+			var a StartReq
 			r.Recv("receiveCmds", &a)
-			// get credentials later
-			/* Ye Olde State Machinee */
-			for _, n := range a.Nodes {
-				s, ok := slaves.Get(n)
-				if !ok {
-					log.Printf("No slave %v\n", n)
-					continue
-				}
-				Dprintf(2, "node %v == slave %v\n", n, s)
-				if Peer == "" {
-					Peer = s.Server
-					newPeers = []string(nil)
-					if *chainWorkers == 0 {
-						na := a
-						a.Nodes = nil
-						a.Peers = newPeers
-						cacheRelayFilesAndDelegateExec(&na, "", Peer)
-						Peer = ""
-					}
-					continue
-				}
-				newPeers = append(newPeers, s.Server)
-				peerCount++
-				if peerCount >= *chainWorkers {
-						na := a
-						a.Nodes = nil
-						a.Peers = newPeers
-						cacheRelayFilesAndDelegateExec(&na, "", Peer)
-						Peer = ""
-						peerCount = 0
-				}
-			}
 
-			if Peer != "" {
-					na := a
-					a.Nodes = nil
-					a.Peers = newPeers
-					cacheRelayFilesAndDelegateExec(&na, "", Peer)
+			// get credentials later
+			switch {
+			case *peerGroupSize == 0:
+				availableSlaves := slaves.ServIntersect(a.Nodes)
+				Dprint(2, "receiveCmds: a.Nodes: ", a.Nodes, " availableSlaves: ", availableSlaves)
+				
+				a.Nodes = nil
+				for _, s := range  availableSlaves {
+					na := a // copy argument
+					cacheRelayFilesAndDelegateExec(&na, "", s)
+				}
+			default:
+				availableSlaves := slaves.ServIntersect(a.Nodes)
+				Dprint(2, "receiveCmds: peerGroup > 0 a.Nodes: ", a.Nodes, " availableSlaves: ", availableSlaves)
+				
+				a.Nodes = nil
+				for len(availableSlaves) > 0 {
+					numWorkers := *peerGroupSize
+					if numWorkers > len(availableSlaves) {
+						numWorkers = len(availableSlaves)
+					}
+					// the first available node is the server, the rest of the reservation are peers
+					a.Peers = availableSlaves[1:numWorkers]
+					na := a // copy argument
+					cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
+					availableSlaves = availableSlaves[numWorkers:]
+				}
 			}
 			r.Send("receiveCmds", Resp{Msg: []byte("cacheRelayFilesAndDelegateExec finished")})
 		}()
@@ -138,44 +125,33 @@ func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
 	return
 }
 
-var slaves Slaves
+func (sv *Slaves) ServIntersect(set []string) (i []string) {
+	for _, n := range set {
+		s, ok := sv.Get(n)
+		if !ok {
+			continue
+		}
+		i = append(i, s.Server)
+	}
+	return
+}
 
+
+var slaves Slaves
 
 
 func newStartReq(arg *StartReq) *StartReq {
 	return &StartReq{
- 		ThisNode:        true,
- 		LocalBin:        arg.LocalBin,
-		Peers:	arg.Peers,
- 		Args:            arg.Args,
- 		Env:             arg.Env,
- 		Lfam:            arg.Lfam,
- 		Lserver:         arg.Lserver,
- 		cmds:            arg.cmds,
- 		bytesToTransfer: arg.bytesToTransfer,
-		chainWorkers: arg.chainWorkers,
- 	}
+		ThisNode:        true,
+		LocalBin:        arg.LocalBin,
+		Peers:           arg.Peers,
+		Args:            arg.Args,
+		Env:             arg.Env,
+		Lfam:            arg.Lfam,
+		Lserver:         arg.Lserver,
+		cmds:            arg.cmds,
+		bytesToTransfer: arg.bytesToTransfer,
+		peerGroupSize:    arg.peerGroupSize,
+	}
 }
 
-func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error {
-	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
-
-	larg := newStartReq(arg)
-	client, err := Dial("tcp4", "", Server)
-	if err != nil {
-		log.Exit("dialing:", err)
-	}
-	Dprintf(2, "connected to %v\n", client)
-	rpc := NewRpcClientServer(client)
-	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
-	rpc.Send("cacheRelayFilesAndDelegateExec", larg)
-	Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.bytesToTransfer, arg.LocalBin)
-	if arg.LocalBin {
-		Dprintf(2, "cmds %v\n", arg.cmds)
-	}
-	writeOutFiles(rpc, root, arg.cmds)
-	Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
-	/* at this point it is out of our hands */
-
-	return nil
-}
