@@ -50,6 +50,7 @@ func run() {
 	n := fileTcpDial(req.Lserver) // connect to the ioproxy.
 	f := []*os.File{n, n, n}
 	execpath := pathbase + req.Path + req.Args[0]
+Dprintf(2, "run: req.Path ", req.Path)
 	if req.LocalBin {
 		execpath = req.Args[0]
 	}
@@ -58,11 +59,11 @@ func run() {
 	/* now build the LD_LIBRARY_PATH variable */
 	ldLibPath := "LD_LIBRARY_PATH="
 	for _, s := range req.LibList {
-		ldLibPath = ldLibPath + *binRoot + s + ":"
+		ldLibPath = ldLibPath + *binRoot + req.Path + s + ":"
 	}
 	Env = append(Env, ldLibPath)
 	Dprint(2, "run: Env ", Env)
-	_, err := os.ForkExec(execpath, req.Args, req.Env, pathbase, f)
+	_, err := os.ForkExec(execpath, req.Args, Env, pathbase, f)
 	n.Close()
 
 	if err != nil {
