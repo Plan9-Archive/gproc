@@ -146,6 +146,8 @@ func newStartReq(arg *StartReq) *StartReq {
 		Peers:           arg.Peers,
 		Args:            arg.Args,
 		Env:             arg.Env,
+		LibList:	arg.LibList,
+		Path:		arg.Path,
 		Lfam:            arg.Lfam,
 		Lserver:         arg.Lserver,
 		cmds:            arg.cmds,

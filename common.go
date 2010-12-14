@@ -85,6 +85,8 @@ type StartReq struct {
 	LocalBin        bool
 	Args            []string
 	Env             []string
+	LibList	[]string
+	Path		string
 	Lfam, Lserver   string
 	bytesToTransfer int64
 	uid, gid        int

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"io"
 	"path"
+	"fmt"
 )
 
 func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cmd []string) {
@@ -41,13 +42,22 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 			Dprint(4, "e is ", e)
 		}
 	}
+	/* build the library list given that we may have a different root */
+	libList := strings.Split(*libs, ":", -1)
+	rootedLibList := []string{}
+	for _, s := range libList {
+		Dprint(6, "startExecution: add lib ", s)
+		rootedLibList = append(rootedLibList, fmt.Sprintf("%s/%s", *root, s))
+	}
+	Dprint(4, "startExecution: libList ", libList)
 	req := StartReq{
 		Lfam:            l.Addr().Network(),
 		Lserver:         l.Addr().String(),
 		LocalBin:        *localbin,
 		Args:            cmd,
 		bytesToTransfer: pv.bytesToTransfer,
-		Env:             []string{"LD_LIBRARY_PATH=" + *binRoot + "/lib:" + *binRoot + "/lib64"},
+		LibList:             libList,
+		Path:			*root,
 		Nodes:           slaveNodes,
 		cmds:            pv.cmds,
 		peerGroupSize:   *peerGroupSize,
