@@ -4,7 +4,7 @@
 
 include $(GOROOT)/src/Make.inc
 
-TARG=gproc
+TARG=gproc_$(GOOS)_$(GOARCH)
 GOFILES=\
 	bproc_$(GOOS).go\
 	bproc_$(GOOS)_$(GOARCH).go\

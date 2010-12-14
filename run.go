@@ -59,6 +59,7 @@ func run() {
 
 	if err != nil {
 		log.Exit("run: ", err)
+		n.Write([]uint8(err.String()))
 	}
 
 	if req.Peers != nil {
