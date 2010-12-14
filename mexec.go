@@ -29,10 +29,16 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 		}
 	}
 	e, _ := ldd.Ldd(cmd[0], *root, *libs)
+	Dprint(4, "LDD say e ", e, "cmds ", cmd, "root ", *root, " libs ", *libs)
 	if !*localbin {
 		for _, s := range e {
-			Dprint(4, "startExecution: not local walking ", *root+s)
+			/* WHAT  A HACK -- ldd is really broken. HMM, did not used to be!*/
+			if s == "" {
+				continue
+			}
+			Dprint(4, "startExecution: not local walking '", s, "' full path is '",*root+s, "'")
 			path.Walk(*root+s, pv, nil)
+			Dprint(4, "e is ", e)
 		}
 	}
 	req := StartReq{
