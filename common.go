@@ -51,10 +51,10 @@ type SetDebugLevel struct {
 }
 
 type cmdToExec struct {
-	name         string
+	name     string
 	fullPath string
-	local        int
-	fi           *os.FileInfo
+	local    int
+	fi       *os.FileInfo
 }
 
 func (a *cmdToExec) String() string {
@@ -79,16 +79,16 @@ func (a *cmdToExec) String() string {
  * as a simple stream of bytes.
  */
 type StartReq struct {
-	Nodes          []string
-	Peers          []string
-	ThisNode       bool
-	LocalBin       bool
-	Args           []string
-	Env            []string
-	Lfam, Lserver  string
+	Nodes           []string
+	Peers           []string
+	ThisNode        bool
+	LocalBin        bool
+	Args            []string
+	Env             []string
+	Lfam, Lserver   string
 	bytesToTransfer int64
-	uid, gid       int
-	cmds           []*cmdToExec
+	uid, gid        int
+	cmds            []*cmdToExec
 	/* testing: The master and worker nodes, given a list, will take the head
 	 * of the list, and send the rest of the list of Peers on to the next victim. 
 	 * this will result in a chain of delegations. 
@@ -216,6 +216,17 @@ func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
 	}
 }
 
+func (r *RpcClientServer) Read(p []byte) (n int, err os.Error) {
+	n, err = r.ReadWriter().Read(p)
+	return
+}
+
+func (r *RpcClientServer) Write(p []byte) (n int, err os.Error) {
+	n, err = r.ReadWriter().Write(p)
+	return
+}
+
+
 var onDialFunc func(fam, laddr, raddr string)
 
 func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
@@ -226,7 +237,7 @@ func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
 	if err != nil {
 		return
 	}
-	Dprint(2, "dial connect ", c.LocalAddr(),"->", c.RemoteAddr())
+	Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
 	return
 }
 
@@ -274,7 +285,7 @@ func WaitAllChildren() {
 			break
 		}
 		log.Printf("wait4 returns pid %v status %v\n", pid, status)
-		
+
 	}
 }
 
@@ -355,4 +366,5 @@ func ioProxy(fam, server string, numWorkers int) (workerChan chan int, l Listene
 	}()
 	return
 }
+
 
