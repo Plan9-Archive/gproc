@@ -65,6 +65,8 @@ func (a *cmdToExec) String() string {
  */
 
 type vitalData struct {
+	HostReady bool
+	Error	string
 	HostAddr string
 }
 

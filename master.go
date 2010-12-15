@@ -7,7 +7,10 @@ import (
 	"io/ioutil"
 )
 
-var Workers []Worker
+var (
+	Workers []Worker
+	netaddr = ""
+)
 
 func startMaster(domainSock string) {
 	log.SetPrefix("master " + *prefix + ": ")
@@ -18,7 +21,7 @@ func startMaster(domainSock string) {
 }
 
 func receiveCmds(domainSock string) os.Error {
-	vitalData := vitalData{HostAddr: "10.0.0.254"}
+	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready"}
 	l, err := Listen("unix", domainSock)
 	if err != nil {
 		log.Exit("listen error:", err)
@@ -32,7 +35,15 @@ func receiveCmds(domainSock string) os.Error {
 		go func() {
 			var a StartReq
 
+			if netaddr != "" {
+				vitalData.HostReady = true
+				vitalData.Error = ""
+				vitalData.HostAddr = netaddr
+			}
 			r.Send("vitalData", vitalData)
+			if ! vitalData.HostReady {
+				return
+			}
 			r.Recv("receiveCmds", &a)
 
 			// get credentials later
@@ -85,6 +96,13 @@ func registerSlaves() os.Error {
 		c, err := l.Accept()
 		if err != nil {
 			log.Exit("registerSlaves:", err)
+		}
+		/* quite the hack. At some point, on a really complex system, 
+		 * we'll need to return a set of listen addresses for a daemon, but we've yet to
+		 * see that in actual practice. 
+		 */
+		if netaddr == "" {
+			netaddr = c.LocalAddr().String()
 		}
 		r := NewRpcClientServer(c)
 		var req SlaveReq

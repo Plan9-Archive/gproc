@@ -53,7 +53,11 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodeList string, cmd []st
 
 	/* master sends us vital data */
 	var vitalData vitalData
-	r.Recv("vitalData", vitalData)
+	r.Recv("vitalData", &vitalData)
+	if ! vitalData.HostReady {
+		fmt.Print("Can not start jobs: ", vitalData.Error, "\n")
+		return
+	}
 	ioProxyListenAddr := vitalData.HostAddr + ":" + ioProxyPort
 	workerChan, l, err := ioProxy(fam, ioProxyListenAddr, len(slaveNodes))
 	if err != nil {
