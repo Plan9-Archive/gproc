@@ -11,17 +11,12 @@ import (
 	"fmt"
 )
 
-func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cmd []string) {
+func startExecution(masterAddr, fam, ioProxyPort, slaveNodeList string, cmd []string) {
 	log.SetPrefix("mexec " + *prefix + ": ")
 	slaveNodes, err := parseNodeList(slaveNodeList)
 	if err != nil {
 		log.Exit("startExecution: bad slaveNodeList: ", err)
 	}
-	workerChan, l, err := ioProxy(fam, ioProxyListenAddr, len(slaveNodes))
-	if err != nil {
-		log.Exit("startExecution: ioproxy: ", err)
-	}
-
 	pv := newPackVisitor()
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
@@ -50,6 +45,21 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 		rootedLibList = append(rootedLibList, fmt.Sprintf("%s/%s", *root, s))
 	}
 	Dprint(4, "startExecution: libList ", libList)
+	client, err := Dial("unix", "", masterAddr)
+	if err != nil {
+		log.Exit("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
+	}
+	r := NewRpcClientServer(client)
+
+	/* master sends us vital data */
+	var vitalData vitalData
+	r.Recv("vitalData", vitalData)
+	ioProxyListenAddr := vitalData.HostAddr + ":" + ioProxyPort
+	workerChan, l, err := ioProxy(fam, ioProxyListenAddr, len(slaveNodes))
+	if err != nil {
+		log.Exit("startExecution: ioproxy: ", err)
+	}
+
 	req := StartReq{
 		Lfam:            l.Addr().Network(),
 		Lserver:         l.Addr().String(),
@@ -63,11 +73,6 @@ func startExecution(masterAddr, fam, ioProxyListenAddr, slaveNodeList string, cm
 		peerGroupSize:   *peerGroupSize,
 	}
 
-	client, err := Dial("unix", "", masterAddr)
-	if err != nil {
-		log.Exit("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
-	}
-	r := NewRpcClientServer(client)
 	r.Send("startExecution", req)
 	r.Recv("startExecution", &Resp{})
 	peers := []string{} // TODO

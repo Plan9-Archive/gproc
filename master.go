@@ -18,6 +18,7 @@ func startMaster(domainSock string) {
 }
 
 func receiveCmds(domainSock string) os.Error {
+	vitalData := vitalData{HostAddr: "10.0.0.254"}
 	l, err := Listen("unix", domainSock)
 	if err != nil {
 		log.Exit("listen error:", err)
@@ -30,6 +31,8 @@ func receiveCmds(domainSock string) os.Error {
 		r := NewRpcClientServer(c)
 		go func() {
 			var a StartReq
+
+			r.Send("vitalData", vitalData)
 			r.Recv("receiveCmds", &a)
 
 			// get credentials later

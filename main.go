@@ -79,7 +79,7 @@ func main() {
 		if len(flag.Args()) < 6 {
 			flag.Usage()
 		}
-		startExecution(defaultFam, flag.Arg(2), flag.Arg(3), flag.Arg(4), flag.Args()[5:])
+		startExecution(*defaultMasterUDS, defaultFam, flag.Arg(3), flag.Arg(4), flag.Args()[5:])
 	case "RUN", "run", "R":
 		run()
 	default:

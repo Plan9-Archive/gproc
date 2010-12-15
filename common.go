@@ -61,6 +61,12 @@ func (a *cmdToExec) String() string {
 	return fmt.Sprint(a.name)
 }
 
+/* vitalData is data from the master to the user. 
+ */
+
+type vitalData struct {
+	HostAddr string
+}
 
 /* a StartReq is a description of what to run and where to run it.
  * The Nodes are "node numbers" in your "node name space" -- i.e.
