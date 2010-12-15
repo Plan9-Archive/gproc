@@ -5,6 +5,7 @@ import (
 	"log"
 	"fmt"
 	"io/ioutil"
+	"strings"
 )
 
 var (
@@ -102,7 +103,8 @@ func registerSlaves() os.Error {
 		 * see that in actual practice. 
 		 */
 		if netaddr == "" {
-			netaddr = c.LocalAddr().String()
+			addr := strings.Split(c.LocalAddr().String(),":",2)
+			netaddr = addr[0]
 		}
 		r := NewRpcClientServer(c)
 		var req SlaveReq

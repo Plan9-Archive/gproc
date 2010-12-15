@@ -43,6 +43,7 @@ var (
 	binRoot = flag.String("binRoot", "/tmp/xproc", "Where to put binaries and libraries")
 	defaultMasterUDS = flag.String("defaultMasterUDS", "/tmp/g", "Default Master Unix Domain Socket")
 	locale = flag.String("locale", "", "Your locale -- jaguar, strongbox, etc. defaults to nothing")
+	ioProxyPort = flag.String("iopp", "0", "io proxy port")
 	/* these are determined by your local, and these values are "reasonable defaults" */
 	/* they are intended to be modified as needed by localInit */
 	defaultFam = "tcp4" /* arguably you might make this an option but it's kind of useless to do so */
@@ -76,10 +77,10 @@ func main() {
 		}
 		startSlave(defaultFam, flag.Arg(1), cmdPort)
 	case "EXEC", "exec", "e":
-		if len(flag.Args()) < 6 {
+		if len(flag.Args()) < 3 {
 			flag.Usage()
 		}
-		startExecution(*defaultMasterUDS, defaultFam, flag.Arg(3), flag.Arg(4), flag.Args()[5:])
+		startExecution(*defaultMasterUDS, defaultFam, *ioProxyPort, flag.Arg(1), flag.Args()[2:])
 	case "RUN", "run", "R":
 		run()
 	default:
