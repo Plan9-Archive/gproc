@@ -6,6 +6,7 @@ import (
 	"io"
 	"exec"
 	"strings"
+	"os"
 )
 
 var id string
@@ -15,6 +16,10 @@ var id string
  * up well for quite some time. And, in fact, it makes no sense to do it any other way ...
  */
 func startSlave(fam, masterAddr string) {
+	/* some simple sanity checking */
+	if *DoPrivateMount == true && os.Getuid() != 0 {
+		log.Exit("Need to run as root for private mounts")
+	}
 	client, err := Dial(fam, "", masterAddr)
 	if err != nil {
 		log.Exit("dialing:", err)

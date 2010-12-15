@@ -37,7 +37,7 @@ var (
 	Logfile = "/tmp/log"
 	prefix       = flag.String("prefix", "", "logging prefix")
 	localbin       = flag.Bool("localbin", false, "execute local files")
-	DoPrivateMount = flag.Bool("p", false, "Do a private mount")
+	DoPrivateMount = flag.Bool("p", true, "Do a private mount")
 	DebugLevel     = flag.Int("debug", 0, "debug level")
 	/* this one gets me a zero-length string if not set. Phooey. */
 	filesToTakeAlong = flag.String("f", "", "comma-seperated list of files/directories to take along")
