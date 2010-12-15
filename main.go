@@ -31,7 +31,6 @@ func usage() {
 
 var (
 	Logfile = "/tmp/log"
-
 	prefix       = flag.String("prefix", "", "logging prefix")
 	localbin       = flag.Bool("localbin", false, "execute local files")
 	DoPrivateMount = flag.Bool("p", false, "Do a private mount")
@@ -42,6 +41,13 @@ var (
 	libs    = flag.String("L", "/lib:/usr/lib", "library path")
 	peerGroupSize = flag.Int("npeers", 0, "number of peers to delegate to")
 	binRoot = flag.String("binRoot", "/tmp/xproc", "Where to put binaries and libraries")
+	defaultMasterUDS = flag.String("defaultMasterUDS", "/tmp/g", "Default Master Unix Domain Socket")
+	locale = flag.String("locale", "", "Your locale -- jaguar, strongbox, etc. defaults to nothing")
+	/* these are determined by your local, and these values are "reasonable defaults" */
+	/* they are intended to be modified as needed by localInit */
+	defaultFam = "tcp4" /* arguably you might make this an option but it's kind of useless to do so */
+	cmdPort = "0"
+	cmdSocket = "0.0.0.0:0"
 )
 
 func main() {
@@ -52,26 +58,28 @@ func main() {
 	//config := getConfig()
 	Dprintln(2, "starting:", os.Args,"debuglevel", *DebugLevel)
 
+	localeInit()
+
 	switch flag.Arg(0) {
 	/* traditional bproc master, commands over unix domain socket */
 	case "DEBUG", "debug", "d":
 		SetDebugLevelRPC(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	case "MASTER", "master", "m":
-		if len(flag.Args()) < 2 {
+		if len(flag.Args()) > 1 {
 			flag.Usage()
 		}
-		startMaster(flag.Arg(1))
+		startMaster(*defaultMasterUDS)
 	case "WORKER", "worker", "s":
 		/* traditional slave; connect to master, await instructions */
-		if len(flag.Args()) < 4 {
+		if len(flag.Args()) != 2 {
 			flag.Usage()
 		}
-		startSlave(flag.Arg(1), flag.Arg(2), flag.Arg(3))
+		startSlave(defaultFam, flag.Arg(1), cmdPort)
 	case "EXEC", "exec", "e":
 		if len(flag.Args()) < 6 {
 			flag.Usage()
 		}
-		startExecution(flag.Arg(1), flag.Arg(2), flag.Arg(3), flag.Arg(4), flag.Args()[5:])
+		startExecution(defaultFam, flag.Arg(2), flag.Arg(3), flag.Arg(4), flag.Args()[5:])
 	case "RUN", "run", "R":
 		run()
 	default:

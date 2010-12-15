@@ -67,7 +67,7 @@ func receiveCmds(domainSock string) os.Error {
 }
 
 func registerSlaves() os.Error {
-	l, err := Listen("tcp4", "0.0.0.0:0")
+	l, err := Listen(defaultFam, cmdSocket)
 	if err != nil {
 		log.Exit("listen error:", err)
 	}

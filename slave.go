@@ -5,16 +5,23 @@ import (
 	"log"
 	"io"
 	"exec"
+	"strings"
 )
 
 var id string
 
-func startSlave(fam, masterAddr, peerAddr string) {
-	serverAddr := newListenProc("slaveProc", slaveProc, peerAddr)
+/* We will for now assume that addressing is symmetric, that is, if we Dial someone on
+ * a certain address, that's the address they should Dial us on. This assumption has held
+ * up well for quite some time. And, in fact, it makes no sense to do it any other way ...
+ */
+func startSlave(fam, masterAddr, cmdPort string) {
 	client, err := Dial(fam, "", masterAddr)
 	if err != nil {
 		log.Exit("dialing:", err)
 	}
+	addr := strings.Split(client.LocalAddr().String(), ":", -1)
+	peerAddr := addr[0] + ":" + cmdPort
+	serverAddr := newListenProc("slaveProc", slaveProc, peerAddr)
 	r := NewRpcClientServer(client)
 	initSlave(r, serverAddr)
 	for {

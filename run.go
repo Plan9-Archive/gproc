@@ -50,7 +50,6 @@ func run() {
 	n := fileTcpDial(req.Lserver) // connect to the ioproxy.
 	f := []*os.File{n, n, n}
 	execpath := pathbase + req.Path + req.Args[0]
-Dprintf(2, "run: req.Path ", req.Path)
 	if req.LocalBin {
 		execpath = req.Args[0]
 	}

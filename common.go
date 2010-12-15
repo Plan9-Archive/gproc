@@ -295,7 +295,7 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 	/* it is important to return the listen address, if this function was called
 	 * with port 0
 	 */
-	netl, err := net.Listen("tcp4", srvaddr)
+	netl, err := net.Listen(defaultFam, srvaddr)
 	if err != nil {
 		log.Exit("newListenProc: ", err)
 	}
@@ -316,7 +316,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	larg := newStartReq(arg)
-	client, err := Dial("tcp4", "", Server)
+	client, err := Dial(defaultFam, "", Server)
 	if err != nil {
 		log.Exit("dialing:", err)
 	}
