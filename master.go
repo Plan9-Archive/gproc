@@ -87,10 +87,13 @@ func registerSlaves() os.Error {
 		log.Exit("listen error:", err)
 	}
 	Dprint(2, l.Addr())
-	fmt.Println(l.Addr())
-	err = ioutil.WriteFile("/tmp/srvaddr", []byte(l.Addr().String()), 0644)
-	if err != nil {
-		log.Exit(err)
+	if *locale == "local" {
+		/* take the port only -- the address shows as 0.0.0.0 */
+		addr := strings.Split(l.Addr().String(), ":", 2)
+		err = ioutil.WriteFile(srvAddr, []byte(addr[1]), 0644)
+		if err != nil {
+			log.Exit(err)
+		}
 	}
 	slaves = newSlaves()
 	for {

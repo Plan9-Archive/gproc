@@ -11,6 +11,10 @@ import (
 	"io/ioutil"
 )
 
+const (
+	srvAddr = "/tmp/srvaddr"
+)
+
 type noderange struct {
 	Base int
 	Ip   string
@@ -42,8 +46,10 @@ var (
 	peerGroupSize = flag.Int("npeers", 0, "number of peers to delegate to")
 	binRoot = flag.String("binRoot", "/tmp/xproc", "Where to put binaries and libraries")
 	defaultMasterUDS = flag.String("defaultMasterUDS", "/tmp/g", "Default Master Unix Domain Socket")
-	locale = flag.String("locale", "", "Your locale -- jaguar, strongbox, etc. defaults to nothing")
+	locale = flag.String("locale", "local", "Your locale -- jaguar, strongbox, etc. defaults to local -- i.e. all daemons on same machine")
 	ioProxyPort = flag.String("iopp", "0", "io proxy port")
+	/* these are not switches */
+	role = "client"
 	/* these are determined by your local, and these values are "reasonable defaults" */
 	/* they are intended to be modified as needed by localInit */
 	defaultFam = "tcp4" /* arguably you might make this an option but it's kind of useless to do so */
@@ -59,8 +65,6 @@ func main() {
 	//config := getConfig()
 	Dprintln(2, "starting:", os.Args,"debuglevel", *DebugLevel)
 
-	localeInit()
-
 	switch flag.Arg(0) {
 	/* traditional bproc master, commands over unix domain socket */
 	case "DEBUG", "debug", "d":
@@ -69,19 +73,27 @@ func main() {
 		if len(flag.Args()) > 1 {
 			flag.Usage()
 		}
+		role = "master"
+		localeInit()
 		startMaster(*defaultMasterUDS)
 	case "WORKER", "worker", "s":
 		/* traditional slave; connect to master, await instructions */
-		if len(flag.Args()) != 2 {
+		if len(flag.Args()) != 1 {
 			flag.Usage()
 		}
-		startSlave(defaultFam, flag.Arg(1), cmdPort)
+		role = "slave"
+		localeInit()
+		startSlave(defaultFam, cmdSocket)
 	case "EXEC", "exec", "e":
 		if len(flag.Args()) < 3 {
 			flag.Usage()
 		}
+		role = "client"
+		localeInit()
 		startExecution(*defaultMasterUDS, defaultFam, *ioProxyPort, flag.Arg(1), flag.Args()[2:])
 	case "RUN", "run", "R":
+		role = "run"
+		localeInit()
 		run()
 	default:
 		flag.Usage()

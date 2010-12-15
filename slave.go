@@ -14,7 +14,7 @@ var id string
  * a certain address, that's the address they should Dial us on. This assumption has held
  * up well for quite some time. And, in fact, it makes no sense to do it any other way ...
  */
-func startSlave(fam, masterAddr, cmdPort string) {
+func startSlave(fam, masterAddr string) {
 	client, err := Dial(fam, "", masterAddr)
 	if err != nil {
 		log.Exit("dialing:", err)

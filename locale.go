@@ -6,10 +6,23 @@
 
 package main
 
+import (
+	"io/ioutil"
+	"log"
+)
 func localeInit() {
-
 	switch {
-//		case locale == "strongbox"
-		case *locale == "":	
+	case *locale == "local":
+		switch {
+		case role == "master":
+		case role == "slave":
+			cmd, err := ioutil.ReadFile(srvAddr)
+			if err != nil {
+				log.Exit(err)
+			}
+			cmdSocket = "127.0.0.1:" + string(cmd)
+		case role == "client":
+		case role == "run":
+		}
 	}
 }
