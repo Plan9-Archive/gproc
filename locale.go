@@ -66,10 +66,8 @@ func localeInit() {
 				cmdSocket = "10.0.0.254:6666"
 			default: 
 				boardMaster := ((which + 6) / 7) * 7
-				cmdSocket = "10.0.0." + string(boardMaster) + ":6666"
+				cmdSocket = fmt.Sprintf("10.0.0.%d:6666",boardMaster)
 			}
-			
-			cmdSocket = addrs[0] + ":" + "6666"
 		case role == "client":
 		case role == "run":
 		}
