@@ -7,6 +7,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -18,12 +19,16 @@ func getOurIPs() ([]string) {
 	if err != nil {
 		log.Exit(err)
 	}
+	if addrs, ok := hostMap[hostName]; ok {
+		return addrs
+	}
 	_, addrs, err := net.LookupHost(hostName)
 	if err != nil {
 		log.Exit(err)
 	}
 	return addrs
 }
+
 func localeInit() {
 	switch {
 	case *locale == "local":
@@ -39,6 +44,11 @@ func localeInit() {
 		case role == "run":
 		}
 	case *locale == "strongbox":
+		/* set up hostMap */
+		hostMap = make(map[string][]string, 1024)
+		for i := 0; i < 197; i++ {
+			hostMap[fmt.Sprintf("cn%d", i)] = []string{fmt.Sprintf("10.0.0.%d", i)}
+		}
 		addrs := getOurIPs()
 		switch {
 		case role == "master":

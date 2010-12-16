@@ -55,6 +55,11 @@ var (
 	defaultFam = "tcp4" /* arguably you might make this an option but it's kind of useless to do so */
 	cmdPort = "0"
 	cmdSocket = "0.0.0.0:0"
+	/* covering for issues in Go libraries */
+	/* net.LookUpHost fails if there is no DNS -- an incorrect behavior. On some locales (strongbox)
+	* you can load this up with cn hostnames. On Jaguar, may be impractical. 
+	 */
+	hostMap map[string][]string
 )
 
 func main() {
