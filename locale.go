@@ -53,7 +53,10 @@ func localeInit() {
 		switch {
 		case role == "master":
 			cmdPort = "6666"
-			cmdSocket = "0.0.0.0:" + cmdPort
+			/* we hardwire this because the LocalAddr of a 
+			 * connected socket has an address of 0.0.0.0 !!
+			 */
+			cmdSocket = "10.0.0.254:" + cmdPort
 		case role == "slave":
 			cmdPort = "6666"
 			/* on strongbox there's only ever one.

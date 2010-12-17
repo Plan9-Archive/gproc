@@ -16,6 +16,8 @@ var id string
  * up well for quite some time. And, in fact, it makes no sense to do it any other way ...
  */
 func startSlave(fam, masterAddr string) {
+	/* slight difference from master: we're ready when we start, since we run things */
+	vitalData := &vitalData{HostReady: true}
 	/* some simple sanity checking */
 	if *DoPrivateMount == true && os.Getuid() != 0 {
 		log.Exit("Need to run as root for private mounts")
@@ -26,17 +28,18 @@ func startSlave(fam, masterAddr string) {
 	}
 	addr := strings.Split(client.LocalAddr().String(), ":", -1)
 	peerAddr := addr[0] + ":" + cmdPort
-	serverAddr := newListenProc("slaveProc", slaveProc, peerAddr)
+	vitalData.ServerAddr = newListenProc("slaveProc", slaveProc, peerAddr)
+	vitalData.HostAddr = client.LocalAddr().String()
+	vitalData.ParentAddr = client.RemoteAddr().String()
 	r := NewRpcClientServer(client)
-	initSlave(r, serverAddr)
+	initSlave(r, vitalData)
 	for {
 		slaveProc(r)
 	}
 }
 
-func initSlave(r *RpcClientServer, serverAddr string) {
-	req := &SlaveReq{Server: serverAddr}
-	r.Send("startSlave", req)
+func initSlave(r *RpcClientServer, v *vitalData) {
+	r.Send("startSlave", v)
 	resp := &SlaveResp{}
 	r.Recv("startSlave", &resp)
 	id = resp.id

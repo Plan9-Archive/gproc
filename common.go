@@ -30,22 +30,6 @@ func (r Resp) String() string {
 	return string(r.Msg)
 }
 
-
-type SlaveReq struct {
-	a      string
-	id     string
-	Msg    []byte
-	Server string
-}
-
-func (s SlaveReq) String() string {
-	if s.id == "" {
-		return "<needid>"
-	}
-	return s.a + " " + s.id + " " + string(s.Msg)
-}
-
-
 type SetDebugLevel struct {
 	level int
 }
@@ -61,13 +45,19 @@ func (a *cmdToExec) String() string {
 	return fmt.Sprint(a.name)
 }
 
-/* vitalData is data from the master to the user. 
+/* vitalData is data from the master to the user or slaves to parent (other slaves or master)
+ * It can be sent periodically as things change. A slave can inform its parent of new nodes or nodes
+ * lost int he Nodes array. Due to the way LocalAddr works, we might as well tell the parent what its 
+ * address is ... 
  */
 
 type vitalData struct {
 	HostReady bool
 	Error	string
 	HostAddr string
+	ParentAddr string
+	ServerAddr string
+	Nodes []string
 }
 
 /* a StartReq is a description of what to run and where to run it.
@@ -121,6 +111,7 @@ type SlaveInfo struct {
 	id     string
 	Addr   string
 	Server string
+	Nodes []string
 	rpc    *RpcClientServer
 }
 
