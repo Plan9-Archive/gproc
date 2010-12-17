@@ -27,7 +27,7 @@ func startSlave(fam, masterAddr string) {
 		log.Exit("dialing:", err)
 	}
 	addr := strings.Split(client.LocalAddr().String(), ":", -1)
-	peerAddr := addr[0] + ":" + cmdPort
+	peerAddr := addr[0] + ":" + 0
 	vitalData.ServerAddr = newListenProc("slaveProc", slaveProc, peerAddr)
 	vitalData.HostAddr = client.LocalAddr().String()
 	vitalData.ParentAddr = client.RemoteAddr().String()
