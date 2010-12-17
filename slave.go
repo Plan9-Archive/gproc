@@ -26,8 +26,15 @@ func startSlave(fam, masterAddr string) {
 	if err != nil {
 		log.Exit("dialing:", err)
 	}
+
+	/* vitalData -- what we're doing here is assembling information for our parent. 
+	 * we have to tell our parent what port we look for process startup commands on, 
+	 * the address of our side of the Dial connection, and, due to a limitation in the Unix
+	 * kernels going back a long time, we might as well tell the master its own address for
+	 * the socket, since *the master can't get it*. True! 
+	 */
 	addr := strings.Split(client.LocalAddr().String(), ":", -1)
-	peerAddr := addr[0] + ":" + 0
+	peerAddr := addr[0] + ":0"
 	vitalData.ServerAddr = newListenProc("slaveProc", slaveProc, peerAddr)
 	vitalData.HostAddr = client.LocalAddr().String()
 	vitalData.ParentAddr = client.RemoteAddr().String()
