@@ -5,18 +5,13 @@ import (
 	"os"
 	"strings"
 	"bitbucket.org/npe/ldd"
-	"strconv"
 	"io"
 	"path"
 	"fmt"
 )
 
-func startExecution(masterAddr, fam, ioProxyPort, slaveNodeList string, cmd []string) {
+func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []string) {
 	log.SetPrefix("mexec " + *prefix + ": ")
-	slaveNodes, err := parseNodeList(slaveNodeList)
-	if err != nil {
-		log.Exit("startExecution: bad slaveNodeList: ", err)
-	}
 	pv := newPackVisitor()
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
@@ -121,44 +116,6 @@ func isNum(c byte) bool {
 var (
 	BadRangeErr = os.NewError("bad range format")
 )
-
-func parseNodeList(l string) (rl []string, err os.Error) {
-	for i := 0; i < len(l); {
-		switch {
-		case isNum(l[i]):
-			j := i + 1
-			for j < len(l) && isNum(l[j]) {
-				j++
-			}
-			beg, _ := strconv.Atoi(l[i:j])
-			end := beg
-			i = j
-			if i < len(l) && l[i] == '-' {
-				i++
-				j = i
-				for j < len(l) && isNum(l[j]) {
-					j++
-				}
-				end, _ = strconv.Atoi(l[i:j])
-				i = j
-			}
-			for k := beg; k <= end; k++ {
-				rl = append(rl, strconv.Itoa(k))
-			}
-			if i < len(l) && l[i] == ',' {
-				i++
-			} else if i < len(l) {
-				goto BadRange
-			}
-		default:
-			goto BadRange
-		}
-	}
-	return
-BadRange:
-	err = BadRangeErr
-	return
-}
 
 type packVisitor struct {
 	cmds            []*cmdToExec

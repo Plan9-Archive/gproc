@@ -7,6 +7,7 @@ import (
 	"log"
 	"io"
 	"gob"
+	"strconv"
 	"syscall"
 )
 
@@ -77,7 +78,7 @@ type vitalData struct {
  * as a simple stream of bytes.
  */
 type StartReq struct {
-	Nodes           []string
+	Nodes           string
 	Peers           []string
 	ThisNode        bool
 	LocalBin        bool
@@ -368,4 +369,44 @@ func ioProxy(fam, server string, numWorkers int) (workerChan chan int, l Listene
 	return
 }
 
+func parseNodeList(l string) (rl []string, err os.Error) {
+	/* bust it apart by , */
+//	ranges := strings.Split(l, ",", -1)
+	/* for each of the ranges, bust it into something that works. */
+	for i := 0; i < len(l); {
+		switch {
+		case isNum(l[i]):
+			j := i + 1
+			for j < len(l) && isNum(l[j]) {
+				j++
+			}
+			beg, _ := strconv.Atoi(l[i:j])
+			end := beg
+			i = j
+			if i < len(l) && l[i] == '-' {
+				i++
+				j = i
+				for j < len(l) && isNum(l[j]) {
+					j++
+				}
+				end, _ = strconv.Atoi(l[i:j])
+				i = j
+			}
+			for k := beg; k <= end; k++ {
+				rl = append(rl, strconv.Itoa(k))
+			}
+			if i < len(l) && l[i] == ',' {
+				i++
+			} else if i < len(l) {
+				goto BadRange
+			}
+		default:
+			goto BadRange
+		}
+	}
+	return
+BadRange:
+	err = BadRangeErr
+	return
+}
 
