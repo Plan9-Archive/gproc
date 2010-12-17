@@ -39,7 +39,7 @@ func localeInit() {
 			if err != nil {
 				log.Exit(err)
 			}
-			cmdSocket = "127.0.0.1:" + string(cmd)
+			parentCmdSocket = "127.0.0.1:" + string(cmd)
 		case role == "client":
 		case role == "run":
 		}
@@ -56,7 +56,8 @@ func localeInit() {
 			/* we hardwire this because the LocalAddr of a 
 			 * connected socket has an address of 0.0.0.0 !!
 			 */
-			cmdSocket = "10.0.0.254:" + cmdPort
+			myCmdSocket = "10.0.0.254:" + cmdPort
+			parentCmdSocket = ""
 		case role == "slave":
 			cmdPort = "6666"
 			/* on strongbox there's only ever one.
@@ -66,11 +67,12 @@ func localeInit() {
 			which := b[3]
 			switch {
 			case which % 7 == 0:
-				cmdSocket = "10.0.0.254:6666"
+				parentCmdSocket = "10.0.0.254:6666"
 			default: 
 				boardMaster := ((which + 6) / 7) * 7
-				cmdSocket = fmt.Sprintf("10.0.0.%d:6666",boardMaster)
+				parentCmdSocket = fmt.Sprintf("10.0.0.%d:6666",boardMaster)
 			}
+			myCmdSocket = fmt.Sprintf("%s:%s", b,  cmdPort)
 		case role == "client":
 		case role == "run":
 		}
