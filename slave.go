@@ -39,7 +39,7 @@ func startSlave(fam, masterAddr string) {
 }
 
 func initSlave(r *RpcClientServer, v *vitalData) {
-	r.Send("startSlave", v)
+	r.Send("startSlave", *v)
 	resp := &SlaveResp{}
 	r.Recv("startSlave", &resp)
 	id = resp.id
