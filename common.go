@@ -8,6 +8,7 @@ import (
 	"io"
 	"gob"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -369,41 +370,37 @@ func ioProxy(fam, server string, numWorkers int) (workerChan chan int, l Listene
 	return
 }
 
-func parseNodeList(l string) (rl []string, err os.Error) {
+type nodeExecList struct {
+	nodes []string
+	subnodes string
+}
+
+/* might be fun to do this as a goroutine feeding a chan of nodeExecList */
+func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 	/* bust it apart by , */
-//	ranges := strings.Split(l, ",", -1)
-	/* for each of the ranges, bust it into something that works. */
-	for i := 0; i < len(l); {
-		switch {
-		case isNum(l[i]):
-			j := i + 1
-			for j < len(l) && isNum(l[j]) {
-				j++
-			}
-			beg, _ := strconv.Atoi(l[i:j])
-			end := beg
-			i = j
-			if i < len(l) && l[i] == '-' {
-				i++
-				j = i
-				for j < len(l) && isNum(l[j]) {
-					j++
-				}
-				end, _ = strconv.Atoi(l[i:j])
-				i = j
-			}
-			for k := beg; k <= end; k++ {
-				rl = append(rl, strconv.Itoa(k))
-			}
-			if i < len(l) && l[i] == ',' {
-				i++
-			} else if i < len(l) {
-				goto BadRange
-			}
-		default:
-			goto BadRange
+	ranges := strings.Split(l, ",", -1)
+	for _,n := range ranges {
+		/* split into range and rest by the slash */
+		l  := strings.Split(n, "/", 2)
+		be := strings.Split(l[0], "-", 2)
+		Dprint(6, " l is ", l, " be is ", be)
+		ne := &nodeExecList{nodes: make([]string, 1)}
+		if len(l) > 1 {
+			ne.subnodes = l[1]
 		}
+		if len(be) == 1 {
+			ne.nodes[0] = be[0]
+		} else {
+			beg, _ := strconv.Atoi(be[0])
+			end, _ := strconv.Atoi(be[1])
+			for i := beg; i < end; i++ {
+				ne.nodes = append(ne.nodes, fmt.Sprintf("%d", i))
+			}
+		}
+		rl = append(rl, *ne)
 	}
+
+	Dprint(2, "parseNodeList returns ", rl)
 	return
 BadRange:
 	err = BadRangeErr

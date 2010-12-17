@@ -21,6 +21,43 @@ func startMaster(domainSock string) {
 	registerSlaves()
 }
 
+func sendCommands(r *RpcClientServer, sendReq *StartReq) {
+			slaveNodes, err := parseNodeList(sendReq.Nodes)
+			if err != nil {
+				r.Send("receiveCmds", Resp{Msg: []byte("startExecution: bad slaveNodeList: " + err.String())})
+				return
+			}
+			Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
+			// get credentials later
+			switch {
+			case *peerGroupSize == 0:
+				availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
+				Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
+
+				sendReq.Nodes = slaveNodes[0].subnodes
+				for _, s := range availableSlaves {
+					na := *sendReq // copy argument
+					cacheRelayFilesAndDelegateExec(&na, "", s)
+				}
+			default:
+				availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
+				Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
+
+				sendReq.Nodes = slaveNodes[0].subnodes
+				for len(availableSlaves) > 0 {
+					numWorkers := *peerGroupSize
+					if numWorkers > len(availableSlaves) {
+						numWorkers = len(availableSlaves)
+					}
+					// the first available node is the server, the rest of the reservation are peers
+					sendReq.Peers = availableSlaves[1:numWorkers]
+					na := *sendReq // copy argument
+					cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
+					availableSlaves = availableSlaves[numWorkers:]
+				}
+			}
+}
+
 func receiveCmds(domainSock string) os.Error {
 	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready"}
 	l, err := Listen("unix", domainSock)
@@ -46,40 +83,7 @@ func receiveCmds(domainSock string) os.Error {
 				return
 			}
 			r.Recv("receiveCmds", &a)
-			slaveNodes, err := parseNodeList(a.Nodes)
-			if err != nil {
-				r.Send("receiveCmds", Resp{Msg: []byte("startExecution: bad slaveNodeList: " + err.String())})
-				return
-			}
-			Dprint(2, "receiveCmds: a.Nodes: ", a.Nodes, " expands to ", slaveNodes)
-			// get credentials later
-			switch {
-			case *peerGroupSize == 0:
-				availableSlaves := slaves.ServIntersect(slaveNodes)
-				Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
-
-				a.Nodes = ""
-				for _, s := range availableSlaves {
-					na := a // copy argument
-					cacheRelayFilesAndDelegateExec(&na, "", s)
-				}
-			default:
-				availableSlaves := slaves.ServIntersect(slaveNodes)
-				Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
-
-				a.Nodes = ""
-				for len(availableSlaves) > 0 {
-					numWorkers := *peerGroupSize
-					if numWorkers > len(availableSlaves) {
-						numWorkers = len(availableSlaves)
-					}
-					// the first available node is the server, the rest of the reservation are peers
-					a.Peers = availableSlaves[1:numWorkers]
-					na := a // copy argument
-					cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
-					availableSlaves = availableSlaves[numWorkers:]
-				}
-			}
+			sendCommands(r, &a)
 			r.Send("receiveCmds", Resp{Msg: []byte("cacheRelayFilesAndDelegateExec finished")})
 		}()
 	}
