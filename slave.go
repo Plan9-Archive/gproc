@@ -15,6 +15,7 @@ var id string
  * a certain address, that's the address they should Dial us on. This assumption has held
  * up well for quite some time. And, in fact, it makes no sense to do it any other way ...
  */
+/* note that we're going to be able to merge master and slave fairly soon, now that they do almost the same things. */
 func startSlave(fam, masterAddr string) {
 	/* slight difference from master: we're ready when we start, since we run things */
 	vitalData := &vitalData{HostReady: true}
@@ -40,6 +41,7 @@ func startSlave(fam, masterAddr string) {
 	vitalData.ParentAddr = client.RemoteAddr().String()
 	r := NewRpcClientServer(client)
 	initSlave(r, vitalData)
+	go registerSlaves()
 	for {
 		slaveProc(r)
 	}

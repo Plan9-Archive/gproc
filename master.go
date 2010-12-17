@@ -81,6 +81,7 @@ func receiveCmds(domainSock string) os.Error {
 	return nil
 }
 
+/* move this to common once Noah has merged. */
 func registerSlaves() os.Error {
 	l, err := Listen(defaultFam, cmdSocket)
 	if err != nil {
