@@ -85,7 +85,14 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	 * socket names {'"a.b.c.d/x"...} and the subnode names {"1-5"} and pass them down. 
 	 * this is almost ready but it won't make it.
 	 */
-	rrpc.Send("ForkRelay", &slaves)
+	ne, _ := parseNodeList(req.Nodes)
+	nsend := nodeExecList{subnodes: ne[0].subnodes}
+	for _,nn := range ne[0].nodes {
+		/* get a node, if it's ok, append to the nsend list */
+		Dprint(2, "nn ", nn)
+	}
+	/* the run code will then have a list of servers and node list to send to them */
+	rrpc.Send("ForkRelay", &nsend)
 	// receives from cacheRelayFilesAndDelegateExec?
 	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.bytesToTransfer)
 	Dprint(2, "ForkRelay: copy wrote ", n)

@@ -32,8 +32,9 @@ func run() {
 	r := NewRpcClientServer(os.Stdin)
 	var req StartReq
 	r.Recv("run", &req)
+	var nodeExecList nodeExecList
 	/* make sure the directory exists and then do the private name space mount */
-	r.Recv("slaveinfo", &slaves)
+	r.Recv("nodeExecList", &nodeExecList)
 
 	Dprintf(3, "run: req is %v\n", req)
 	os.Mkdir(pathbase, 0700)
