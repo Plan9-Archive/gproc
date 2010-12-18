@@ -7,14 +7,14 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"strconv"
 )
 
-func getOurIPs() ([]string) {
+func getOurIPs() []string {
 	hostName, err := os.Hostname()
 	if err != nil {
 		log.Exit(err)
@@ -29,36 +29,60 @@ func getOurIPs() ([]string) {
 	return addrs
 }
 
-func localeInit() {
-	switch {
-	case *locale == "local":
-		switch {
-		case role == "master":
-		case role == "slave":
-			cmd, err := ioutil.ReadFile(srvAddr)
-			if err != nil {
-				log.Exit(err)
-			}
-			parentCmdSocket = "127.0.0.1:" + string(cmd)
-		case role == "client":
-		case role == "run":
+/*
+
+so how does this get set up?
+what ron is actually doing is take something that should be an interface. 
+
+
+*/
+
+
+type Locale interface {
+	Init(role string)
+}
+
+var locales = map[string]Locale{
+	"local":     &local{},
+	"strongbox": &strongbox{},
+}
+
+type local struct{}
+
+func (l local) Init(role string) {
+	switch role {
+	case "master", "slave":
+		cmd, err := ioutil.ReadFile(srvAddr)
+		if err != nil {
+			log.Exit(err)
 		}
-	case *locale == "strongbox":
+		parentCmdSocket = "127.0.0.1:" + string(cmd)
+	case "client", "run":
+	}
+}
+
+type strongbox struct {
+}
+
+func (l strongbox) Init(role string) {
 		/* set up hostMap */
-		hostMap = make(map[string][]string, 1024)
+		hostMap = make(map[string][]string)
 		for i := 0; i < 197; i++ {
-			hostMap[fmt.Sprintf("cn%d", i)] = []string{fmt.Sprintf("10.0.0.%d", i)}
+			n := strconv.Itoa(i)
+			host := "cn" + n
+			ip := "10.0.0." + n
+			hostMap[host] = []string{ip}
 		}
 		addrs := getOurIPs()
-		switch {
-		case role == "master":
+		switch role {
+		case "master":
 			cmdPort = "6666"
 			/* we hardwire this because the LocalAddr of a 
 			 * connected socket has an address of 0.0.0.0 !!
 			 */
 			myCmdSocket = "10.0.0.254:" + cmdPort
 			parentCmdSocket = ""
-		case role == "slave":
+		case "slave":
 			cmdPort = "6666"
 			/* on strongbox there's only ever one.
 			 * pick out the lowest-level octet.
@@ -66,15 +90,14 @@ func localeInit() {
 			b := net.ParseIP(addrs[0]).To4()
 			which := b[3]
 			switch {
-			case which % 7 == 0:
+			case which%7 == 0:
 				parentCmdSocket = "10.0.0.254:6666"
-			default: 
+			default:
 				boardMaster := ((which + 6) / 7) * 7
-				parentCmdSocket = fmt.Sprintf("10.0.0.%d:6666",boardMaster)
+				parentCmdSocket = "10.0.0." + string(boardMaster) + ":6666"
 			}
-			myCmdSocket = fmt.Sprintf("%s:%s", b,  cmdPort)
-		case role == "client":
-		case role == "run":
+			myCmdSocket = b.String() + cmdPort
+		case "client", "run":
 		}
-	}
 }
+

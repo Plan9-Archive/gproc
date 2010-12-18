@@ -80,7 +80,7 @@ func main() {
 			flag.Usage()
 		}
 		role = "master"
-		localeInit()
+		locales[role].Init(role)
 		startMaster(*defaultMasterUDS)
 	case "WORKER", "worker", "s":
 		/* traditional slave; connect to master, await instructions */
@@ -88,18 +88,18 @@ func main() {
 			flag.Usage()
 		}
 		role = "slave"
-		localeInit()
+		locales[role].Init(role)
 		startSlave(defaultFam, parentCmdSocket)
 	case "EXEC", "exec", "e":
 		if len(flag.Args()) < 3 {
 			flag.Usage()
 		}
 		role = "client"
-		localeInit()
+		locales[role].Init(role)
 		startExecution(*defaultMasterUDS, defaultFam, *ioProxyPort, flag.Arg(1), flag.Args()[2:])
 	case "RUN", "run", "R":
 		role = "run"
-		localeInit()
+		locales[role].Init(role)
 		run()
 	default:
 		flag.Usage()
