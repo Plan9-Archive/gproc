@@ -4,7 +4,6 @@ import (
 	"os"
 	"log"
 	"fmt"
-	"io/ioutil"
 	"strings"
 )
 
@@ -13,12 +12,12 @@ var (
 	netaddr = ""
 )
 
-func startMaster(domainSock string) {
+func startMaster(domainSock string, loc Locale) {
 	log.SetPrefix("master " + *prefix + ": ")
 	Dprintln(2, "starting master")
 
 	go receiveCmds(domainSock)
-	registerSlaves()
+	registerSlaves(loc)
 }
 
 func sendCommands(r *RpcClientServer, sendReq *StartReq) {
@@ -91,20 +90,17 @@ func receiveCmds(domainSock string) os.Error {
 }
 
 /* move this to common once Noah has merged. */
-func registerSlaves() os.Error {
-	l, err := Listen(defaultFam, myCmdSocket)
+func registerSlaves(loc Locale) os.Error {
+	l, err := Listen(defaultFam, loc.CmdSocket())
 	if err != nil {
 		log.Exit("listen error:", err)
 	}
 	Dprint(2, l.Addr())
-	if *locale == "local" {
-		/* take the port only -- the address shows as 0.0.0.0 */
-		addr := strings.Split(l.Addr().String(), ":", 2)
-		err = ioutil.WriteFile(srvAddr, []byte(addr[1]), 0644)
-		if err != nil {
-			log.Exit(err)
-		}
+	err = loc.RegisterServer(l)
+	if err != nil {
+		log.Exit(err)
 	}
+
 	slaves = newSlaves()
 	for {
 		vd := &vitalData{}

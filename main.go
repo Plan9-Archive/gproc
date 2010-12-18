@@ -54,13 +54,10 @@ var (
 	/* they are intended to be modified as needed by localInit */
 	defaultFam = "tcp4" /* arguably you might make this an option but it's kind of useless to do so */
 	cmdPort = "0"
-	parentCmdSocket = "0.0.0.0:0"
-	myCmdSocket = "0.0.0.0:0"
 	/* covering for issues in Go libraries */
 	/* net.LookUpHost fails if there is no DNS -- an incorrect behavior. On some locales (strongbox)
 	* you can load this up with cn hostnames. On Jaguar, may be impractical. 
 	 */
-	hostMap map[string][]string
 )
 
 func main() {
@@ -80,26 +77,29 @@ func main() {
 			flag.Usage()
 		}
 		role = "master"
-		locales[role].Init(role)
-		startMaster(*defaultMasterUDS)
+		l := locales[*locale]
+		l.Init(role)
+		startMaster(*defaultMasterUDS, l)
 	case "WORKER", "worker", "s":
 		/* traditional slave; connect to master, await instructions */
 		if len(flag.Args()) != 1 {
 			flag.Usage()
 		}
 		role = "slave"
-		locales[role].Init(role)
-		startSlave(defaultFam, parentCmdSocket)
+		l := locales[*locale]
+		l.Init(role)
+		
+		startSlave(defaultFam, l.ParentCmdSocket(), l)
 	case "EXEC", "exec", "e":
 		if len(flag.Args()) < 3 {
 			flag.Usage()
 		}
 		role = "client"
-		locales[role].Init(role)
+		locales[*locale].Init(role)
 		startExecution(*defaultMasterUDS, defaultFam, *ioProxyPort, flag.Arg(1), flag.Args()[2:])
 	case "RUN", "run", "R":
 		role = "run"
-		locales[role].Init(role)
+		locales[*locale].Init(role)
 		run()
 	default:
 		flag.Usage()

@@ -16,7 +16,7 @@ var id string
  * up well for quite some time. And, in fact, it makes no sense to do it any other way ...
  */
 /* note that we're going to be able to merge master and slave fairly soon, now that they do almost the same things. */
-func startSlave(fam, masterAddr string) {
+func startSlave(fam, masterAddr string, loc Locale) {
 	/* slight difference from master: we're ready when we start, since we run things */
 	vitalData := &vitalData{HostReady: true}
 	/* some simple sanity checking */
@@ -41,7 +41,7 @@ func startSlave(fam, masterAddr string) {
 	vitalData.ParentAddr = client.RemoteAddr().String()
 	r := NewRpcClientServer(client)
 	initSlave(r, vitalData)
-	go registerSlaves()
+	go registerSlaves(loc)
 	for {
 		slaveProc(r)
 	}

@@ -7,97 +7,48 @@
 package main
 
 import (
-	"io/ioutil"
-	"log"
-	"net"
 	"os"
-	"strconv"
+	"sync"
 )
-
-func getOurIPs() []string {
-	hostName, err := os.Hostname()
-	if err != nil {
-		log.Exit(err)
-	}
-	if addrs, ok := hostMap[hostName]; ok {
-		return addrs
-	}
-	_, addrs, err := net.LookupHost(hostName)
-	if err != nil {
-		log.Exit(err)
-	}
-	return addrs
-}
 
 /*
 
-so how does this get set up?
-what ron is actually doing is take something that should be an interface. 
+locales are a way of setting up arbitrary topologies given a known network. 
+They don't use hadoop style configuration files because many times you want to compute your network topology not derive it from a file. 
 
+This allows an abstract interface for gproc to interact with ad hoc trees.
+
+We also provide a json setup for static topologies as well.
+
+To add your own cluster to gproc you need to implement the Locale interface. 
 
 */
 
 
 type Locale interface {
 	Init(role string)
+	ParentCmdSocket() string
+	CmdSocket() string
+	RegisterServer(l Listener) (err os.Error)
 }
 
-var locales = map[string]Locale{
-	"local":     &local{},
-	"strongbox": &strongbox{},
+func init() {
+	
 }
 
-type local struct{}
+var locales map[string]Locale
 
-func (l local) Init(role string) {
-	switch role {
-	case "master", "slave":
-		cmd, err := ioutil.ReadFile(srvAddr)
-		if err != nil {
-			log.Exit(err)
-		}
-		parentCmdSocket = "127.0.0.1:" + string(cmd)
-	case "client", "run":
-	}
+var once sync.Once
+
+func addLocale(name string, loc Locale) {
+	once.Do(func() {
+		locales = make(map[string]Locale)
+	})
+	locales[name] = loc
 }
 
-type strongbox struct {
-}
+var parentCmdSocket = "0.0.0.0:0"
+var myCmdSocket = "0.0.0.0:0"
 
-func (l strongbox) Init(role string) {
-		/* set up hostMap */
-		hostMap = make(map[string][]string)
-		for i := 0; i < 197; i++ {
-			n := strconv.Itoa(i)
-			host := "cn" + n
-			ip := "10.0.0." + n
-			hostMap[host] = []string{ip}
-		}
-		addrs := getOurIPs()
-		switch role {
-		case "master":
-			cmdPort = "6666"
-			/* we hardwire this because the LocalAddr of a 
-			 * connected socket has an address of 0.0.0.0 !!
-			 */
-			myCmdSocket = "10.0.0.254:" + cmdPort
-			parentCmdSocket = ""
-		case "slave":
-			cmdPort = "6666"
-			/* on strongbox there's only ever one.
-			 * pick out the lowest-level octet.
-			 */
-			b := net.ParseIP(addrs[0]).To4()
-			which := b[3]
-			switch {
-			case which%7 == 0:
-				parentCmdSocket = "10.0.0.254:6666"
-			default:
-				boardMaster := ((which + 6) / 7) * 7
-				parentCmdSocket = "10.0.0." + string(boardMaster) + ":6666"
-			}
-			myCmdSocket = b.String() + cmdPort
-		case "client", "run":
-		}
-}
+
 
