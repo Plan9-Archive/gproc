@@ -9,12 +9,12 @@ import (
 
 
 type local struct{
-	parentCmdSocket string
-	myCmdSocket string
+	parentAddr string
+	addr string
 }
 
 func init() {
-	addLocale("local", new(local))
+	addLocale("local", &local{"0.0.0.0:0", "0.0.0.0:0"})
 }
 
 func (l *local) Init(role string) {
@@ -24,17 +24,17 @@ func (l *local) Init(role string) {
 		if err != nil {
 			log.Exit(err)
 		}
-		l.parentCmdSocket = "127.0.0.1:" + string(cmd)
+		l.parentAddr = "127.0.0.1:" + string(cmd)
 	case "client", "run":
 	}
 }
 
-func (l *local) ParentCmdSocket() string {
-	return l.parentCmdSocket
+func (l *local) ParentAddr() string {
+	return l.parentAddr
 }
 
-func (l *local) CmdSocket() string {
-	return l.myCmdSocket
+func (l *local) Addr() string {
+	return l.addr
 }
 
 func (loc *local) RegisterServer(l Listener) (err os.Error) {

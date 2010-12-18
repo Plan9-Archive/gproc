@@ -9,6 +9,7 @@ package main
 import (
 	"os"
 	"sync"
+	"log"
 )
 
 /*
@@ -22,23 +23,73 @@ We also provide a json setup for static topologies as well.
 
 To add your own cluster to gproc you need to implement the Locale interface. 
 
+this really needs to be a package if only to get the naming right.
+
 */
 
 
 type Locale interface {
 	Init(role string)
-	ParentCmdSocket() string
-	CmdSocket() string
+	ParentAddr() string
+	Addr() string
 	RegisterServer(l Listener) (err os.Error)
 }
 
 func init() {
-	
+
 }
 
 var locales map[string]Locale
 
 var once sync.Once
+
+type LocaleHandler struct {
+	locales map[string]Locale
+}
+/*
+
+precedence:
+	is it in the registered locales? if so, use that
+	if not, can we open it?
+		if so it's json, use that
+
+*/
+
+var (
+	BadLocaleErr = os.NewError("invalid locale")
+)
+
+func newLocale(name string) (loc Locale, err os.Error) {
+	log.Print(locales)
+	var inLocales bool
+	if loc, inLocales = locales[name]; inLocales {
+		log.Print("found ", name)
+		return
+	}
+	if _, err = os.Lstat(name); err == nil {
+		log.Print("doing json")
+		var ok bool
+		loc, ok = locales["json"]
+		if !ok {
+			log.Exit("json not configured")
+		}
+		
+		js, ok := loc.(*JsonCfg)
+		if !ok {
+			log.Exit("bad json locale configuration")
+		}
+		js.ConfigFrom(name)
+		log.Print(loc, " ", js)
+		return
+	}
+	err = BadLocaleErr
+	return
+}
+
+/*
+
+	NewLocale
+*/
 
 func addLocale(name string, loc Locale) {
 	once.Do(func() {
@@ -46,9 +97,3 @@ func addLocale(name string, loc Locale) {
 	})
 	locales[name] = loc
 }
-
-var parentCmdSocket = "0.0.0.0:0"
-var myCmdSocket = "0.0.0.0:0"
-
-
-

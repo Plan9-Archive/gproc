@@ -91,7 +91,7 @@ func receiveCmds(domainSock string) os.Error {
 
 /* move this to common once Noah has merged. */
 func registerSlaves(loc Locale) os.Error {
-	l, err := Listen(defaultFam, loc.CmdSocket())
+	l, err := Listen(defaultFam, loc.Addr())
 	if err != nil {
 		log.Exit("listen error:", err)
 	}

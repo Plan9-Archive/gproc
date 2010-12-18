@@ -17,6 +17,8 @@ GOFILES=\
 	slave.go\
 	localcfg.go\
 	strongboxcfg.go\
+	jsoncfg.go\
+	
 	#	graphviz.go\
 
 include $(GOROOT)/src/Make.cmd

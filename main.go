@@ -25,7 +25,7 @@ type gpconfig struct {
 }
 
 func usage() {
-	fmt.Fprint(os.Stderr, "usage: gproc m <path>\n")
+	fmt.Fprint(os.Stderr, "usage: gproc m\n")
 	fmt.Fprint(os.Stderr, "usage: gproc s <family> <address> <server address>\n")
 	fmt.Fprint(os.Stderr, "usage: gproc e <server address> <fam> <address> <nodes> <command>\n")
 	fmt.Fprint(os.Stderr, "usage: gproc R\n")
@@ -68,6 +68,13 @@ func main() {
 	//config := getConfig()
 	Dprintln(2, "starting:", os.Args,"debuglevel", *DebugLevel)
 
+	loc, err := newLocale(*locale)
+	if err != nil {
+		log.Exit(err)
+	}
+	if loc == nil {
+		log.Exit("no locale")
+	}
 	switch flag.Arg(0) {
 	/* traditional bproc master, commands over unix domain socket */
 	case "DEBUG", "debug", "d":
@@ -76,30 +83,23 @@ func main() {
 		if len(flag.Args()) > 1 {
 			flag.Usage()
 		}
-		role = "master"
-		l := locales[*locale]
-		l.Init(role)
-		startMaster(*defaultMasterUDS, l)
+		loc.Init("master")
+		startMaster(*defaultMasterUDS, loc)
 	case "WORKER", "worker", "s":
 		/* traditional slave; connect to master, await instructions */
 		if len(flag.Args()) != 1 {
 			flag.Usage()
 		}
-		role = "slave"
-		l := locales[*locale]
-		l.Init(role)
-		
-		startSlave(defaultFam, l.ParentCmdSocket(), l)
+		loc.Init("slave")
+		startSlave(defaultFam, loc.ParentAddr(), loc)
 	case "EXEC", "exec", "e":
 		if len(flag.Args()) < 3 {
 			flag.Usage()
 		}
-		role = "client"
-		locales[*locale].Init(role)
+		loc.Init("client")
 		startExecution(*defaultMasterUDS, defaultFam, *ioProxyPort, flag.Arg(1), flag.Args()[2:])
 	case "RUN", "run", "R":
-		role = "run"
-		locales[*locale].Init(role)
+		loc.Init("run")
 		run()
 	default:
 		flag.Usage()

@@ -9,8 +9,8 @@ import (
 
 
 type strongbox struct {
-	parentCmdSocket string
-	myCmdSocket string
+	parentAddr string
+	addr string
 	hostMap map[string][]string
 }
 
@@ -52,8 +52,8 @@ func (s *strongbox) Init(role string) {
 			/* we hardwire this because the LocalAddr of a 
 			 * connected socket has an address of 0.0.0.0 !!
 			 */
-			s.myCmdSocket = "10.0.0.254:" + cmdPort
-			s.parentCmdSocket = ""
+			s.addr = "10.0.0.254:" + cmdPort
+			s.parentAddr = ""
 		case "slave":
 			cmdPort = "6666"
 			/* on strongbox there's only ever one.
@@ -63,22 +63,22 @@ func (s *strongbox) Init(role string) {
 			which := b[3]
 			switch {
 			case which%7 == 0:
-				s.parentCmdSocket = "10.0.0.254:6666"
+				s.parentAddr = "10.0.0.254:6666"
 			default:
 				boardMaster := ((which + 6) / 7) * 7
-				s.parentCmdSocket = "10.0.0." + string(boardMaster) + ":6666"
+				s.parentAddr = "10.0.0." + string(boardMaster) + ":6666"
 			}
-			s.myCmdSocket = b.String() + cmdPort
+			s.addr = b.String() + cmdPort
 		case "client", "run":
 		}
 }
 
-func (s *strongbox) ParentCmdSocket() string {
-	return s.parentCmdSocket
+func (s *strongbox) ParentAddr() string {
+	return s.parentAddr
 }
 
-func (s *strongbox) CmdSocket() string {
-	return s.myCmdSocket
+func (s *strongbox) Addr() string {
+	return s.addr
 }
 
 func (s *strongbox) RegisterServer(l Listener) (err os.Error) {
