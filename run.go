@@ -25,6 +25,7 @@ import (
  */
 func run() {
 	var workerChan chan int
+	var l Listener
 	var numWorkers int
 	var pathbase = *binRoot
 	log.SetPrefix("run " + *prefix + ": ")
@@ -70,15 +71,17 @@ func run() {
 		n.Write([]uint8(err.String()))
 	}
 
-	if req.Peers != nil {
-		Dprint(2, "run: Peers: ", req.Peers)
-		/* this might be a test */
-		workerChan, l, err := ioProxy(req.Lfam, req.Lserver, len(req.Peers))
+	if req.Peers != nil || req.Nodes != "" {
+		workerChan, l, err = ioProxy(req.Lfam, req.Lserver, len(req.Peers))
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
 		req.Lfam = l.Addr().Network()
 		req.Lserver = l.Addr().String()
+	}
+	if req.Peers != nil {
+		Dprint(2, "run: Peers: ", req.Peers)
+		/* this might be a test */
 		switch {
 		default:
 			for _, p := range req.Peers {
@@ -100,6 +103,12 @@ func run() {
 				w <- 1
 			}(workerChan)
 		}
+	}
+
+	if req.Nodes != "" {
+		nr := req
+		nr.Peers = nil
+		sendCommands(r, &nr)
 	}
 
 	WaitAllChildren()
