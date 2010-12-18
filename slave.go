@@ -80,6 +80,11 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	}
 	rrpc := NewRpcClientServer(p.Stdin)
 	rrpc.Send("ForkRelay", req)
+	/* create the array of strings to send. You can't just send the slaves, Go can't do it.
+	 * So take the req.Nodes, bust them into the /-seperate bits, and create an array of 
+	 * socket names {'"a.b.c.d/x"...} and the subnode names {"1-5"} and pass them down. 
+	 * this is almost ready but it won't make it.
+	 */
 	rrpc.Send("ForkRelay", &slaves)
 	// receives from cacheRelayFilesAndDelegateExec?
 	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.bytesToTransfer)
