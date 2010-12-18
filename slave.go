@@ -80,6 +80,7 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	}
 	rrpc := NewRpcClientServer(p.Stdin)
 	rrpc.Send("ForkRelay", req)
+	rrpc.Send("ForkRelay", &slaves)
 	// receives from cacheRelayFilesAndDelegateExec?
 	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.bytesToTransfer)
 	Dprint(2, "ForkRelay: copy wrote ", n)

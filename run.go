@@ -33,6 +33,7 @@ func run() {
 	var req StartReq
 	r.Recv("run", &req)
 	/* make sure the directory exists and then do the private name space mount */
+	r.Recv("slaveinfo", &slaves)
 
 	Dprintf(3, "run: req is %v\n", req)
 	os.Mkdir(pathbase, 0700)
