@@ -82,3 +82,7 @@ func unmount(path string) int {
 	_, _, e1 := syscall.Syscall(syscall.SYS_UMOUNT, uintptr(unsafe.Pointer(&path8[0])), 0, 0)
 	return int(e1)
 }
+
+func getIfc() int {
+	return 0
+}

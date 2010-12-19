@@ -203,19 +203,7 @@ func unmount(path string) int {
 }
 
 func getIfc() int {
-	sock, e := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_TCP)
-	if sock < 0 {
-		Dprintf(2, "getIfc: %v %v\n", sock, e)
-		return -1
-	}
-	ifc := make([]byte, 256)
-	_,_,e0 := syscall.Syscall(syscall.SYS_IOCTL, uintptr(sock), uintptr(syscall.SIOCGIFCONF), uintptr(unsafe.Pointer(&ifc)))
-	if e0 < 0 {
-		Dprintf(2, "getIfc: ioctl: %v %v\n", sock, e0)
-		return -1
-	}
-	log.Print(ifc)
-	return
+	return 0
 }
 
 

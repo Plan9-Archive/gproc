@@ -49,3 +49,8 @@ func tcpSockDial(Lserver string) int {
 	return int(e1)
 
 }
+
+
+func getIfc() int {
+	return 0
+}
