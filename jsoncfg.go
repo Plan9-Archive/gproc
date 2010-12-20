@@ -58,7 +58,7 @@ type JsonCfg struct{
 	candidates []map[string]string
 }
 
-func (l *JsonCfg) ConfigFrom(path string) (err os.Error){
+func (l *JsonCfg) ConfigFrom(path string) (err os.Error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		return
