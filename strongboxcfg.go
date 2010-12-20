@@ -68,7 +68,7 @@ func (s *strongbox) Init(role string) {
 				boardMaster := ((which + 6) / 7) * 7
 				s.parentAddr = "10.0.0." + string(boardMaster) + ":6666"
 			}
-			s.addr = b.String() + cmdPort
+			s.addr = b.String() + ":" + cmdPort
 		case "client", "run":
 		}
 }
