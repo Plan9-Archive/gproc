@@ -17,7 +17,7 @@ GOFILES=\
 	slave.go\
 	localcfg.go\
 	strongboxcfg.go\
-#	jsoncfg.go\
+	jsoncfg.go\
 	
 	#	graphviz.go\
 
