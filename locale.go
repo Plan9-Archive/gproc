@@ -35,8 +35,9 @@ type Locale interface {
 	RegisterServer(l Listener) (err os.Error)
 }
 
-func init() {
-
+type Configer interface {
+	Locale
+	ConfigFrom(path string) os.Error
 }
 
 var locales map[string]Locale
@@ -66,22 +67,20 @@ func newLocale(name string) (loc Locale, err os.Error) {
 		log.Print("found ", name)
 		return
 	}
-	if _, err = os.Lstat(name); err == nil {
-		log.Print("doing json")
-		var ok bool
-		loc, ok = locales["json"]
-		if !ok {
-			log.Exit("json not configured")
-		}
-		
-		js, ok := loc.(*JsonCfg)
-		if !ok {
-			log.Exit("bad json locale configuration")
-		}
-		js.ConfigFrom(name)
-		log.Print(loc, " ", js)
-		return
+	if _, err = os.Lstat(name); err != nil {
+		goto BadLocale
 	}
+	for _, l := range locales {
+		cfg, ok := l.(Configer)
+		if !ok {
+			continue
+		}
+		err := cfg.ConfigFrom(name)
+		if err == nil {
+			return
+		}
+	}
+BadLocale:
 	err = BadLocaleErr
 	return
 }
