@@ -90,7 +90,7 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	ne, _ := parseNodeList(req.Nodes)
 	nsend := nodeExecList{subnodes: ne[0].subnodes}
 	nsend.nodes =  slaves.ServIntersect(ne[0].nodes)
-
+	Dprint(2, "Parsed node list to ", ne, " and nsend is ", nsend)
 	/* the run code will then have a list of servers and node list to send to them */
 	rrpc.Send("ForkRelay", &nsend)
 	// receives from cacheRelayFilesAndDelegateExec?
