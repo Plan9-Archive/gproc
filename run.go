@@ -35,7 +35,8 @@ func run() {
 	var nodeExecList nodeExecList
 	r.Recv("nodeExecList", &nodeExecList)
 
-	Dprintf(3, "run: req is %v; nodeExeclist is %v\n", req, nodeExecList)
+	numOtherNodes := len(nodeExecList.nodes)
+	Dprintf(3, "run: req is %v; nodeExeclist is %v (len %d)\n", req, nodeExecList, numOtherNodes)
 
 	/* make sure the directory exists and then do the private name space mount */
 	os.Mkdir(pathbase, 0700)
@@ -74,8 +75,8 @@ func run() {
 		n.Write([]uint8(err.String()))
 	}
 
-	if req.Peers != nil || req.Nodes != "" {
-		workerChan, l, err = ioProxy(req.Lfam, req.Lserver, len(req.Peers))
+	if req.Peers != nil || numOtherNodes > 0 {
+		workerChan, l, err = ioProxy(req.Lfam, req.Lserver, len(req.Peers) + numOtherNodes)
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
@@ -108,7 +109,8 @@ func run() {
 		}
 	}
 
-	if req.Nodes != "" {
+	if numOtherNodes > 0 {
+		Dprint(2, "Send commands to ", nodeExecList)
 		nr := req
 		nr.Peers = nil
 		sendCommands(r, &nr)

@@ -31,12 +31,11 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) {
 			switch {
 			case *peerGroupSize == 0:
 				availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
-				Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
+				Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves, " subnodes " , slaveNodes[0].subnodes)
 
 				sendReq.Nodes = slaveNodes[0].subnodes
 				for _, s := range availableSlaves {
-					na := *sendReq // copy argument
-					cacheRelayFilesAndDelegateExec(&na, "", s)
+					cacheRelayFilesAndDelegateExec(sendReq, "", s)
 				}
 			default:
 				availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
@@ -174,6 +173,7 @@ var slaves Slaves
 
 func newStartReq(arg *StartReq) *StartReq {
 	return &StartReq{
+		Nodes: arg.Nodes,
 		ThisNode:        true,
 		LocalBin:        arg.LocalBin,
 		Peers:           arg.Peers,
