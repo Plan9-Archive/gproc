@@ -112,7 +112,8 @@ func startRelay() *exec.Cmd {
 		"R",
 	}
 	nilEnv := []string{""}
-	p, err := exec.Run("./gproc", argv, nilEnv, "", exec.Pipe, exec.Pipe, exec.PassThrough)
+	// Argv[0] will not always be ./gproc ...
+	p, err := exec.Run(os.Args[0], argv, nilEnv, "", exec.Pipe, exec.Pipe, exec.PassThrough)
 	if err != nil {
 		log.Exit("startRelay: run: ", err)
 	}
