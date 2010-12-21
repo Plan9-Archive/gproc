@@ -1,5 +1,12 @@
 package main
 
+import (
+	"fmt"
+	"log"
+	"net"
+	"os"
+	"bitbucket.org/npe/ldd"
+)
 
 /* let's be nice and do an Ldd on each file. That's helpful to people. Later. */
 func buildcmds(file, root, libs string) []*cmdToExec {
@@ -13,17 +20,17 @@ func buildcmds(file, root, libs string) []*cmdToExec {
 		cmds[i].name = s
 		cmds[i].fullPath = root + s
 		fi, _ := os.Stat(root + s)
-		cmds[i].fi = *fi
+		cmds[i].fi = fi
 	}
 	return cmds
 }
 
-func netwaiter(fam, server string, numWorkers int, c net.Conn) (chan int, Listener) {
+func netwaiter(fam, server string, numWorkers int, c net.Conn) (chan int, Listener, os.Error) {
 	workerChan := make(chan int, numWorkers)
 	l, err := Listen(fam, server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Listen: %s\n", err)
-		return nil, nil
+		return nil, l, err
 	}
 
 	go func() {
@@ -36,7 +43,7 @@ func netwaiter(fam, server string, numWorkers int, c net.Conn) (chan int, Listen
 			go netrelay(conn, workerChan, c)
 		}
 	}()
-	return workerChan, l
+	return workerChan, l, nil
 }
 
 func netrelay(c net.Conn, workerChan chan int, client net.Conn) {

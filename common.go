@@ -340,7 +340,7 @@ func ioProxy(fam, server string, numWorkers int) (workerChan chan int, l Listene
 	workerChan = make(chan int, numWorkers)
 	l, err = Listen(fam, server)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Listen: %v\n", err)
+		fmt.Fprintf(os.Stderr, "ioproxy: Listen: %v\n", err)
 		return
 	}
 	go func() {

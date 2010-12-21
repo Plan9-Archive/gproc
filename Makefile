@@ -13,6 +13,7 @@ GOFILES=\
 	mexec.go\
 	main.go\
 	master.go\
+	misc.go \
 	run.go\
 	slave.go\
 	localcfg.go\

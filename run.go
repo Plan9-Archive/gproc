@@ -4,6 +4,7 @@ import (
 	"os"
 	"log"
 	"io"
+	"net"
 	"path"
 )
 
@@ -76,7 +77,11 @@ func run() {
 	}
 
 	if req.Peers != nil || numOtherNodes > 0 {
-		workerChan, l, err = ioProxy(req.Lfam, req.Lserver, len(req.Peers) + numOtherNodes)
+		parentConn, err := net.Dial(req.Lfam, "", req.Lserver)
+		if err != nil {
+			log.Exitf("run: ioproxy: ", err)
+		}
+		workerChan, l, err = netwaiter(defaultFam, "0", len(req.Peers) + numOtherNodes, parentConn)
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
