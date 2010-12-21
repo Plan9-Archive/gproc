@@ -28,7 +28,7 @@ func (s *jaguar) Init(role string) {
 			s.parentAddr = ""
 		case "slave":
 			cmdPort = "6666"
-			s.parentAddr = ""
+			s.parentAddr = "192.168.30.69:" + cmdPort
 			s.addr = "0.0.0.0:" + cmdPort
 		case "client", "run":
 		}
