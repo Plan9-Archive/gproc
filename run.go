@@ -33,10 +33,11 @@ func run() {
 	var req StartReq
 	r.Recv("run", &req)
 	var nodeExecList nodeExecList
-	/* make sure the directory exists and then do the private name space mount */
 	r.Recv("nodeExecList", &nodeExecList)
 
-	Dprintf(3, "run: req is %v\n", req)
+	Dprintf(3, "run: req is %v; nodeExeclist is %v\n", req, nodeExecList)
+
+	/* make sure the directory exists and then do the private name space mount */
 	os.Mkdir(pathbase, 0700)
 	if *DoPrivateMount == true {
 		doPrivateMount(pathbase)
