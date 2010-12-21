@@ -18,6 +18,7 @@ GOFILES=\
 	slave.go\
 	localcfg.go\
 	strongboxcfg.go\
+	jaguarcfg.go\
 	jsoncfg.go\
 	
 	#	graphviz.go\

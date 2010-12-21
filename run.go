@@ -114,11 +114,34 @@ func run() {
 		}
 	}
 
+	/* note: sendCommands needs to be refactored, then we can consider using
+	 * the bits. Which is true of this whole package, but that's life. Need a go func 
+	 * here so as not to hang on hung nodes
+	 */
 	if numOtherNodes > 0 {
 		Dprint(2, "Send commands to ", nodeExecList)
-		nr := req
-		nr.Peers = nil
-		sendCommands(r, &nr)
+		for _,s := range nodeExecList.nodes {
+			go func(Server string) {
+				nr := newStartReq(&req)
+				nr.Peers = nil
+				nr.Nodes = nodeExecList.subnodes
+				client, err := Dial(defaultFam, "", Server)
+				if err != nil {
+					log.Exit("dialing:", err)
+				}
+				Dprintf(2, "connected to %v\n", client)
+				rpc := NewRpcClientServer(client)
+				sendCommands(r, nr)
+				Dprintf(2, "rpc client %v, arg %v", rpc, nr)
+				rpc.Send("cacheRelayFilesAndDelegateExec", nr)
+				Dprintf(2, "bytesToTransfer %v localbin %v\n", nr.bytesToTransfer, nr.LocalBin)
+				if nr.LocalBin {
+					Dprintf(2, "cmds %v\n", nr.cmds)
+				}
+				writeOutFiles(rpc, *root, nr.cmds)
+				Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
+			}(s)
+		}
 	}
 
 	WaitAllChildren()

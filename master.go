@@ -119,6 +119,14 @@ func registerSlaves(loc Locale) os.Error {
 			Dprint(2, "addr is ", addr)
 			netaddr = addr[0]
 		}
+		/* depending on the machine we are on, it is possible we don't get a usable IP address 
+		 * in the ServerAddr. We'll have a good port, however, In this case, we need
+		 * to cons one up, which is easily done. 
+		 */
+		if vd.ServerAddr[0:len("0.0.0.0")] == "0.0.0.0" {
+			vd.ServerAddr = strings.Split(c.RemoteAddr().String(), ":", 2)[0] + vd.ServerAddr[7:]
+			Dprint(2, "Guessed remote slave ServerAddr is ", vd.ServerAddr)
+		}
 		resp := slaves.Add(vd, r)
 		r.Send("registerSlaves", resp)
 	}
