@@ -81,7 +81,7 @@ func run() {
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
-		workerChan, l, err = netwaiter(defaultFam, "0", len(req.Peers) + numOtherNodes, parentConn)
+		workerChan, l, err = netwaiter(defaultFam, "0.0.0.0:0", len(req.Peers) + numOtherNodes, parentConn)
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
