@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"net"
 	"log"
@@ -66,7 +67,7 @@ func (s *strongbox) Init(role string) {
 				s.parentAddr = "10.0.0.254:6666"
 			default:
 				boardMaster := ((which + 6) / 7) * 7
-				s.parentAddr = "10.0.0." + string(boardMaster) + ":6666"
+				s.parentAddr = fmt.Sprintf("10.0.0.%d:6666", boardMaster)
 			}
 			s.addr = b.String() + ":" + cmdPort
 		case "client", "run":
