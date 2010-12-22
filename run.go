@@ -138,19 +138,7 @@ func run() {
 				nr := newStartReq(&req)
 				nr.Peers = nil
 				nr.Nodes = nodeExecList.subnodes
-				client, err := Dial(defaultFam, "", Server)
-				if err != nil {
-					log.Exit("dialing:", err)
-				}
-				Dprintf(2, "connected to %v\n", client)
-				rpc := NewRpcClientServer(client)
-				Dprintf(2, "rpc client %v, arg %v", rpc, nr)
-				rpc.Send("cacheRelayFilesAndDelegateExec", nr)
-				Dprintf(2, "bytesToTransfer %v localbin %v\n", nr.bytesToTransfer, nr.LocalBin)
-				if nr.LocalBin {
-					Dprintf(2, "cmds %v\n", nr.cmds)
-				}
-				writeOutFiles(rpc, *root, nr.cmds)
+				cacheRelayFilesAndDelegateExec(nr, *binRoot, Server)
 				Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
 			}
 		}
