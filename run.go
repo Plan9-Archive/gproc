@@ -129,6 +129,7 @@ func run() {
 	 * here so as not to hang on hung nodes
 	 */
 	if numOtherNodes > 0 {
+		numWorkers += numOtherNodes
 		Dprint(2, "Send commands to ", nodeExecList)
 		for _,s := range nodeExecList.nodes {
 			Dprint(2, "Send commands to ", s)
