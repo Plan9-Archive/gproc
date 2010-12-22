@@ -65,7 +65,7 @@ func (s *strongbox) Init(role string) {
 			s.ip = "10.0.0.254"
 			s.addr = s.ip + ":" + cmdPort
 			s.parentAddr = ""
-		case "slave":
+		case "slave", "run":
 			cmdPort = "6666"
 			/* on strongbox there's only ever one.
 			 * pick out the lowest-level octet.
@@ -81,7 +81,7 @@ func (s *strongbox) Init(role string) {
 			}
 			s.ip = b.String()
 			s.addr = s.ip + ":" + cmdPort
-		case "client", "run":
+		case "client":
 		}
 }
 
