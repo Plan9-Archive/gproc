@@ -94,6 +94,7 @@ func run() {
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
+		Dprint(2, "netwaiter listener at ", l)
 		req.Lfam = l.Addr().Network()
 		req.Lserver = l.Addr().String()
 	}
