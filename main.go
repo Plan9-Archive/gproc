@@ -71,6 +71,7 @@ var (
 )
 
 func main() {
+	var err os.Error
 	flag.Usage = usage
 	flag.Parse()
 	log.SetPrefix("newgproc "+*prefix+": ")
@@ -78,7 +79,7 @@ func main() {
 	//config := getConfig()
 	Dprintln(2, "starting:", os.Args,"debuglevel", *DebugLevel)
 
-	loc, err := newLocale(*locale)
+	loc, err = newLocale(*locale)
 	if err != nil {
 		log.Exit(err)
 	}
