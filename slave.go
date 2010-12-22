@@ -117,6 +117,7 @@ func startRelay() *exec.Cmd {
 		"gproc",
 		fmt.Sprintf("-debug=%d", *DebugLevel),
 		fmt.Sprintf("-p=%v", *DoPrivateMount),
+		fmt.Sprintf("-locale=%v", *locale),
 		"-prefix=" + id,
 		"R",
 	}
