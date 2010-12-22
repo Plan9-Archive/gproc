@@ -135,7 +135,6 @@ func run() {
 				}
 				Dprintf(2, "connected to %v\n", client)
 				rpc := NewRpcClientServer(client)
-				sendCommands(r, nr)
 				Dprintf(2, "rpc client %v, arg %v", rpc, nr)
 				rpc.Send("cacheRelayFilesAndDelegateExec", nr)
 				Dprintf(2, "bytesToTransfer %v localbin %v\n", nr.bytesToTransfer, nr.LocalBin)
