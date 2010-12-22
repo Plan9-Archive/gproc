@@ -64,6 +64,7 @@ func init() {
 type JsonCfg struct{
 	parentAddr string
 	addr string
+	ip string
 	candidates []map[string]string
 }
 
@@ -96,6 +97,10 @@ func (l *JsonCfg) ParentAddr() string {
 }
 
 func (l *JsonCfg) Addr() string {
+	return l.addr
+}
+
+func (l *JsonCfg) Ip() string {
 	return l.addr
 }
 

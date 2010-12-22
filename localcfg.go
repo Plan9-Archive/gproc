@@ -20,10 +20,11 @@ import (
 type local struct{
 	parentAddr string
 	addr string
+	ip string
 }
 
 func init() {
-	addLocale("local", &local{"0.0.0.0:0", "0.0.0.0:0"})
+	addLocale("local", &local{"0.0.0.0:0", "0.0.0.0:0", "0.0.0.0"})
 }
 
 func (l *local) Init(role string) {
@@ -44,6 +45,10 @@ func (l *local) ParentAddr() string {
 
 func (l *local) Addr() string {
 	return l.addr
+}
+
+func (l *local) Ip() string {
+	return l.ip
 }
 
 func (loc *local) RegisterServer(l Listener) (err os.Error) {

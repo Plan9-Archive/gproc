@@ -19,7 +19,8 @@ import (
 
 type strongbox struct {
 	parentAddr string
-	addr string
+	ip string
+	addr string // consider a better name
 	hostMap map[string][]string
 }
 
@@ -61,7 +62,8 @@ func (s *strongbox) Init(role string) {
 			/* we hardwire this because the LocalAddr of a 
 			 * connected socket has an address of 0.0.0.0 !!
 			 */
-			s.addr = "10.0.0.254:" + cmdPort
+			s.ip = "10.0.0.254"
+			s.addr = s.ip + ":" + cmdPort
 			s.parentAddr = ""
 		case "slave":
 			cmdPort = "6666"
@@ -77,7 +79,8 @@ func (s *strongbox) Init(role string) {
 				boardMaster := ((which + 6) / 7) * 7
 				s.parentAddr = "10.0.0." + strconv.Itoa(int(boardMaster)) + ":6666"
 			}
-			s.addr = b.String() + ":" + cmdPort
+			s.ip = b.String()
+			s.addr = s.ip + ":" + cmdPort
 		case "client", "run":
 		}
 }
@@ -88,6 +91,10 @@ func (s *strongbox) ParentAddr() string {
 
 func (s *strongbox) Addr() string {
 	return s.addr
+}
+
+func (s *strongbox) Ip() string {
+	return s.ip
 }
 
 func (s *strongbox) RegisterServer(l Listener) (err os.Error) {

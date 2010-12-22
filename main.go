@@ -56,6 +56,7 @@ var (
 	binRoot = flag.String("binRoot", "/tmp/xproc", "Where to put binaries and libraries")
 	defaultMasterUDS = flag.String("defaultMasterUDS", "/tmp/g", "Default Master Unix Domain Socket")
 	locale = flag.String("locale", "local", "Your locale -- jaguar, strongbox, etc. defaults to local -- i.e. all daemons on same machine")
+	loc Locale
 	ioProxyPort = flag.String("iopp", "0", "io proxy port")
 	/* these are not switches */
 	role = "client"

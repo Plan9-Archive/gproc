@@ -41,6 +41,7 @@ type Locale interface {
 	Init(role string)
 	ParentAddr() string
 	Addr() string
+	Ip() string
 	RegisterServer(l Listener) (err os.Error)
 }
 

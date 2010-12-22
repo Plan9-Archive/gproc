@@ -17,6 +17,7 @@ import (
 type jaguar struct {
 	parentAddr string
 	addr string
+	ip	string
 }
 
 func init() {
@@ -38,7 +39,8 @@ func (s *jaguar) Init(role string) {
 		case "slave":
 			cmdPort = "6666"
 			s.parentAddr = "192.168.30.69:" + cmdPort
-			s.addr = "0.0.0.0:" + cmdPort
+			s.ip = "0.0.0.0"
+			s.addr = s.ip + ":" + cmdPort
 		case "client", "run":
 		}
 }
@@ -49,6 +51,10 @@ func (s *jaguar) ParentAddr() string {
 
 func (s *jaguar) Addr() string {
 	return s.addr
+}
+
+func (s *jaguar) Ip() string {
+	return s.ip
 }
 
 func (s *jaguar) RegisterServer(l Listener) (err os.Error) {
