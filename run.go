@@ -121,6 +121,7 @@ func run() {
 	if numOtherNodes > 0 {
 		Dprint(2, "Send commands to ", nodeExecList)
 		for _,s := range nodeExecList.nodes {
+			Dprint(2, "Send commands to ", s)
 			go func(Server string) {
 				nr := newStartReq(&req)
 				nr.Peers = nil
