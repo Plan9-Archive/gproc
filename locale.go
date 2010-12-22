@@ -1,3 +1,12 @@
+/*
+ * gproc, a Go reimplementation of the LANL version of bproc and the LANL XCPU software. 
+ * 
+ * This software is released under the Lesser Gnu Programming License, incorporated herein by reference. 
+ *
+ * Copyright (2010) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, 
+ * the U.S. Government retains certain rights in this software.
+ */
+
 /* these are variables which it makes no sense to have as options. 
  * at the same time, a json-style file makes no sense either; we have to carry it along and it 
  * does not express computation well. They are determined from your 
