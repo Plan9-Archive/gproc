@@ -122,7 +122,8 @@ func run() {
 		Dprint(2, "Send commands to ", nodeExecList)
 		for _,s := range nodeExecList.nodes {
 			Dprint(2, "Send commands to ", s)
-			go func( ) {
+			//go func( ) {
+			{	
 				Server := s
 				Dprint(2, "Go func ", Server)
 				nr := newStartReq(&req)
@@ -143,7 +144,7 @@ func run() {
 				}
 				writeOutFiles(rpc, *root, nr.cmds)
 				Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
-			}()
+			}
 		}
 	}
 
