@@ -69,6 +69,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	}
 
 	req := StartReq{
+		Command: "e",
 		Lfam:            l.Addr().Network(),
 		Lserver:         l.Addr().String(),
 		LocalBin:        *localbin,

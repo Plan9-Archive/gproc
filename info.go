@@ -15,6 +15,7 @@ import (
 )
 
 func getInfo(masterAddr, query string) {
+	req := StartReq{Command:"i",}
 	log.SetPrefix("getIbfo " + *prefix + ": ")
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
@@ -30,7 +31,8 @@ func getInfo(masterAddr, query string) {
 		return
 	}
 
-	r.Send("getInfo", query)
-	r.Recv("startExecution", &Resp{})
-	Dprintln(3, "startExecution: finished")
+	r.Send("getInfo", req)
+	resp := Resp{}
+	r.Recv("startExecution", &resp)
+	Dprintln(3, "getInfo: finished: ", resp)
 }
