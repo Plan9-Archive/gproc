@@ -31,7 +31,7 @@ func (s SlaveResp) String() string {
 
 
 type Resp struct {
-	Msg []byte
+	Msg string
 }
 
 func (r Resp) String() string {
@@ -86,8 +86,10 @@ type vitalData struct {
  * set ThisNode in the StartReq when the actual command goes out.
  * This struct is sent, and following it is the data for the files,
  * as a simple stream of bytes.
+ * this struct now supports different kinds of commands.
  */
 type StartReq struct {
+	Command string
 	Nodes           string
 	Peers           []string
 	ThisNode        bool

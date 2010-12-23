@@ -9,7 +9,8 @@ GOFILES=\
 	bproc_$(GOOS).go\
 	bproc_$(GOOS)_$(GOARCH).go\
 	common.go\
-	locale.go \
+	info.go\
+	locale.go\
 	mexec.go\
 	main.go\
 	master.go\

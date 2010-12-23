@@ -38,6 +38,7 @@ func usage() {
 	fmt.Fprint(os.Stderr, "usage: gproc s <family> <address> <server address>\n")
 	fmt.Fprint(os.Stderr, "usage: gproc e <server address> <fam> <address> <nodes> <command>\n")
 	fmt.Fprint(os.Stderr, "usage: gproc R\n")
+	fmt.Fprint(os.Stderr, "usage: gproc i [i ...] goes one level deeper for each i\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }
@@ -109,6 +110,12 @@ func main() {
 		}
 		loc.Init("client")
 		startExecution(*defaultMasterUDS, defaultFam, *ioProxyPort, flag.Arg(1), flag.Args()[2:])
+	case "INFO", "info", "i":
+		if len(flag.Args()) > 1 {
+			flag.Usage()
+		}
+		loc.Init("init")
+		getInfo(*defaultMasterUDS, flag.Arg(1))
 	case "RUN", "run", "R":
 		loc.Init("run")
 		run()

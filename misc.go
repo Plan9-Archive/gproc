@@ -88,7 +88,7 @@ type Arg struct {
 }
 
 func Ping(arg *Arg, resp *Resp) os.Error {
-	resp.Msg = arg.Msg
+	resp.Msg = string(arg.Msg)
 	return nil
 }
 
