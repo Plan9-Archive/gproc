@@ -14,6 +14,7 @@ import (
 	"net"
 	"log"
 	"strconv"
+	"strings"
 )
 
 
@@ -22,6 +23,7 @@ type strongbox struct {
 	ip string
 	addr string // consider a better name
 	hostMap map[string][]string
+	idMap map[string] string
 }
 
 func init() {
@@ -45,11 +47,13 @@ func (s *strongbox) getIPs() []string {
 
 func (s *strongbox) initHostTable() {
 	s.hostMap = make(map[string][]string)
+	s.idMap = make(map[string]string)
 	for i := 0; i < 197; i++ {
 		n := strconv.Itoa(i)
 		host := "cn" + n
 		ip := "10.0.0." + n
 		s.hostMap[host] = []string{ip}
+		s.idMap[ip] = strconv.Itoa(i)
 	}
 }
 
@@ -95,6 +99,13 @@ func (s *strongbox) Addr() string {
 
 func (s *strongbox) Ip() string {
 	return s.ip
+}
+
+func (s *strongbox) SlaveIdFromVitalData(vd *vitalData) (id string) {
+	/* grab the server address from vital data and index into our map */
+	addrs := strings.Split(vd.ServerAddr, ":", 2)
+	id = s.idMap[addrs[0]]
+	return
 }
 
 func (s *strongbox) RegisterServer(l Listener) (err os.Error) {

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"io/ioutil"
 	"log"
+	"strconv"
 )
 
 
@@ -21,10 +22,12 @@ type local struct{
 	parentAddr string
 	addr string
 	ip string
+	maxid int
+	idMap map[string] string
 }
 
 func init() {
-	addLocale("local", &local{"0.0.0.0:0", "0.0.0.0:0", "0.0.0.0"})
+	addLocale("local", &local{"0.0.0.0:0", "0.0.0.0:0", "0.0.0.0", 0,make(map[string]string)})
 }
 
 func (l *local) Init(role string) {
@@ -49,6 +52,17 @@ func (l *local) Addr() string {
 
 func (l *local) Ip() string {
 	return l.ip
+}
+
+func (s *local) SlaveIdFromVitalData(vd *vitalData) (string) {
+	/* grab the server address from vital data and index into our map */
+	addrs := strings.Split(vd.ServerAddr, ":", 2)
+	id, ok := s.idMap[addrs[0]]
+	if ! ok {
+		s.maxid++
+		s.idMap[addrs[0]] = strconv.Itoa(s.maxid), ok
+	}
+	return id
 }
 
 func (loc *local) RegisterServer(l Listener) (err os.Error) {

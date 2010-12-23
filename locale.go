@@ -43,6 +43,7 @@ type Locale interface {
 	Addr() string
 	Ip() string
 	RegisterServer(l Listener) (err os.Error)
+	SlaveIdFromVitalData(vd *vitalData) string
 }
 
 type Configer interface {

@@ -104,6 +104,11 @@ func (l *JsonCfg) Ip() string {
 	return l.addr
 }
 
+func (s *JsonCfg) SlaveIdFromVitalData(vd *vitalData) (id string) {
+	log.Exit("Implement SlaveIdFromVitalData")
+	return "1"
+}
+
 func (loc *JsonCfg) RegisterServer(l Listener) (err os.Error) {
 	return
 }

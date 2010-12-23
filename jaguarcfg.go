@@ -10,6 +10,7 @@
 package main
 
 import (
+	"log"
 	"os"
 )
 
@@ -55,6 +56,11 @@ func (s *jaguar) Addr() string {
 
 func (s *jaguar) Ip() string {
 	return s.ip
+}
+
+func (s *jaguar) SlaveIdFromVitalData(vd *vitalData) (id string) {
+	log.Exit("Implement SlaveIdFromVitalData")
+	return "1"
 }
 
 func (s *jaguar) RegisterServer(l Listener) (err os.Error) {
