@@ -79,7 +79,9 @@ func newLocale(name string) (loc Locale, err os.Error) {
 		return
 	}
 	if _, err = os.Lstat(name); err != nil {
-		goto BadLocale
+		// so what's the point of this? To make sure we can return a ueeless error?
+		//goto BadLocale
+		return
 	}
 	for _, l := range locales {
 		cfg, ok := l.(Configer)
@@ -87,12 +89,19 @@ func newLocale(name string) (loc Locale, err os.Error) {
 			continue
 		}
 		err := cfg.ConfigFrom(name)
+		loc = l
 		if err == nil {
 			return
 		}
 	}
 BadLocale:
-	err = BadLocaleErr
+	// I am leaving this in with a petulant comment. If we're just going to do errno, 
+	// why pretend otherwise? 
+	//err = BadLocaleErr
+	// "invalid locale". Wow. How about -104843? It's just as meaningful. 
+	//oh, right, because errno sucks, and implementing errno but with strings sucks too
+	// Sorry, EINVAL just makes me see blood and when Plan 9 and Go do it I get even more upset. 
+	err = os.NewError("Invalid Local: " + name)
 	return
 }
 
