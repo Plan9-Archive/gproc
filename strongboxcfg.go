@@ -66,7 +66,7 @@ func (s *strongbox) Init(role string) {
 			/* we hardwire this because the LocalAddr of a 
 			 * connected socket has an address of 0.0.0.0 !!
 			 */
-			s.ip = "10.0.0.254"
+			s.ip = *parent
 			s.addr = s.ip + ":" + cmdPort
 			s.parentAddr = ""
 		case "slave", "run":
@@ -78,7 +78,7 @@ func (s *strongbox) Init(role string) {
 			which := b[3]
 			switch {
 			case which%7 == 0:
-				s.parentAddr = "10.0.0.254:6666"
+				s.parentAddr = *parent + ":6666"
 			default:
 				boardMaster := ((which + 6) / 7) * 7
 				s.parentAddr = "10.0.0." + strconv.Itoa(int(boardMaster)) + ":6666"
