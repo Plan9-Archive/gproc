@@ -41,6 +41,10 @@ testtrace1: $(TARG)
 smoketest: $(TARG)
 	(cd testdata; ./test.sh)
 
+startstrongbox: startstrongbox.go
+	bash -c printenv
+	
+
 testlocal: $(TARG)
 	rm -f /tmp/g && ./gproc -debug=8 master /tmp/g &
 	sleep 3
