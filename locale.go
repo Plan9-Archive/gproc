@@ -72,10 +72,10 @@ var (
 )
 
 func newLocale(name string) (loc Locale, err os.Error) {
-	log.Print(locales)
+	Dprint(8, locales)
 	var inLocales bool
 	if loc, inLocales = locales[name]; inLocales {
-		log.Print("found ", name)
+		Dprint(8, "found ", name)
 		return
 	}
 	if _, err = os.Lstat(name); err != nil {
