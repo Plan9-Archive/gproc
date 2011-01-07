@@ -405,7 +405,7 @@ func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 		} else {
 			beg, _ := strconv.Atoi(be[0])
 			end, _ := strconv.Atoi(be[1])
-			for i := beg; i < end; i++ {
+			for i := beg; i <= end; i++ {
 				ne.nodes = append(ne.nodes, fmt.Sprintf("%d", i))
 			}
 		}
