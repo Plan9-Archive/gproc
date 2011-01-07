@@ -63,7 +63,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		return
 	}
 	ioProxyListenAddr := vitalData.HostAddr + ":" + ioProxyPort
-	workerChan, l, err := ioProxy(fam, ioProxyListenAddr, len(slaveNodes))
+	workerChan, l, err := ioProxy(fam, ioProxyListenAddr)
 	if err != nil {
 		log.Exit("startExecution: ioproxy: ", err)
 	}
@@ -83,9 +83,9 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	}
 
 	r.Send("startExecution", req)
-	r.Recv("startExecution", &Resp{})
-	peers := []string{} // TODO
-	numWorkers := len(slaveNodes) + len(peers)
+	resp := &Resp{}
+	r.Recv("startExecution", resp)
+	numWorkers := resp.numNodes
 	Dprintln(3, "startExecution: waiting for ", numWorkers)
 	for numWorkers > 0 {
 		<-workerChan

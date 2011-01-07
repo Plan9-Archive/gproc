@@ -31,6 +31,7 @@ func (s SlaveResp) String() string {
 
 
 type Resp struct {
+	numNodes int
 	Msg string
 }
 
@@ -348,35 +349,32 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	return nil
 }
 
-func ioProxy(fam, server string, numWorkers int) (workerChan chan int, l Listener, err os.Error) {
-	workerChan = make(chan int, numWorkers)
+func ioProxy(fam, server string) (workerChan chan int, l Listener, err os.Error) {
+	workerChan = make(chan int, 0)
 	l, err = Listen(fam, server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ioproxy: Listen: %v\n", err)
 		return
 	}
 	go func() {
-		Workers := make([]*Worker, numWorkers)
-
-		for i, _ := range Workers {
+		for {
 			conn, err := l.Accept()
 			Dprint(2, "ioProxy: connected by ", conn.RemoteAddr())
-			w := &Worker{Alive: true, Conn: conn, Status: workerChan}
-			Workers[i] = w
+
 			if err != nil {
 				Dprint(2, "ioProxy: accept:", err)
 				continue
 			}
-			go func() {
+			go func(conn net.Conn) {
 				Dprint(2, "ioProxy: start reading")
-				n, err := io.Copy(os.Stdout, w.Conn)
+				n, err := io.Copy(os.Stdout, conn)
+				workerChan <- 1
 				Dprint(2, "ioProxy: read ", n)
 				if err != nil {
 					log.Exit("ioProxy: ", err)
 				}
 				Dprint(2, "ioProxy: end")
-				w.Status <- 1
-			}()
+			}(conn)
 		}
 	}()
 	return

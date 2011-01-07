@@ -28,10 +28,10 @@ func startMaster(domainSock string, loc Locale) {
 	registerSlaves(loc)
 }
 
-func sendCommands(r *RpcClientServer, sendReq *StartReq) {
+func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 			slaveNodes, err := parseNodeList(sendReq.Nodes)
 			if err != nil {
-				r.Send("receiveCmds", Resp{Msg: "startExecution: bad slaveNodeList: " + err.String()})
+				r.Send("receiveCmds", Resp{numNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
 				return
 			}
 			Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
@@ -43,7 +43,9 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) {
 
 				sendReq.Nodes = slaveNodes[0].subnodes
 				for _, s := range availableSlaves {
-					cacheRelayFilesAndDelegateExec(sendReq, "", s)
+					if cacheRelayFilesAndDelegateExec(sendReq, "", s) == nil {
+						numnodes++
+					}
 				}
 			default:
 				availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
@@ -59,9 +61,11 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) {
 					sendReq.Peers = availableSlaves[1:numWorkers]
 					na := *sendReq // copy argument
 					cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
+					numnodes += numWorkers
 					availableSlaves = availableSlaves[numWorkers:]
 				}
 			}
+	return
 }
 
 func receiveCmds(domainSock string) os.Error {
@@ -97,12 +101,13 @@ func receiveCmds(domainSock string) os.Error {
 					for i, s := range slaves.addr2id {
 						hostinfo.Msg += i + " " + s + "\n"
 					}
+					hostinfo.numNodes = len(slaves.addr2id)
 					Dprint(8, "Respond to info request ", hostinfo)			
 					r.Send("receiveCmds", hostinfo)
 				}
 				case a.Command[0] == uint8('e'): {
-					sendCommands(r, &a)
-					r.Send("receiveCmds", Resp{Msg: "cacheRelayFilesAndDelegateExec finished"})
+					numnodes := sendCommands(r, &a)
+					r.Send("receiveCmds", Resp{numNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
 				default: {
 					r.Send("unknown command", Resp{Msg: "unknown command"})
