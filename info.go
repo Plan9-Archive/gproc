@@ -14,7 +14,7 @@ import (
 	"log"
 )
 
-func getInfo(masterAddr, query string) {
+func getInfo(masterAddr, query string) (info *Resp) {
 	req := StartReq{Command:"i",}
 	log.SetPrefix("getIbfo " + *prefix + ": ")
 	client, err := Dial("unix", "", masterAddr)
@@ -25,6 +25,7 @@ func getInfo(masterAddr, query string) {
 
 	/* master sends us vital data */
 	var vitalData vitalData
+	info = &Resp{}
 	r.Recv("vitalData", &vitalData)
 	if ! vitalData.HostReady {
 		fmt.Print("No hosts yet: ", vitalData.Error, "\n")
@@ -32,7 +33,7 @@ func getInfo(masterAddr, query string) {
 	}
 
 	r.Send("getInfo", req)
-	resp := Resp{}
-	r.Recv("startExecution", &resp)
-	Dprintln(3, "getInfo: finished: ", resp)
+	r.Recv("getinfo", info)
+	Dprintln(3, "getInfo: finished: ", *info)
+	return
 }

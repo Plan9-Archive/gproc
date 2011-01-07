@@ -116,7 +116,8 @@ func main() {
 			flag.Usage()
 		}
 		loc.Init("init")
-		getInfo(*defaultMasterUDS, flag.Arg(1))
+		info := getInfo(*defaultMasterUDS, flag.Arg(1))
+		fmt.Print("Nodes:\n", info)
 	case "RUN", "run", "R":
 		loc.Init("run")
 		run()

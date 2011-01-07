@@ -97,6 +97,7 @@ func receiveCmds(domainSock string) os.Error {
 					for i, s := range slaves.addr2id {
 						hostinfo.Msg += i + " " + s + "\n"
 					}
+					Dprint(8, "Respond to info request ", hostinfo)			
 					r.Send("receiveCmds", hostinfo)
 				}
 				case a.Command[0] == uint8('e'): {
@@ -165,19 +166,21 @@ type Slaves struct {
 
 func newSlaves() (s Slaves) {
 	s.slaves = make(map[string]*SlaveInfo)
+	s.addr2id = make(map[string] string)
 	return
 }
 
 func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 	var s *SlaveInfo
-		s = &SlaveInfo{
-			id:     loc.SlaveIdFromVitalData(vd),
-			Addr:   vd.HostAddr, 
-			Server: vd.ServerAddr,
-			Nodes: vd.Nodes,
-			rpc:    r,
-		}
-		sv.slaves[s.id] = s
+	s = &SlaveInfo{
+		id:     loc.SlaveIdFromVitalData(vd),
+		Addr:   vd.HostAddr, 
+		Server: vd.ServerAddr,
+		Nodes: vd.Nodes,
+		rpc:    r,
+	}
+	sv.slaves[s.id] = s
+	sv.addr2id[s.Server] = s.id
 	Dprintln(2, "slave Add: id: ", s)
 	resp.id = s.id
 	return

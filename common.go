@@ -222,7 +222,7 @@ var onRecvFunc func(funcname string, r io.Reader, arg interface{})
 func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
 	err := r.d.Decode(arg)
 	if err != nil {
-		log.Exit(funcname, ": Recv: ", err)
+		log.Exit(funcname, ": Recv error: ", err)
 	}
 	RecvPrint(funcname, r.rw, arg)
 	if onRecvFunc != nil {
@@ -330,7 +330,8 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	larg := newStartReq(arg)
 	client, err := Dial(defaultFam, "", Server)
 	if err != nil {
-		log.Exit("dialing:", err)
+		log.Print("dialing:", err)
+		return err
 	}
 	Dprintf(2, "connected to %v\n", client)
 	rpc := NewRpcClientServer(client)
