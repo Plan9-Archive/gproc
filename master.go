@@ -29,7 +29,22 @@ func startMaster(domainSock string, loc Locale) {
 }
 
 func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
+	/* for efficiency, on the slave node, if there is one proc, 
+	 * it connects directly to the parent IO forwarder. 
+	 * If the slave node is tasking other nodes, it will also spawn
+	 * off its own IO forwarder. The result is that there will be one
+	 * or two connections from a slave node. There is no clear
+	 * universal rule for what is the right thing to do, so 
+	 * we just have to track how many connections to expect 
+	 * from each slave node. That will be determined 
+	 * by whether a slave node has peers or tasking to its own nodes. 
+	 * This is kludgy, but again, it's not clear what the Best Choice is.
+	 */
+	connsperNode := 1
 			slaveNodes, err := parseNodeList(sendReq.Nodes)
+	if len(slaveNodes[0].subnodes) > 0 {
+		connsperNode = 2
+	}
 			if err != nil {
 				r.Send("receiveCmds", Resp{numNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
 				return
@@ -44,7 +59,7 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 				sendReq.Nodes = slaveNodes[0].subnodes
 				for _, s := range availableSlaves {
 					if cacheRelayFilesAndDelegateExec(sendReq, "", s) == nil {
-						numnodes++
+						numnodes += connsperNode
 					}
 				}
 			default:
@@ -61,7 +76,7 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 					sendReq.Peers = availableSlaves[1:numWorkers]
 					na := *sendReq // copy argument
 					cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
-					numnodes += numWorkers
+					numnodes += numWorkers + connsperNode
 					availableSlaves = availableSlaves[numWorkers:]
 				}
 			}
