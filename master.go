@@ -41,45 +41,45 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 	 * This is kludgy, but again, it's not clear what the Best Choice is.
 	 */
 	connsperNode := 1
-			slaveNodes, err := parseNodeList(sendReq.Nodes)
+	slaveNodes, err := parseNodeList(sendReq.Nodes)
 	if len(slaveNodes[0].subnodes) > 0 {
 		connsperNode = 2
 	}
-			if err != nil {
-				r.Send("receiveCmds", Resp{numNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
-				return
-			}
-			Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
-			// get credentials later
-			switch {
-			case *peerGroupSize == 0:
-				availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
-				Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves, " subnodes " , slaveNodes[0].subnodes)
+	if err != nil {
+		r.Send("receiveCmds", Resp{numNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
+		return
+	}
+	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
+	// get credentials later
+	switch {
+	case *peerGroupSize == 0:
+		availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
+		Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves, " subnodes ", slaveNodes[0].subnodes)
 
-				sendReq.Nodes = slaveNodes[0].subnodes
-				for _, s := range availableSlaves {
-					if cacheRelayFilesAndDelegateExec(sendReq, "", s) == nil {
-						numnodes += connsperNode
-					}
-				}
-			default:
-				availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
-				Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
-
-				sendReq.Nodes = slaveNodes[0].subnodes
-				for len(availableSlaves) > 0 {
-					numWorkers := *peerGroupSize
-					if numWorkers > len(availableSlaves) {
-						numWorkers = len(availableSlaves)
-					}
-					// the first available node is the server, the rest of the reservation are peers
-					sendReq.Peers = availableSlaves[1:numWorkers]
-					na := *sendReq // copy argument
-					cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
-					numnodes += numWorkers + connsperNode
-					availableSlaves = availableSlaves[numWorkers:]
-				}
+		sendReq.Nodes = slaveNodes[0].subnodes
+		for _, s := range availableSlaves {
+			if cacheRelayFilesAndDelegateExec(sendReq, "", s) == nil {
+				numnodes += connsperNode
 			}
+		}
+	default:
+		availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
+		Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
+
+		sendReq.Nodes = slaveNodes[0].subnodes
+		for len(availableSlaves) > 0 {
+			numWorkers := *peerGroupSize
+			if numWorkers > len(availableSlaves) {
+				numWorkers = len(availableSlaves)
+			}
+			// the first available node is the server, the rest of the reservation are peers
+			sendReq.Peers = availableSlaves[1:numWorkers]
+			na := *sendReq // copy argument
+			cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
+			numnodes += numWorkers + connsperNode
+			availableSlaves = availableSlaves[numWorkers:]
+		}
+	}
 	return
 }
 
@@ -104,27 +104,30 @@ func receiveCmds(domainSock string) os.Error {
 				vitalData.HostAddr = netaddr
 			}
 			r.Send("vitalData", vitalData)
-			if ! vitalData.HostReady {
+			if !vitalData.HostReady {
 				return
 			}
 			/* it would be Really Cool if we could case out on the type of the request, I don't know how. */
 			r.Recv("receiveCmds", &a)
 			/* we could used re matching but that package is a bit big */
 			switch {
-				case a.Command[0] == uint8('i'): {
+			case a.Command[0] == uint8('i'):
+				{
 					hostinfo := Resp{}
 					for i, s := range slaves.addr2id {
 						hostinfo.Msg += i + " " + s + "\n"
 					}
 					hostinfo.numNodes = len(slaves.addr2id)
-					Dprint(8, "Respond to info request ", hostinfo)			
+					Dprint(8, "Respond to info request ", hostinfo)
 					r.Send("receiveCmds", hostinfo)
 				}
-				case a.Command[0] == uint8('e'): {
+			case a.Command[0] == uint8('e'):
+				{
 					numnodes := sendCommands(r, &a)
 					r.Send("receiveCmds", Resp{numNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
-				default: {
+			default:
+				{
 					r.Send("unknown command", Resp{Msg: "unknown command"})
 				}
 			}
@@ -180,13 +183,13 @@ func registerSlaves(loc Locale) os.Error {
 
 
 type Slaves struct {
-	slaves map[string]*SlaveInfo
+	slaves  map[string]*SlaveInfo
 	addr2id map[string]string
 }
 
 func newSlaves() (s Slaves) {
 	s.slaves = make(map[string]*SlaveInfo)
-	s.addr2id = make(map[string] string)
+	s.addr2id = make(map[string]string)
 	return
 }
 
@@ -194,9 +197,9 @@ func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 	var s *SlaveInfo
 	s = &SlaveInfo{
 		id:     loc.SlaveIdFromVitalData(vd),
-		Addr:   vd.HostAddr, 
+		Addr:   vd.HostAddr,
 		Server: vd.ServerAddr,
-		Nodes: vd.Nodes,
+		Nodes:  vd.Nodes,
 		rpc:    r,
 	}
 	sv.slaves[s.id] = s
@@ -211,13 +214,24 @@ func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
 	return
 }
 
+/* a hack for now. Sorry, we need to clean up the whole parsenodelist/intersect thing
+ * but I need something that works and we're still putting the ideas 
+ * together. So sue me. 
+ */
 func (sv *Slaves) ServIntersect(set []string) (i []string) {
-	for _, n := range set {
-		s, ok := sv.Get(n)
-		if !ok {
-			continue
+	switch set[0] {
+	case ".":
+		for _, n := range sv.slaves {
+			i = append(i, n.Server)
 		}
-		i = append(i, s.Server)
+	default:
+		for _, n := range set {
+			s, ok := sv.Get(n)
+			if !ok {
+				continue
+			}
+			i = append(i, s.Server)
+		}
 	}
 	return
 }
@@ -227,15 +241,15 @@ var slaves Slaves
 
 func newStartReq(arg *StartReq) *StartReq {
 	return &StartReq{
-		Command: arg.Command,
-		Nodes: arg.Nodes,
+		Command:         arg.Command,
+		Nodes:           arg.Nodes,
 		ThisNode:        true,
 		LocalBin:        arg.LocalBin,
 		Peers:           arg.Peers,
 		Args:            arg.Args,
 		Env:             arg.Env,
-		LibList:	arg.LibList,
-		Path:		arg.Path,
+		LibList:         arg.LibList,
+		Path:            arg.Path,
 		Lfam:            arg.Lfam,
 		Lserver:         arg.Lserver,
 		cmds:            arg.cmds,

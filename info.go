@@ -15,7 +15,7 @@ import (
 )
 
 func getInfo(masterAddr, query string) (info *Resp) {
-	req := StartReq{Command:"i",}
+	req := StartReq{Command: "i"}
 	log.SetPrefix("getIbfo " + *prefix + ": ")
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
@@ -27,7 +27,7 @@ func getInfo(masterAddr, query string) (info *Resp) {
 	var vitalData vitalData
 	info = &Resp{}
 	r.Recv("vitalData", &vitalData)
-	if ! vitalData.HostReady {
+	if !vitalData.HostReady {
 		fmt.Print("No hosts yet: ", vitalData.Error, "\n")
 		return
 	}

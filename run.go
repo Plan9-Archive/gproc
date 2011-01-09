@@ -90,7 +90,7 @@ func run() {
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
-		workerChan, l, err = netwaiter(defaultFam, loc.Ip() + ":0", len(req.Peers) + numOtherNodes, parentConn)
+		workerChan, l, err = netwaiter(defaultFam, loc.Ip()+":0", len(req.Peers)+numOtherNodes, parentConn)
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
@@ -131,9 +131,9 @@ func run() {
 	if numOtherNodes > 0 {
 		numWorkers += numOtherNodes
 		Dprint(2, "Send commands to ", nodeExecList)
-		for _,s := range nodeExecList.nodes {
+		for _, s := range nodeExecList.nodes {
 			Dprint(2, "Send commands to ", s)
-			go func(Server string ) {
+			go func(Server string) {
 				Dprint(2, "Go func ", Server)
 				nr := newStartReq(&req)
 				nr.Peers = nil

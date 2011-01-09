@@ -32,7 +32,7 @@ func (s SlaveResp) String() string {
 
 type Resp struct {
 	numNodes int
-	Msg string
+	Msg      string
 }
 
 func (r Resp) String() string {
@@ -64,12 +64,12 @@ func (a *cmdToExec) String() string {
  */
 
 type vitalData struct {
-	HostReady bool
-	Error	string
-	HostAddr string
+	HostReady  bool
+	Error      string
+	HostAddr   string
 	ParentAddr string
 	ServerAddr string
-	Nodes []string
+	Nodes      []string
 }
 
 /* a StartReq is a description of what to run and where to run it.
@@ -90,15 +90,15 @@ type vitalData struct {
  * this struct now supports different kinds of commands.
  */
 type StartReq struct {
-	Command string
+	Command         string
 	Nodes           string
 	Peers           []string
 	ThisNode        bool
 	LocalBin        bool
 	Args            []string
 	Env             []string
-	LibList	[]string
-	Path		string
+	LibList         []string
+	Path            string
 	Lfam, Lserver   string
 	bytesToTransfer int64
 	uid, gid        int
@@ -125,7 +125,7 @@ type SlaveInfo struct {
 	id     string
 	Addr   string
 	Server string
-	Nodes []string
+	Nodes  []string
 	rpc    *RpcClientServer
 }
 
@@ -381,7 +381,7 @@ func ioProxy(fam, server string) (workerChan chan int, l Listener, err os.Error)
 }
 
 type nodeExecList struct {
-	nodes []string
+	nodes    []string
 	subnodes string
 }
 
@@ -389,9 +389,9 @@ type nodeExecList struct {
 func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 	/* bust it apart by , */
 	ranges := strings.Split(l, ",", -1)
-	for _,n := range ranges {
+	for _, n := range ranges {
 		/* split into range and rest by the slash */
-		l  := strings.Split(n, "/", 2)
+		l := strings.Split(n, "/", 2)
 		be := strings.Split(l[0], "-", 2)
 		Dprint(6, " l is ", l, " be is ", be)
 		ne := &nodeExecList{nodes: make([]string, 1)}
@@ -416,4 +416,3 @@ BadRange:
 	err = BadRangeErr
 	return
 }
-

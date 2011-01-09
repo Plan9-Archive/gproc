@@ -18,16 +18,16 @@ import (
 )
 
 
-type local struct{
+type local struct {
 	parentAddr string
-	addr string
-	ip string
-	maxid int
-	idMap map[string] string
+	addr       string
+	ip         string
+	maxid      int
+	idMap      map[string]string
 }
 
 func init() {
-	addLocale("local", &local{"0.0.0.0:0", "0.0.0.0:0", "0.0.0.0", 0,make(map[string]string)})
+	addLocale("local", &local{"0.0.0.0:0", "0.0.0.0:0", "0.0.0.0", 0, make(map[string]string)})
 }
 
 func (l *local) Init(role string) {
@@ -54,11 +54,11 @@ func (l *local) Ip() string {
 	return l.ip
 }
 
-func (s *local) SlaveIdFromVitalData(vd *vitalData) (string) {
+func (s *local) SlaveIdFromVitalData(vd *vitalData) string {
 	/* grab the server address from vital data and index into our map */
 	addrs := strings.Split(vd.ServerAddr, ":", 2)
 	id, ok := s.idMap[addrs[0]]
-	if ! ok {
+	if !ok {
 		s.maxid++
 		s.idMap[addrs[0]] = strconv.Itoa(s.maxid), ok
 	}

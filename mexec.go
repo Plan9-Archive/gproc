@@ -36,7 +36,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 			if s == "" {
 				continue
 			}
-			Dprint(4, "startExecution: not local walking '", s, "' full path is '",*root+s, "'")
+			Dprint(4, "startExecution: not local walking '", s, "' full path is '", *root+s, "'")
 			path.Walk(*root+s, pv, nil)
 			Dprint(4, "e is ", e)
 		}
@@ -58,7 +58,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	/* master sends us vital data */
 	var vitalData vitalData
 	r.Recv("vitalData", &vitalData)
-	if ! vitalData.HostReady {
+	if !vitalData.HostReady {
 		fmt.Print("Can not start jobs: ", vitalData.Error, "\n")
 		return
 	}
@@ -69,14 +69,14 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	}
 
 	req := StartReq{
-		Command: "e",
+		Command:         "e",
 		Lfam:            l.Addr().Network(),
 		Lserver:         l.Addr().String(),
 		LocalBin:        *localbin,
 		Args:            cmd,
 		bytesToTransfer: pv.bytesToTransfer,
-		LibList:             libList,
-		Path:			*root,
+		LibList:         libList,
+		Path:            *root,
 		Nodes:           slaveNodes,
 		cmds:            pv.cmds,
 		peerGroupSize:   *peerGroupSize,
@@ -116,7 +116,6 @@ func writeOutFiles(r *RpcClientServer, root string, cmds []*cmdToExec) {
 	}
 	Dprint(2, "writeOutFiles: finished")
 }
-
 
 
 func isNum(c byte) bool {

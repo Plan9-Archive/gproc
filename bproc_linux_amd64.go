@@ -21,7 +21,7 @@ func tcpSockDial(Lserver string) int {
 	a, err := net.ResolveTCPAddr(Lserver)
 	if err != nil {
 		if *DebugLevel > 2 {
-			log.Printf( "%s", err)
+			log.Printf("%s", err)
 		}
 		return -1
 	}
@@ -73,14 +73,14 @@ func ucred(fd int) (pid, uid, gid int) {
 		if *DebugLevel > 2 {
 			log.Printf("%v %v", fd, e1)
 		}
-		return -1,-1,-1
+		return -1, -1, -1
 	}
 	return creds[0], creds[1], creds[2]
 }
 
 func unmount(path string) int {
 	path8 := []byte(path)
-	_, _, e1 := syscall.Syscall(/* barf! syscall.SYS_UMOUNT */166, uintptr(unsafe.Pointer(&path8[0])), 0, 0)
+	_, _, e1 := syscall.Syscall( /* barf! syscall.SYS_UMOUNT */ 166, uintptr(unsafe.Pointer(&path8[0])), 0, 0)
 	return int(e1)
 }
 

@@ -18,8 +18,8 @@ import (
 
 type strongbox struct {
 	parentAddr string
-	ip string
-	addr string // consider a better name
+	ip         string
+	addr       string // consider a better name
 }
 
 func init() {
@@ -28,33 +28,33 @@ func init() {
 
 /* convention: strongbox nodes are named "cn" */
 func (s *strongbox) Init(role string) {
-		switch role {
-		case "master":
-			cmdPort = "6666"
-			/* we hardwire this because the LocalAddr of a 
-			 * connected socket has an address of 0.0.0.0 !!
-			 */
-			s.ip = *parent
-			s.addr = s.ip + ":" + cmdPort
-			s.parentAddr = ""
-		case "slave", "run":
-			cmdPort = "6666"
-			/* on strongbox there's only ever one.
-			 * pick out the lowest-level octet.
-			 */
-			hostname,_ := os.Hostname()
-			which,_ := strconv.Atoi(hostname[2:])
-			switch {
-			case which%7 == 0:
-				s.parentAddr = *parent + ":6666"
-			default:
-				boardMaster := ((which + 6) / 7) * 7
-				s.parentAddr = "10.0.0." + strconv.Itoa(int(boardMaster)) + ":6666"
-			}
-			s.ip = "10.0.0." + strconv.Itoa(which)
-			s.addr = s.ip + ":" + cmdPort
-		case "client":
+	switch role {
+	case "master":
+		cmdPort = "6666"
+		/* we hardwire this because the LocalAddr of a 
+		 * connected socket has an address of 0.0.0.0 !!
+		 */
+		s.ip = *parent
+		s.addr = s.ip + ":" + cmdPort
+		s.parentAddr = ""
+	case "slave", "run":
+		cmdPort = "6666"
+		/* on strongbox there's only ever one.
+		 * pick out the lowest-level octet.
+		 */
+		hostname, _ := os.Hostname()
+		which, _ := strconv.Atoi(hostname[2:])
+		switch {
+		case which%7 == 0:
+			s.parentAddr = *parent + ":6666"
+		default:
+			boardMaster := ((which + 6) / 7) * 7
+			s.parentAddr = "10.0.0." + strconv.Itoa(int(boardMaster)) + ":6666"
 		}
+		s.ip = "10.0.0." + strconv.Itoa(which)
+		s.addr = s.ip + ":" + cmdPort
+	case "client":
+	}
 }
 
 func (s *strongbox) ParentAddr() string {
@@ -73,9 +73,9 @@ func (s *strongbox) SlaveIdFromVitalData(vd *vitalData) (id string) {
 	/* grab the server address from vital data and index into our map */
 	addrs := strings.Split(vd.ServerAddr, ":", 2)
 	octets := strings.Split(addrs[0], ".", 4)
-	which,_ := strconv.Atoi(octets[3])
+	which, _ := strconv.Atoi(octets[3])
 	/* get the lowest octet, take it mod 7 */
-	if which % 7 == 0 {
+	if which%7 == 0 {
 		id = strconv.Itoa(which / 7)
 	} else {
 		id = strconv.Itoa(which % 7)
