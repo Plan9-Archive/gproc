@@ -19,12 +19,14 @@ var (
 	Workers []Worker
 	netaddr = ""
 	exceptFiles map[string]bool
+	exceptList []string
 )
 
 func startMaster(domainSock string, loc Locale) {
 	log.SetPrefix("master " + *prefix + ": ")
 	Dprintln(2, "starting master")
 	exceptFiles = make(map[string]bool, 16)
+	exceptList = []string{}
 
 	go receiveCmds(domainSock)
 	registerSlaves(loc)
@@ -86,7 +88,7 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 }
 
 func receiveCmds(domainSock string) os.Error {
-	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready"}
+	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready", Exceptlist: exceptList}
 	l, err := Listen("unix", domainSock)
 	if err != nil {
 		log.Exit("listen error:", err)
@@ -114,6 +116,10 @@ func receiveCmds(domainSock string) os.Error {
 				{
 					for _, s := range(a.Args) {
 						exceptFiles[s] = true
+					}
+					exceptList = []string{}
+					for s, _ := range(exceptFiles) {
+						exceptList = append(exceptList, s)
 					}
 					exceptOK := Resp{Msg: "Files accepted"}
 					Dprint(8, "Respond to except request ", exceptOK)
