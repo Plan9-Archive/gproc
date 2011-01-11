@@ -118,6 +118,10 @@ func main() {
 		loc.Init("init")
 		info := getInfo(*defaultMasterUDS, flag.Arg(1))
 		fmt.Print("Nodes:\n", info)
+	case "EXCEPT", "except", "x":
+		loc.Init("init")
+		exceptOK := except(*defaultMasterUDS, flag.Args()[1:])
+		fmt.Print(exceptOK)
 	case "RUN", "run", "R":
 		loc.Init("run")
 		run()

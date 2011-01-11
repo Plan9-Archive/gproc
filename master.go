@@ -18,11 +18,13 @@ import (
 var (
 	Workers []Worker
 	netaddr = ""
+	exceptFiles map[string]bool
 )
 
 func startMaster(domainSock string, loc Locale) {
 	log.SetPrefix("master " + *prefix + ": ")
 	Dprintln(2, "starting master")
+	exceptFiles = make(map[string]bool, 16)
 
 	go receiveCmds(domainSock)
 	registerSlaves(loc)
@@ -104,13 +106,19 @@ func receiveCmds(domainSock string) os.Error {
 				vitalData.HostAddr = netaddr
 			}
 			r.Send("vitalData", vitalData)
-			if !vitalData.HostReady {
-				return
-			}
 			/* it would be Really Cool if we could case out on the type of the request, I don't know how. */
 			r.Recv("receiveCmds", &a)
 			/* we could used re matching but that package is a bit big */
 			switch {
+			case a.Command[0] == uint8('x'):
+				{
+					for _, s := range(a.Args) {
+						exceptFiles[s] = true
+					}
+					exceptOK := Resp{Msg: "Files accepted"}
+					Dprint(8, "Respond to except request ", exceptOK)
+					r.Send("exceptOK", exceptOK)
+				}
 			case a.Command[0] == uint8('i'):
 				{
 					hostinfo := Resp{}
@@ -119,10 +127,13 @@ func receiveCmds(domainSock string) os.Error {
 					}
 					hostinfo.numNodes = len(slaves.addr2id)
 					Dprint(8, "Respond to info request ", hostinfo)
-					r.Send("receiveCmds", hostinfo)
+					r.Send("hostinfo", hostinfo)
 				}
 			case a.Command[0] == uint8('e'):
 				{
+					if !vitalData.HostReady {
+						return
+					}
 					numnodes := sendCommands(r, &a)
 					r.Send("receiveCmds", Resp{numNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
