@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	Workers []Worker
-	netaddr = ""
+	Workers     []Worker
+	netaddr     = ""
 	exceptFiles map[string]bool
-	exceptList []string
+	exceptList  []string
 )
 
 func startMaster(domainSock string, loc Locale) {
@@ -114,11 +114,11 @@ func receiveCmds(domainSock string) os.Error {
 			switch {
 			case a.Command[0] == uint8('x'):
 				{
-					for _, s := range(a.Args) {
+					for _, s := range a.Args {
 						exceptFiles[s] = true
 					}
 					exceptList = []string{}
-					for s, _ := range(exceptFiles) {
+					for s, _ := range exceptFiles {
 						exceptList = append(exceptList, s)
 					}
 					exceptOK := Resp{Msg: "Files accepted"}

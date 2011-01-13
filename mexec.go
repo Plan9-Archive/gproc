@@ -193,6 +193,7 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	Dprint(4, "VisitFile: appending ", f.Name, " ", f.Size, " ", []byte(filePath), " ", p.alreadyVisited)
 
 	p.cmds = append(p.cmds, c)
+
 	switch {
 	case f.IsRegular():
 		p.bytesToTransfer += f.Size

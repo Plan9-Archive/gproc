@@ -24,7 +24,7 @@ func init() {
 
 type graphNode struct {
 	role string
-	src string
+	src  string
 	dest string
 }
 
@@ -36,15 +36,15 @@ graph gproc {
 }
 `,
 	nil)
-	
+
 var nodeRole string // the global role of this instance of gproc
 func graphVizRoleFunc(role string) {
-	graph []graph
+	var graph []graph
 	nodeRole = role
 	if role == "master" {
 		// start http server
 		// listen on channels and update the dot file
-		t.SetDelims("{{","}}")
+		t.SetDelims("{{", "}}")
 		go func() {
 			for {
 				// receive on a netchan
@@ -52,12 +52,12 @@ func graphVizRoleFunc(role string) {
 				// you also want to time out nodes.
 				// how do you handle incoming?
 				// you can do interesting stuff 
-				node <-= nodeChan
+				node := <-nodeChan
 				graph = append(graph, node)
 				dotFileTemplate.Execute(graph)
 			}
 		}()
-	}else {
+	} else {
 		// just forward
 		go func() {
 			for _, c := range is {
@@ -66,7 +66,7 @@ func graphVizRoleFunc(role string) {
 					nodeChan <- c
 				}()
 			}
-		}
+		}()
 	}
 }
 
@@ -80,7 +80,7 @@ func SendFunc(funcname string, w io.Writer, arg interface{}) {
 	// no op for now, can make the pretties later
 }
 
-func RecvFunc(funcname string, r io.Reader, arg interface{}){
+func RecvFunc(funcname string, r io.Reader, arg interface{}) {
 	// no op for now, can make the pretties later
 }
 
