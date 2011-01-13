@@ -43,12 +43,15 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 
 	/* now filter out the files we will not need */
 	finishedFiles := []string{}
+/*
 	for _, s := range(rawFiles) {
 		if vitalData.Exceptlist[s] {
 			continue
 		}
 		finishedFiles = append(finishedFiles, s)
 	}
+ */
+	finishedFiles = rawFiles
 	if !*localbin {
 		for _, s := range finishedFiles {
 			/* WHAT  A HACK -- ldd is really broken. HMM, did not used to be!*/
