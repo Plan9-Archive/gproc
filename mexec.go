@@ -21,34 +21,7 @@ import (
 
 func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []string) {
 	log.SetPrefix("mexec " + *prefix + ": ")
-	pv := newPackVisitor()
-	if len(*filesToTakeAlong) > 0 {
-		files := strings.Split(*filesToTakeAlong, ",", -1)
-		for _, f := range files {
-			path.Walk(f, pv, nil)
-		}
-	}
-	e, _ := ldd.Ldd(cmd[0], *root, *libs)
-	Dprint(4, "LDD say e ", e, "cmds ", cmd, "root ", *root, " libs ", *libs)
-	if !*localbin {
-		for _, s := range e {
-			/* WHAT  A HACK -- ldd is really broken. HMM, did not used to be!*/
-			if s == "" {
-				continue
-			}
-			Dprint(4, "startExecution: not local walking '", s, "' full path is '", *root+s, "'")
-			path.Walk(*root+s, pv, nil)
-			Dprint(4, "e is ", e)
-		}
-	}
-	/* build the library list given that we may have a different root */
-	libList := strings.Split(*libs, ":", -1)
-	rootedLibList := []string{}
-	for _, s := range libList {
-		Dprint(6, "startExecution: add lib ", s)
-		rootedLibList = append(rootedLibList, fmt.Sprintf("%s/%s", *root, s))
-	}
-	Dprint(4, "startExecution: libList ", libList)
+	/* make sure there is someone to talk to, and get the vital data */
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
 		log.Exit("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
@@ -58,10 +31,51 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	/* master sends us vital data */
 	var vitalData vitalData
 	r.Recv("vitalData", &vitalData)
+	pv := newPackVisitor()
+	if len(*filesToTakeAlong) > 0 {
+		files := strings.Split(*filesToTakeAlong, ",", -1)
+		for _, f := range files {
+			path.Walk(f, pv, nil)
+		}
+	}
+	rawFiles, _ := ldd.Ldd(cmd[0], *root, *libs)
+	Dprint(4, "LDD say rawFiles ", rawFiles, "cmds ", cmd, "root ", *root, " libs ", *libs)
+
+	/* now filter out the files we will not need */
+	finishedFiles := []string{}
+	for _, s := range(rawFiles) {
+		if vitalData.Exceptlist[s] {
+			continue
+		}
+		finishedFiles = append(finishedFiles, s)
+	}
+	if !*localbin {
+		for _, s := range finishedFiles {
+			/* WHAT  A HACK -- ldd is really broken. HMM, did not used to be!*/
+			if s == "" {
+				continue
+			}
+			Dprint(4, "startExecution: not local walking '", s, "' full path is '", *root+s, "'")
+			path.Walk(*root+s, pv, nil)
+			Dprint(4, "finishedFiles is ", finishedFiles)
+		}
+	}
+	/* build the library list given that we may have a different root */
+	libList := strings.Split(*libs, ":", -1)
+	rootedLibList := []string{}
+	for _, s := range libList {
+		Dprint(6, "startExecution: add lib ", s)
+		rootedLibList = append(rootedLibList, fmt.Sprintf("%s/%s", *root, s))
+	}
+	/* this test could be earlier. We leave it all the way down here so we can 
+	 * easily test the library code. Later, it can move
+	 * earlier in the code. 
+	 */
 	if !vitalData.HostReady {
 		fmt.Print("Can not start jobs: ", vitalData.Error, "\n")
 		return
 	}
+	Dprint(4, "startExecution: libList ", libList)
 	ioProxyListenAddr := vitalData.HostAddr + ":" + ioProxyPort
 	workerChan, l, err := ioProxy(fam, ioProxyListenAddr)
 	if err != nil {

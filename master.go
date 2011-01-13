@@ -88,7 +88,7 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 }
 
 func receiveCmds(domainSock string) os.Error {
-	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready", Exceptlist: exceptList}
+	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready", Exceptlist: exceptFiles}
 	l, err := Listen("unix", domainSock)
 	if err != nil {
 		log.Exit("listen error:", err)

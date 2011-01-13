@@ -70,7 +70,7 @@ type vitalData struct {
 	ParentAddr string
 	ServerAddr string
 	Nodes      []string
-	Exceptlist []string
+	Exceptlist map[string]bool
 }
 
 /* a StartReq is a description of what to run and where to run it.
