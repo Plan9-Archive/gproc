@@ -1,0 +1,4 @@
+On second thought, I don't like locales. They are clumsy and grow the binary and are just too damn big. Gproc should be fundamentally a very simple program. 
+
+But: 
+-rwxr-xr-x  1 rminnich  staff  5060950 Jan  6 07:51 gproc_darwin_amd64
