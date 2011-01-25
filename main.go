@@ -44,28 +44,28 @@ func usage() {
 }
 
 var (
-	Logfile = "/tmp/log"
-	prefix       = flag.String("prefix", "", "logging prefix")
+	Logfile        = "/tmp/log"
+	prefix         = flag.String("prefix", "", "logging prefix")
 	localbin       = flag.Bool("localbin", false, "execute local files")
 	DoPrivateMount = flag.Bool("p", true, "Do a private mount")
 	DebugLevel     = flag.Int("debug", 0, "debug level")
 	/* this one gets me a zero-length string if not set. Phooey. */
 	filesToTakeAlong = flag.String("f", "", "comma-seperated list of files/directories to take along")
-	root    = flag.String("r", "", "root for finding binaries")
-	libs    = flag.String("L", "/lib:/usr/lib", "library path")
-	peerGroupSize = flag.Int("npeers", 0, "number of peers to delegate to")
-	binRoot = flag.String("binRoot", "/tmp/xproc", "Where to put binaries and libraries")
+	root             = flag.String("r", "", "root for finding binaries")
+	libs             = flag.String("L", "/lib:/usr/lib", "library path")
+	peerGroupSize    = flag.Int("npeers", 0, "number of peers to delegate to")
+	binRoot          = flag.String("binRoot", "/tmp/xproc", "Where to put binaries and libraries")
 	defaultMasterUDS = flag.String("defaultMasterUDS", "/tmp/g", "Default Master Unix Domain Socket")
-	locale = flag.String("locale", "local", "Your locale -- jaguar, strongbox, etc. defaults to local -- i.e. all daemons on same machine")
-	loc Locale
-	ioProxyPort = flag.String("iopp", "0", "io proxy port")
-	parent = flag.String("parent", "10.0.0.254", "parent for some configurations")
+	locale           = flag.String("locale", "local", "Your locale -- jaguar, strongbox, etc. defaults to local -- i.e. all daemons on same machine")
+	loc              Locale
+	ioProxyPort      = flag.String("iopp", "0", "io proxy port")
+	parent           = flag.String("parent", "10.0.0.254", "parent for some configurations")
 	/* these are not switches */
 	role = "client"
 	/* these are determined by your local, and these values are "reasonable defaults" */
 	/* they are intended to be modified as needed by localInit */
 	defaultFam = "tcp4" /* arguably you might make this an option but it's kind of useless to do so */
-	cmdPort = "0"
+	cmdPort    = "0"
 	/* covering for issues in Go libraries */
 	/* net.LookUpHost fails if there is no DNS -- an incorrect behavior. On some locales (strongbox)
 	* you can load this up with cn hostnames. On Jaguar, may be impractical. 
@@ -76,10 +76,10 @@ func main() {
 	var err os.Error
 	flag.Usage = usage
 	flag.Parse()
-	log.SetPrefix("newgproc "+*prefix+": ")
+	log.SetPrefix("newgproc " + *prefix + ": ")
 	//setupLog()
 	//config := getConfig()
-	Dprintln(2, "starting:", os.Args,"debuglevel", *DebugLevel)
+	Dprintln(2, "starting:", os.Args, "debuglevel", *DebugLevel)
 
 	loc, err = newLocale(*locale)
 	if err != nil {
@@ -116,7 +116,12 @@ func main() {
 			flag.Usage()
 		}
 		loc.Init("init")
-		getInfo(*defaultMasterUDS, flag.Arg(1))
+		info := getInfo(*defaultMasterUDS, flag.Arg(1))
+		fmt.Print("Nodes:\n", info)
+	case "EXCEPT", "except", "x":
+		loc.Init("init")
+		exceptOK := except(*defaultMasterUDS, flag.Args()[1:])
+		fmt.Print(exceptOK)
 	case "RUN", "run", "R":
 		loc.Init("run")
 		run()
@@ -165,7 +170,7 @@ func getConfig() (config gpconfig) {
 		if err != nil {
 			log.Exit("Bad config file:", err)
 		}
-		Dprintf(2,"config is %v\n", config)
+		Dprintf(2, "config is %v\n", config)
 		break
 	}
 	return

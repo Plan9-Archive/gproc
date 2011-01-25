@@ -10,13 +10,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
 )
 
-func getInfo(masterAddr, query string) (info *Resp) {
-	req := StartReq{Command: "i"}
-	log.SetPrefix("getIbfo " + *prefix + ": ")
+func except(masterAddr string, files []string) (exceptOK *Resp) {
+	req := StartReq{Command: "x", Args: files}
+	log.SetPrefix("except " + *prefix + ": ")
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
 		log.Exit("startExecution: dialing: ", masterAddr, " ", err)
@@ -25,15 +24,11 @@ func getInfo(masterAddr, query string) (info *Resp) {
 
 	/* master sends us vital data */
 	var vitalData vitalData
-	info = &Resp{}
+	exceptOK = &Resp{}
 	r.Recv("vitalData", &vitalData)
-	if !vitalData.HostReady {
-		fmt.Print("No hosts yet: ", vitalData.Error, "\n")
-		return
-	}
 
-	r.Send("getInfo", req)
-	r.Recv("getinfo", info)
-	Dprintln(3, "getInfo: finished: ", *info)
+	r.Send("exceptFiles", req)
+	r.Recv("exceptOK", exceptOK)
+	Dprintln(3, "except: finished: ", *exceptOK)
 	return
 }

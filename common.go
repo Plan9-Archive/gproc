@@ -31,7 +31,8 @@ func (s SlaveResp) String() string {
 
 
 type Resp struct {
-	Msg string
+	numNodes int
+	Msg      string
 }
 
 func (r Resp) String() string {
@@ -63,12 +64,13 @@ func (a *cmdToExec) String() string {
  */
 
 type vitalData struct {
-	HostReady bool
-	Error	string
-	HostAddr string
+	HostReady  bool
+	Error      string
+	HostAddr   string
 	ParentAddr string
 	ServerAddr string
-	Nodes []string
+	Nodes      []string
+	Exceptlist map[string]bool
 }
 
 /* a StartReq is a description of what to run and where to run it.
@@ -89,15 +91,15 @@ type vitalData struct {
  * this struct now supports different kinds of commands.
  */
 type StartReq struct {
-	Command string
+	Command         string
 	Nodes           string
 	Peers           []string
 	ThisNode        bool
 	LocalBin        bool
 	Args            []string
 	Env             []string
-	LibList	[]string
-	Path		string
+	LibList         []string
+	Path            string
 	Lfam, Lserver   string
 	bytesToTransfer int64
 	uid, gid        int
@@ -124,7 +126,7 @@ type SlaveInfo struct {
 	id     string
 	Addr   string
 	Server string
-	Nodes []string
+	Nodes  []string
 	rpc    *RpcClientServer
 }
 
@@ -222,7 +224,7 @@ var onRecvFunc func(funcname string, r io.Reader, arg interface{})
 func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
 	err := r.d.Decode(arg)
 	if err != nil {
-		log.Exit(funcname, ": Recv: ", err)
+		log.Exit(funcname, ": Recv error: ", err)
 	}
 	RecvPrint(funcname, r.rw, arg)
 	if onRecvFunc != nil {
@@ -330,7 +332,8 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	larg := newStartReq(arg)
 	client, err := Dial(defaultFam, "", Server)
 	if err != nil {
-		log.Exit("dialing:", err)
+		log.Print("dialing:", err)
+		return err
 	}
 	Dprintf(2, "connected to %v\n", client)
 	rpc := NewRpcClientServer(client)
@@ -347,42 +350,39 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	return nil
 }
 
-func ioProxy(fam, server string, numWorkers int) (workerChan chan int, l Listener, err os.Error) {
-	workerChan = make(chan int, numWorkers)
+func ioProxy(fam, server string) (workerChan chan int, l Listener, err os.Error) {
+	workerChan = make(chan int, 0)
 	l, err = Listen(fam, server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ioproxy: Listen: %v\n", err)
 		return
 	}
 	go func() {
-		Workers := make([]*Worker, numWorkers)
-
-		for i, _ := range Workers {
+		for {
 			conn, err := l.Accept()
 			Dprint(2, "ioProxy: connected by ", conn.RemoteAddr())
-			w := &Worker{Alive: true, Conn: conn, Status: workerChan}
-			Workers[i] = w
+
 			if err != nil {
 				Dprint(2, "ioProxy: accept:", err)
 				continue
 			}
-			go func() {
+			go func(conn net.Conn) {
 				Dprint(2, "ioProxy: start reading")
-				n, err := io.Copy(os.Stdout, w.Conn)
+				n, err := io.Copy(os.Stdout, conn)
+				workerChan <- 1
 				Dprint(2, "ioProxy: read ", n)
 				if err != nil {
 					log.Exit("ioProxy: ", err)
 				}
 				Dprint(2, "ioProxy: end")
-				w.Status <- 1
-			}()
+			}(conn)
 		}
 	}()
 	return
 }
 
 type nodeExecList struct {
-	nodes []string
+	nodes    []string
 	subnodes string
 }
 
@@ -390,9 +390,9 @@ type nodeExecList struct {
 func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 	/* bust it apart by , */
 	ranges := strings.Split(l, ",", -1)
-	for _,n := range ranges {
+	for _, n := range ranges {
 		/* split into range and rest by the slash */
-		l  := strings.Split(n, "/", 2)
+		l := strings.Split(n, "/", 2)
 		be := strings.Split(l[0], "-", 2)
 		Dprint(6, " l is ", l, " be is ", be)
 		ne := &nodeExecList{nodes: make([]string, 1)}
@@ -404,7 +404,7 @@ func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 		} else {
 			beg, _ := strconv.Atoi(be[0])
 			end, _ := strconv.Atoi(be[1])
-			for i := beg; i < end; i++ {
+			for i := beg; i <= end; i++ {
 				ne.nodes = append(ne.nodes, fmt.Sprintf("%d", i))
 			}
 		}
@@ -417,4 +417,3 @@ BadRange:
 	err = BadRangeErr
 	return
 }
-

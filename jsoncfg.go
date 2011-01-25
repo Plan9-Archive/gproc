@@ -23,17 +23,17 @@ import (
 
 	Not a big deal. In the vmatic environment perl builds the files. So let's keep it simple. 
 	{"parentAddr":"1.1.1.1","ip":"2.2.2.2","addr":"3.3.3.3:3030","hostMap":null,"idMap":null}`
- */
+*/
 
 func init() {
 	addLocale("json", new(JsonCfg))
 }
 
-type JsonCfg struct{
+type JsonCfg struct {
 	AparentAddr string
-	Aaddr string
-	Aip string
-	idmap map[string] string
+	Aaddr       string
+	Aip         string
+	idmap       map[string]string
 }
 
 func (l *JsonCfg) ConfigFrom(path string) (err os.Error) {
@@ -76,4 +76,3 @@ func (s *JsonCfg) SlaveIdFromVitalData(vd *vitalData) (id string) {
 func (loc *JsonCfg) RegisterServer(l Listener) (err os.Error) {
 	return
 }
-

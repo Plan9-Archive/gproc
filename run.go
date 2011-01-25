@@ -53,6 +53,7 @@ func run() {
 	if *DoPrivateMount == true {
 		doPrivateMount(pathbase)
 	}
+
 	for _, c := range req.cmds {
 		Dprintf(2, "run: Localbin %v cmd %v: ", req.LocalBin, c)
 		Dprintf(2, "%s\n", c.name)
@@ -61,8 +62,13 @@ func run() {
 			log.Exit("run: writeStreamIntoFile: ", err)
 		}
 	}
+
 	Dprintf(2, "run: connect to %v\n", req.Lserver)
-	n := fileTcpDial(req.Lserver) // connect to the ioproxy.
+	n, err := fileTcpDial(req.Lserver) // connect to the ioproxy.
+	if err != nil {
+		log.Exit("tcpDial: ", err)
+	}
+	defer n.Close()
 	f := []*os.File{n, n, n}
 	execpath := pathbase + req.Path + req.Args[0]
 	if req.LocalBin {
@@ -77,8 +83,7 @@ func run() {
 	}
 	Env = append(Env, ldLibPath)
 	Dprint(2, "run: Env ", Env)
-	_, err := os.ForkExec(execpath, req.Args, Env, pathbase, f)
-	n.Close()
+	_, err = os.ForkExec(execpath, req.Args, Env, pathbase, f)
 
 	if err != nil {
 		log.Exit("run: ", err)
@@ -90,7 +95,7 @@ func run() {
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
-		workerChan, l, err = netwaiter(defaultFam, loc.Ip() + ":0", len(req.Peers) + numOtherNodes, parentConn)
+		workerChan, l, err = netwaiter(defaultFam, loc.Ip()+":0", len(req.Peers)+numOtherNodes, parentConn)
 		if err != nil {
 			log.Exitf("run: ioproxy: ", err)
 		}
@@ -131,18 +136,16 @@ func run() {
 	if numOtherNodes > 0 {
 		numWorkers += numOtherNodes
 		Dprint(2, "Send commands to ", nodeExecList)
-		for _,s := range nodeExecList.nodes {
+		for _, s := range nodeExecList.nodes {
 			Dprint(2, "Send commands to ", s)
-			//go func( ) {
-			{	
-				Server := s
+			go func(Server string) {
 				Dprint(2, "Go func ", Server)
 				nr := newStartReq(&req)
 				nr.Peers = nil
 				nr.Nodes = nodeExecList.subnodes
 				cacheRelayFilesAndDelegateExec(nr, *binRoot, Server)
 				Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
-			}
+			}(s)
 		}
 	}
 
@@ -154,14 +157,23 @@ func run() {
 	os.Exit(0)
 }
 
-func fileTcpDial(server string) *os.File {
-	// percolates down from startExecution
-	sock := tcpSockDial(server)
-	Dprintf(2, "run: connected to %v\n", server)
-	if sock < 0 {
-		log.Exitf("fileTcpDial: connect to %s failed", server)
+func fileTcpDial(server string) (*os.File, os.Error) {
+	var laddr net.TCPAddr
+	raddr, err := net.ResolveTCPAddr(server)
+	if err != nil {
+		return nil, err
 	}
-	return os.NewFile(sock, "child_process_socket")
+	c, err := net.DialTCP(defaultFam, &laddr, raddr)
+	if err != nil {
+		return nil, err
+	}
+	f, err := c.File()
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+
+	return f, nil
 }
 
 
@@ -188,13 +200,23 @@ func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) 
 		}
 	case fi.IsSymlink():
 		Dprint(5, "writeStreamIntoFile: is link")
+		// c.Fullpath is the symlink target
 		dir, _ := path.Split(outputFile)
 		_, err = os.Lstat(dir)
 		if err != nil {
 			os.MkdirAll(dir, 0777)
 			err = nil
 		}
-		err = os.Symlink(outputFile, *binRoot+c.fullPath)
+
+		if c.fullPath[0] == '/' {
+			// if the link is absolute we glom on our root prefix
+			c.fullPath = *binRoot + c.fullPath
+		}
+		err = os.Symlink(c.fullPath, outputFile)
+		// kinda a weird bug. When not using provate mounts
+		// and a symlink already exists it has err ="file exists"
+		// but is not == to os.EEXIST.. need to check gocode for actual return
+		// its probably not exported either...
 	case fi.IsRegular():
 		Dprint(5, "writeStreamIntoFile: is regular file")
 		dir, _ := path.Split(outputFile)

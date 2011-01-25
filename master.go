@@ -16,56 +16,79 @@ import (
 )
 
 var (
-	Workers []Worker
-	netaddr = ""
+	Workers     []Worker
+	netaddr     = ""
+	exceptFiles map[string]bool
+	exceptList  []string
 )
 
 func startMaster(domainSock string, loc Locale) {
 	log.SetPrefix("master " + *prefix + ": ")
 	Dprintln(2, "starting master")
+	exceptFiles = make(map[string]bool, 16)
+	exceptList = []string{}
 
 	go receiveCmds(domainSock)
 	registerSlaves(loc)
 }
 
-func sendCommands(r *RpcClientServer, sendReq *StartReq) {
-			slaveNodes, err := parseNodeList(sendReq.Nodes)
-			if err != nil {
-				r.Send("receiveCmds", Resp{Msg: "startExecution: bad slaveNodeList: " + err.String()})
-				return
-			}
-			Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
-			// get credentials later
-			switch {
-			case *peerGroupSize == 0:
-				availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
-				Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves, " subnodes " , slaveNodes[0].subnodes)
+func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
+	/* for efficiency, on the slave node, if there is one proc, 
+	 * it connects directly to the parent IO forwarder. 
+	 * If the slave node is tasking other nodes, it will also spawn
+	 * off its own IO forwarder. The result is that there will be one
+	 * or two connections from a slave node. There is no clear
+	 * universal rule for what is the right thing to do, so 
+	 * we just have to track how many connections to expect 
+	 * from each slave node. That will be determined 
+	 * by whether a slave node has peers or tasking to its own nodes. 
+	 * This is kludgy, but again, it's not clear what the Best Choice is.
+	 */
+	connsperNode := 1
+	slaveNodes, err := parseNodeList(sendReq.Nodes)
+	if len(slaveNodes[0].subnodes) > 0 {
+		connsperNode = 2
+	}
+	if err != nil {
+		r.Send("receiveCmds", Resp{numNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
+		return
+	}
+	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
+	// get credentials later
+	switch {
+	case *peerGroupSize == 0:
+		availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
+		Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves, " subnodes ", slaveNodes[0].subnodes)
 
-				sendReq.Nodes = slaveNodes[0].subnodes
-				for _, s := range availableSlaves {
-					cacheRelayFilesAndDelegateExec(sendReq, "", s)
-				}
-			default:
-				availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
-				Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
-
-				sendReq.Nodes = slaveNodes[0].subnodes
-				for len(availableSlaves) > 0 {
-					numWorkers := *peerGroupSize
-					if numWorkers > len(availableSlaves) {
-						numWorkers = len(availableSlaves)
-					}
-					// the first available node is the server, the rest of the reservation are peers
-					sendReq.Peers = availableSlaves[1:numWorkers]
-					na := *sendReq // copy argument
-					cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
-					availableSlaves = availableSlaves[numWorkers:]
-				}
+		sendReq.Nodes = slaveNodes[0].subnodes
+		for _, s := range availableSlaves {
+			if cacheRelayFilesAndDelegateExec(sendReq, "", s) == nil {
+				numnodes += connsperNode
 			}
+		}
+	default:
+		availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
+		Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
+
+		sendReq.Nodes = slaveNodes[0].subnodes
+		for len(availableSlaves) > 0 {
+			numWorkers := *peerGroupSize
+			if numWorkers > len(availableSlaves) {
+				numWorkers = len(availableSlaves)
+			}
+			// the first available node is the server, the rest of the reservation are peers
+			sendReq.Peers = availableSlaves[1:numWorkers]
+			na := *sendReq // copy argument
+			cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
+			numnodes += numWorkers + connsperNode
+			availableSlaves = availableSlaves[numWorkers:]
+		}
+	}
+	return
 }
 
 func receiveCmds(domainSock string) os.Error {
-	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready"}
+	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready", Exceptlist: exceptFiles}
 	l, err := Listen("unix", domainSock)
 	if err != nil {
 		log.Exit("listen error:", err)
@@ -85,25 +108,43 @@ func receiveCmds(domainSock string) os.Error {
 				vitalData.HostAddr = netaddr
 			}
 			r.Send("vitalData", vitalData)
-			if ! vitalData.HostReady {
-				return
-			}
 			/* it would be Really Cool if we could case out on the type of the request, I don't know how. */
 			r.Recv("receiveCmds", &a)
 			/* we could used re matching but that package is a bit big */
 			switch {
-				case a.Command[0] == uint8('i'): {
+			case a.Command[0] == uint8('x'):
+				{
+					for _, s := range a.Args {
+						exceptFiles[s] = true
+					}
+					exceptList = []string{}
+					for s, _ := range exceptFiles {
+						exceptList = append(exceptList, s)
+					}
+					exceptOK := Resp{Msg: "Files accepted"}
+					Dprint(8, "Respond to except request ", exceptOK)
+					r.Send("exceptOK", exceptOK)
+				}
+			case a.Command[0] == uint8('i'):
+				{
 					hostinfo := Resp{}
 					for i, s := range slaves.addr2id {
 						hostinfo.Msg += i + " " + s + "\n"
 					}
-					r.Send("receiveCmds", hostinfo)
+					hostinfo.numNodes = len(slaves.addr2id)
+					Dprint(8, "Respond to info request ", hostinfo)
+					r.Send("hostinfo", hostinfo)
 				}
-				case a.Command[0] == uint8('e'): {
-					sendCommands(r, &a)
-					r.Send("receiveCmds", Resp{Msg: "cacheRelayFilesAndDelegateExec finished"})
+			case a.Command[0] == uint8('e'):
+				{
+					if !vitalData.HostReady {
+						return
+					}
+					numnodes := sendCommands(r, &a)
+					r.Send("receiveCmds", Resp{numNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
-				default: {
+			default:
+				{
 					r.Send("unknown command", Resp{Msg: "unknown command"})
 				}
 			}
@@ -159,25 +200,27 @@ func registerSlaves(loc Locale) os.Error {
 
 
 type Slaves struct {
-	slaves map[string]*SlaveInfo
+	slaves  map[string]*SlaveInfo
 	addr2id map[string]string
 }
 
 func newSlaves() (s Slaves) {
 	s.slaves = make(map[string]*SlaveInfo)
+	s.addr2id = make(map[string]string)
 	return
 }
 
 func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 	var s *SlaveInfo
-		s = &SlaveInfo{
-			id:     loc.SlaveIdFromVitalData(vd),
-			Addr:   vd.HostAddr, 
-			Server: vd.ServerAddr,
-			Nodes: vd.Nodes,
-			rpc:    r,
-		}
-		sv.slaves[s.id] = s
+	s = &SlaveInfo{
+		id:     loc.SlaveIdFromVitalData(vd),
+		Addr:   vd.HostAddr,
+		Server: vd.ServerAddr,
+		Nodes:  vd.Nodes,
+		rpc:    r,
+	}
+	sv.slaves[s.id] = s
+	sv.addr2id[s.Server] = s.id
 	Dprintln(2, "slave Add: id: ", s)
 	resp.id = s.id
 	return
@@ -188,13 +231,24 @@ func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
 	return
 }
 
+/* a hack for now. Sorry, we need to clean up the whole parsenodelist/intersect thing
+ * but I need something that works and we're still putting the ideas 
+ * together. So sue me. 
+ */
 func (sv *Slaves) ServIntersect(set []string) (i []string) {
-	for _, n := range set {
-		s, ok := sv.Get(n)
-		if !ok {
-			continue
+	switch set[0] {
+	case ".":
+		for _, n := range sv.slaves {
+			i = append(i, n.Server)
 		}
-		i = append(i, s.Server)
+	default:
+		for _, n := range set {
+			s, ok := sv.Get(n)
+			if !ok {
+				continue
+			}
+			i = append(i, s.Server)
+		}
 	}
 	return
 }
@@ -204,15 +258,15 @@ var slaves Slaves
 
 func newStartReq(arg *StartReq) *StartReq {
 	return &StartReq{
-		Command: arg.Command,
-		Nodes: arg.Nodes,
+		Command:         arg.Command,
+		Nodes:           arg.Nodes,
 		ThisNode:        true,
 		LocalBin:        arg.LocalBin,
 		Peers:           arg.Peers,
 		Args:            arg.Args,
 		Env:             arg.Env,
-		LibList:	arg.LibList,
-		Path:		arg.Path,
+		LibList:         arg.LibList,
+		Path:            arg.Path,
 		Lfam:            arg.Lfam,
 		Lserver:         arg.Lserver,
 		cmds:            arg.cmds,

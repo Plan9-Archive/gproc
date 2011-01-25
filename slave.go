@@ -57,7 +57,7 @@ func startSlave(fam, masterAddr string, loc Locale) {
 }
 
 func initSlave(r *RpcClientServer, v *vitalData) {
-	Dprint(2,"initSlave: ", v)
+	Dprint(2, "initSlave: ", v)
 	r.Send("startSlave", *v)
 	resp := &SlaveResp{}
 	r.Recv("startSlave", &resp)
@@ -98,7 +98,7 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	 */
 	ne, _ := parseNodeList(req.Nodes)
 	nsend := nodeExecList{subnodes: ne[0].subnodes}
-	nsend.nodes =  slaves.ServIntersect(ne[0].nodes)
+	nsend.nodes = slaves.ServIntersect(ne[0].nodes)
 	Dprint(2, "Parsed node list to ", ne, " and nsend is ", nsend)
 	/* the run code will then have a list of servers and node list to send to them */
 	rrpc.Send("ForkRelay", &nsend)
@@ -106,7 +106,7 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.bytesToTransfer)
 	Dprint(2, "ForkRelay: copy wrote ", n)
 	if err != nil {
-		log.Exit("ForkRelay: io.Copyn write error: ", err)
+		//log.Exit("ForkRelay: io.Copyn write error: ", err)
 	}
 	Dprint(2, "ForkRelay: end")
 }
