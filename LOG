@@ -1,4 +1,18 @@
+
 On second thought, I don't like locales. They are clumsy and grow the binary and are just too damn big. Gproc should be fundamentally a very simple program. 
 
-But: 
--rwxr-xr-x  1 rminnich  staff  5060950 Jan  6 07:51 gproc_darwin_amd64
+But: ls -l gproc_darwin_amd64
+-rwxr-xr-x  1 rminnich  staff  6226692 Jan 24 16:27 gproc_darwin_amd64
+delete 
+	localcfg.go\
+	strongboxcfg.go\
+	jaguarcfg.go\
+
+and: 
+-rwxr-xr-x  1 rminnich  staff  6052740 Jan 24 16:32 gproc_darwin_amd64
+
+
+interesting, not that big yet.
+
+Yank most locale stuff out:
+-rwxr-xr-x  1 rminnich  staff  6041683 Jan 24 16:35 gproc_darwin_amd64

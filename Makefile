@@ -18,6 +18,7 @@ GOFILES=\
 	misc.go \
 	run.go\
 	slave.go\
+	kanecfg.go \
 	localcfg.go\
 	strongboxcfg.go\
 	jaguarcfg.go\
