@@ -182,7 +182,10 @@ func SendPrint(funcname, to interface{}, arg interface{}) {
 }
 
 func RecvPrint(funcname, from interface{}, arg interface{}) {
+	/* works not well. 
 	Dprintf(1, "%15s recv %25s: %s\n", funcname, IoString(from, Recv), arg)
+	 */
+	Dprintf(1, "%v recv %v: %v\n", funcname, from, arg)
 }
 
 // this group depends on gob

@@ -59,7 +59,7 @@ var (
 	locale           = flag.String("locale", "local", "Your locale -- jaguar, strongbox, etc. defaults to local -- i.e. all daemons on same machine")
 	loc              Locale
 	ioProxyPort      = flag.String("iopp", "0", "io proxy port")
-	parent           = flag.String("parent", "10.0.0.254", "parent for some configurations")
+	parent           = flag.String("parent", "", "parent for some configurations")
 	/* these are not switches */
 	role = "client"
 	/* these are determined by your local, and these values are "reasonable defaults" */

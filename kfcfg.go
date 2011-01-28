@@ -7,6 +7,8 @@
  * the U.S. Government retains certain rights in this software.
  */
 
+/* this is "kane flat", i.e. no intermediate masters, for testing */
+
 package main
 
 import (
@@ -18,18 +20,18 @@ import (
 )
 
 
-type kane struct {
+type kf struct {
 	parentAddr string
 	ip         string
 	addr       string // consider a better name
 }
 
 func init() {
-	addLocale("kane", new(kane))
+	addLocale("kf", new(kf))
 }
 
-/* convention: kane nodes are named "kn" */
-func (s *kane) Init(role string) {
+/* convention: kf nodes are named "kn" */
+func (s *kf) Init(role string) {
 	if *parent == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -52,50 +54,43 @@ func (s *kane) Init(role string) {
 		s.parentAddr = ""
 	case "slave", "run":
 		cmdPort = "6666"
-		/* on kane there's only ever one.
+		/* on kf there's only ever one.
 		 * pick out the lowest-level octet.
 		 */
-		hostname, _ := os.Hostname()
+		hostname, err := os.Hostname()
+		if err != nil {
+			log.Panic("No host name!")
+		}
 		which, _ := strconv.Atoi(hostname[2:])
 		thirdOctet := 30 + (which - 1) /40
-		switch {
-		case which%40 == 0:
-			s.parentAddr = *parent + ":6666"
-		default:
-			rackMaster := ((which + 39)/40) * 40
-			s.parentAddr = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(int(rackMaster)) + ":6666"
-		}
+		s.parentAddr = *parent + ":6666"
 		s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(which)
 		s.addr = s.ip + ":" + cmdPort
 	case "client":
 	}
 }
 
-func (s *kane) ParentAddr() string {
+func (s *kf) ParentAddr() string {
 	return s.parentAddr
 }
 
-func (s *kane) Addr() string {
+func (s *kf) Addr() string {
 	return s.addr
 }
 
-func (s *kane) Ip() string {
+func (s *kf) Ip() string {
 	return s.ip
 }
 
-func (s *kane) SlaveIdFromVitalData(vd *vitalData) (id string) {
+func (s *kf) SlaveIdFromVitalData(vd *vitalData) (id string) {
 	addrs := strings.Split(vd.ServerAddr, ":", 2)
 	octets := strings.Split(addrs[0], ".", 4)
-	which, _ := strconv.Atoi(octets[3])
-	/* get the lowest octet, take it mod 40 */
-	if which%40 == 0 {
-		id = strconv.Itoa(which / 40)
-	} else {
-		id = strconv.Itoa(which % 40)
-	}
+	high, _ := strconv.Atoi(octets[2])
+	low, _ := strconv.Atoi(octets[3])
+	id = strconv.Itoa(high * 240 + low)
 	return
 }
 
-func (s *kane) RegisterServer(l Listener) (err os.Error) {
+func (s *kf) RegisterServer(l Listener) (err os.Error) {
 	return
 }
