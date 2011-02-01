@@ -88,18 +88,18 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		Lserver:         l.Addr().String(),
 		LocalBin:        *localbin,
 		Args:            cmd,
-		bytesToTransfer: pv.bytesToTransfer,
+		BytesToTransfer: pv.bytesToTransfer,
 		LibList:         libList,
 		Path:            *root,
 		Nodes:           slaveNodes,
-		cmds:            pv.cmds,
-		peerGroupSize:   *peerGroupSize,
+		Cmds:            pv.cmds,
+		PeerGroupSize:   *peerGroupSize,
 	}
 
 	r.Send("startExecution", req)
 	resp := &Resp{}
 	r.Recv("startExecution", resp)
-	numWorkers := resp.numNodes
+	numWorkers := resp.NumNodes
 	Dprintln(3, "startExecution: waiting for ", numWorkers)
 	for numWorkers > 0 {
 		<-workerChan
@@ -111,17 +111,17 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 func writeOutFiles(r *RpcClientServer, root string, cmds []*cmdToExec) {
 	for _, c := range cmds {
 		Dprint(2, "writeOutFiles: next cmd")
-		if !c.fi.IsRegular() {
+		if !c.Fi.IsRegular() {
 			continue
 		}
-		fullpath := root + c.fullPath
+		fullpath := root + c.FullPath
 		f, err := os.Open(fullpath, os.O_RDONLY, 0)
 		if err != nil {
 			log.Printf("Open %v failed: %v\n", fullpath, err)
 		}
-		Dprint(2, "writeOutFiles: copying ", c.fi.Size, " from ", f)
+		Dprint(2, "writeOutFiles: copying ", c.Fi.Size, " from ", f)
 		// us -> master -> slaves
-		n, err := io.Copyn(r.ReadWriter(), f, c.fi.Size)
+		n, err := io.Copyn(r.ReadWriter(), f, c.Fi.Size)
 		Dprint(2, "writeOutFiles: wrote ", n)
 		f.Close()
 		if err != nil {
@@ -160,10 +160,10 @@ func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
 	//	_, file := path.Split(filePath)
 	c := &cmdToExec{
 		//		name: file,
-		name:     filePath,
-		fullPath: filePath,
-		local:    0,
-		fi:       f,
+		Name:     filePath,
+		FullPath: filePath,
+		Local:    0,
+		Fi:       f,
 	}
 	Dprint(4, "VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
 	p.cmds = append(p.cmds, c)
@@ -185,10 +185,10 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	}
 	c := &cmdToExec{
 		//		name: file,
-		name:     filePath,
-		fullPath: filePath,
-		local:    0,
-		fi:       f,
+		Name:     filePath,
+		FullPath: filePath,
+		Local:    0,
+		Fi:       f,
 	}
 	Dprint(4, "VisitFile: appending ", f.Name, " ", f.Size, " ", []byte(filePath), " ", p.alreadyVisited)
 
@@ -198,8 +198,8 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	case f.IsRegular():
 		p.bytesToTransfer += f.Size
 	case f.IsSymlink():
-		c.fullPath = resolveLink(filePath)
-		path.Walk(c.fullPath, p, nil)
+		c.FullPath = resolveLink(filePath)
+		path.Walk(c.FullPath, p, nil)
 	}
 	p.alreadyVisited[filePath] = true
 }

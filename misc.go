@@ -26,10 +26,10 @@ func buildcmds(file, root, libs string) []*cmdToExec {
 	 */
 	cmds := make([]*cmdToExec, len(e))
 	for i, s := range e {
-		cmds[i].name = s
-		cmds[i].fullPath = root + s
+		cmds[i].Name = s
+		cmds[i].FullPath = root + s
 		fi, _ := os.Stat(root + s)
-		cmds[i].fi = fi
+		cmds[i].Fi = fi
 	}
 	return cmds
 }

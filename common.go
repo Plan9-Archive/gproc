@@ -22,16 +22,16 @@ import (
 )
 
 type SlaveResp struct {
-	id string
+	Id string
 }
 
 func (s SlaveResp) String() string {
-	return fmt.Sprint("id: ", s.id)
+	return fmt.Sprint("id: ", s.Id)
 }
 
 
 type Resp struct {
-	numNodes int
+	NumNodes int
 	Msg      string
 }
 
@@ -47,14 +47,14 @@ type SetDebugLevel struct {
 }
 
 type cmdToExec struct {
-	name     string
-	fullPath string
-	local    int
-	fi       *os.FileInfo
+	Name     string
+	FullPath string
+	Local    int
+	Fi       *os.FileInfo
 }
 
 func (a *cmdToExec) String() string {
-	return fmt.Sprint(a.name)
+	return fmt.Sprint(a.Name)
 }
 
 /* vitalData is data from the master to the user or slaves to parent (other slaves or master)
@@ -101,18 +101,18 @@ type StartReq struct {
 	LibList         []string
 	Path            string
 	Lfam, Lserver   string
-	bytesToTransfer int64
-	uid, gid        int
-	cmds            []*cmdToExec
+	BytesToTransfer int64
+	Uid, Gid        int
+	Cmds            []*cmdToExec
 	/* testing: The master and worker nodes, given a list, will take the head
 	 * of the list, and send the rest of the list of Peers on to the next victim. 
 	 * this will result in a chain of delegations. 
 	 */
-	peerGroupSize int
+	PeerGroupSize int
 }
 
 func (s *StartReq) String() string {
-	return fmt.Sprint(s.Nodes, " ", s.Peers, " ", s.Args, " ", s.cmds)
+	return fmt.Sprint(s.Nodes, " ", s.Peers, " ", s.Args, " ", s.Cmds)
 }
 
 type Worker struct {
@@ -330,7 +330,7 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 }
 
 func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error {
-	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
+	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	larg := newStartReq(arg)
 	client, err := Dial(defaultFam, "", Server)
@@ -342,11 +342,11 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	rpc := NewRpcClientServer(client)
 	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
 	rpc.Send("cacheRelayFilesAndDelegateExec", larg)
-	Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.bytesToTransfer, arg.LocalBin)
+	Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.BytesToTransfer, arg.LocalBin)
 	if arg.LocalBin {
-		Dprintf(2, "cmds %v\n", arg.cmds)
+		Dprintf(2, "cmds %v\n", arg.Cmds)
 	}
-	writeOutFiles(rpc, root, arg.cmds)
+	writeOutFiles(rpc, root, arg.Cmds)
 	Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
 	/* at this point it is out of our hands */
 
@@ -385,8 +385,8 @@ func ioProxy(fam, server string) (workerChan chan int, l Listener, err os.Error)
 }
 
 type nodeExecList struct {
-	nodes    []string
-	subnodes string
+	Nodes    []string
+	Subnodes string
 }
 
 /* might be fun to do this as a goroutine feeding a chan of nodeExecList */
@@ -398,17 +398,17 @@ func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 		l := strings.Split(n, "/", 2)
 		be := strings.Split(l[0], "-", 2)
 		Dprint(6, " l is ", l, " be is ", be)
-		ne := &nodeExecList{nodes: make([]string, 1)}
+		ne := &nodeExecList{Nodes: make([]string, 1)}
 		if len(l) > 1 {
-			ne.subnodes = l[1]
+			ne.Subnodes = l[1]
 		}
 		if len(be) == 1 {
-			ne.nodes[0] = be[0]
+			ne.Nodes[0] = be[0]
 		} else {
 			beg, _ := strconv.Atoi(be[0])
 			end, _ := strconv.Atoi(be[1])
 			for i := beg; i <= end; i++ {
-				ne.nodes = append(ne.nodes, fmt.Sprintf("%d", i))
+				ne.Nodes = append(ne.Nodes, fmt.Sprintf("%d", i))
 			}
 		}
 		rl = append(rl, *ne)

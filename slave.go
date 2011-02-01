@@ -61,7 +61,7 @@ func initSlave(r *RpcClientServer, v *vitalData) {
 	r.Send("startSlave", *v)
 	resp := &SlaveResp{}
 	r.Recv("startSlave", &resp)
-	id = resp.id
+	id = resp.Id
 	log.SetPrefix("slave " + id + ": ")
 }
 
@@ -85,7 +85,7 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	p := startRelay()
 	/* relay data to the child */
 	if req.LocalBin {
-		Dprintf(2, "ForkRelay arg.LocalBin %v arg.cmds %v\n", req.LocalBin, req.cmds)
+		Dprintf(2, "ForkRelay arg.LocalBin %v arg.Cmds %v\n", req.LocalBin, req.Cmds)
 	}
 	rrpc := NewRpcClientServer(p.Stdin)
 	rrpc.Send("ForkRelay", req)
@@ -97,13 +97,13 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	 * this is almost ready but it won't make it.
 	 */
 	ne, _ := parseNodeList(req.Nodes)
-	nsend := nodeExecList{subnodes: ne[0].subnodes}
-	nsend.nodes = slaves.ServIntersect(ne[0].nodes)
+	nsend := nodeExecList{Subnodes: ne[0].Subnodes}
+	nsend.Nodes = slaves.ServIntersect(ne[0].Nodes)
 	Dprint(2, "Parsed node list to ", ne, " and nsend is ", nsend)
 	/* the run code will then have a list of servers and node list to send to them */
 	rrpc.Send("ForkRelay", &nsend)
 	// receives from cacheRelayFilesAndDelegateExec?
-	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.bytesToTransfer)
+	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.BytesToTransfer)
 	Dprint(2, "ForkRelay: copy wrote ", n)
 	if err != nil {
 		//log.Exit("ForkRelay: io.Copyn write error: ", err)

@@ -46,31 +46,31 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 	 */
 	connsperNode := 1
 	slaveNodes, err := parseNodeList(sendReq.Nodes)
-	if len(slaveNodes[0].subnodes) > 0 {
+	if len(slaveNodes[0].Subnodes) > 0 {
 		connsperNode = 2
 	}
 	if err != nil {
-		r.Send("receiveCmds", Resp{numNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
+		r.Send("receiveCmds", Resp{NumNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
 		return
 	}
 	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
 	// get credentials later
 	switch {
 	case *peerGroupSize == 0:
-		availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
-		Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves, " subnodes ", slaveNodes[0].subnodes)
+		availableSlaves := slaves.ServIntersect(slaveNodes[0].Nodes)
+		Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves, " subnodes ", slaveNodes[0].Subnodes)
 
-		sendReq.Nodes = slaveNodes[0].subnodes
+		sendReq.Nodes = slaveNodes[0].Subnodes
 		for _, s := range availableSlaves {
 			if cacheRelayFilesAndDelegateExec(sendReq, "", s) == nil {
 				numnodes += connsperNode
 			}
 		}
 	default:
-		availableSlaves := slaves.ServIntersect(slaveNodes[0].nodes)
+		availableSlaves := slaves.ServIntersect(slaveNodes[0].Nodes)
 		Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
 
-		sendReq.Nodes = slaveNodes[0].subnodes
+		sendReq.Nodes = slaveNodes[0].Subnodes
 		for len(availableSlaves) > 0 {
 			numWorkers := *peerGroupSize
 			if numWorkers > len(availableSlaves) {
@@ -131,7 +131,7 @@ func receiveCmds(domainSock string) os.Error {
 					for i, s := range slaves.addr2id {
 						hostinfo.Msg += i + " " + s + "\n"
 					}
-					hostinfo.numNodes = len(slaves.addr2id)
+					hostinfo.NumNodes = len(slaves.addr2id)
 					Dprint(8, "Respond to info request ", hostinfo)
 					r.Send("hostinfo", hostinfo)
 				}
@@ -141,7 +141,7 @@ func receiveCmds(domainSock string) os.Error {
 						return
 					}
 					numnodes := sendCommands(r, &a)
-					r.Send("receiveCmds", Resp{numNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
+					r.Send("receiveCmds", Resp{NumNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
 			default:
 				{
@@ -222,7 +222,7 @@ func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 	sv.slaves[s.id] = s
 	sv.addr2id[s.Server] = s.id
 	Dprintln(2, "slave Add: id: ", s)
-	resp.id = s.id
+	resp.Id = s.id
 	return
 }
 
@@ -269,8 +269,8 @@ func newStartReq(arg *StartReq) *StartReq {
 		Path:            arg.Path,
 		Lfam:            arg.Lfam,
 		Lserver:         arg.Lserver,
-		cmds:            arg.cmds,
-		bytesToTransfer: arg.bytesToTransfer,
-		peerGroupSize:   arg.peerGroupSize,
+		Cmds:            arg.Cmds,
+		BytesToTransfer: arg.BytesToTransfer,
+		PeerGroupSize:   arg.PeerGroupSize,
 	}
 }

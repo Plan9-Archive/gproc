@@ -87,7 +87,7 @@ func (s *kf) SlaveIdFromVitalData(vd *vitalData) (id string) {
 	octets := strings.Split(addrs[0], ".", 4)
 	high, _ := strconv.Atoi(octets[2])
 	low, _ := strconv.Atoi(octets[3])
-	id = strconv.Itoa(high * 240 + low)
+	id = strconv.Itoa((high-30) * 240 + low)
 	return
 }
 

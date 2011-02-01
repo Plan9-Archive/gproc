@@ -45,7 +45,7 @@ func run() {
 	var nodeExecList nodeExecList
 	r.Recv("nodeExecList", &nodeExecList)
 
-	numOtherNodes := len(nodeExecList.nodes)
+	numOtherNodes := len(nodeExecList.Nodes)
 	Dprintf(3, "run: req is %v; nodeExeclist is %v (len %d)\n", req, nodeExecList, numOtherNodes)
 
 	/* make sure the directory exists and then do the private name space mount */
@@ -54,9 +54,9 @@ func run() {
 		doPrivateMount(pathbase)
 	}
 
-	for _, c := range req.cmds {
+	for _, c := range req.Cmds {
 		Dprintf(2, "run: Localbin %v cmd %v: ", req.LocalBin, c)
-		Dprintf(2, "%s\n", c.name)
+		Dprintf(2, "%s\n", c.Name)
 		_, err := writeStreamIntoFile(os.Stdin, c)
 		if err != nil {
 			log.Exit("run: writeStreamIntoFile: ", err)
@@ -114,7 +114,7 @@ func run() {
 					w <- 1
 				}(workerChan)
 			}
-		case req.peerGroupSize > 0:
+		case req.PeerGroupSize > 0:
 			/* this is quite inefficient but rarely used so I'm not that concerned */
 			larg := newStartReq(&req)
 			server := ""
@@ -136,13 +136,13 @@ func run() {
 	if numOtherNodes > 0 {
 		numWorkers += numOtherNodes
 		Dprint(2, "Send commands to ", nodeExecList)
-		for _, s := range nodeExecList.nodes {
+		for _, s := range nodeExecList.Nodes {
 			Dprint(2, "Send commands to ", s)
 			go func(Server string) {
 				Dprint(2, "Go func ", Server)
 				nr := newStartReq(&req)
 				nr.Peers = nil
-				nr.Nodes = nodeExecList.subnodes
+				nr.Nodes = nodeExecList.Subnodes
 				cacheRelayFilesAndDelegateExec(nr, *binRoot, Server)
 				Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
 			}(s)
@@ -188,8 +188,8 @@ func doPrivateMount(pathbase string) {
 }
 
 func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) {
-	outputFile := path.Join(*binRoot, c.name)
-	fi := c.fi
+	outputFile := path.Join(*binRoot, c.Name)
+	fi := c.Fi
 	Dprintf(2, "writeStreamIntoFile: ", outputFile, " ", c)
 	switch {
 	case fi.IsDirectory():
@@ -208,11 +208,11 @@ func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) 
 			err = nil
 		}
 
-		if c.fullPath[0] == '/' {
+		if c.FullPath[0] == '/' {
 			// if the link is absolute we glom on our root prefix
-			c.fullPath = *binRoot + c.fullPath
+			c.FullPath = *binRoot + c.FullPath
 		}
-		err = os.Symlink(c.fullPath, outputFile)
+		err = os.Symlink(c.FullPath, outputFile)
 		// kinda a weird bug. When not using provate mounts
 		// and a symlink already exists it has err ="file exists"
 		// but is not == to os.EEXIST.. need to check gocode for actual return
