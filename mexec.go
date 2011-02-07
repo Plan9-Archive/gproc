@@ -82,6 +82,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		log.Exit("startExecution: ioproxy: ", err)
 	}
 
+	cwd, _ := os.Getwd()
 	req := StartReq{
 		Command:         "e",
 		Lfam:            l.Addr().Network(),
@@ -94,6 +95,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		Nodes:           slaveNodes,
 		Cmds:            pv.cmds,
 		PeerGroupSize:   *peerGroupSize,
+		Cwd:		cwd,
 	}
 
 	r.Send("startExecution", req)

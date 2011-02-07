@@ -109,6 +109,7 @@ type StartReq struct {
 	 * this will result in a chain of delegations. 
 	 */
 	PeerGroupSize int
+	Cwd	string
 }
 
 func (s *StartReq) String() string {
