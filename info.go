@@ -19,7 +19,7 @@ func getInfo(masterAddr, query string) (info *Resp) {
 	log.SetPrefix("getIbfo " + *prefix + ": ")
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
-		log.Exit("startExecution: dialing: ", masterAddr, " ", err)
+		log.Fatal("startExecution: dialing: ", masterAddr, " ", err)
 	}
 	r := NewRpcClientServer(client)
 

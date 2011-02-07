@@ -219,7 +219,7 @@ func (r *RpcClientServer) Send(funcname string, arg interface{}) {
 	SendPrint(funcname, r.rw, arg)
 	err := r.e.Encode(arg)
 	if err != nil {
-		log.Exit(funcname, ": Send: ", err)
+		log.Fatal(funcname, ": Send: ", err)
 	}
 }
 
@@ -228,7 +228,7 @@ var onRecvFunc func(funcname string, r io.Reader, arg interface{})
 func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
 	err := r.d.Decode(arg)
 	if err != nil {
-		log.Exit(funcname, ": Recv error: ", err)
+		log.Fatal(funcname, ": Recv error: ", err)
 	}
 	RecvPrint(funcname, r.rw, arg)
 	if onRecvFunc != nil {
@@ -315,13 +315,13 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 	 */
 	netl, err := net.Listen(defaultFam, srvaddr)
 	if err != nil {
-		log.Exit("newListenProc: ", err)
+		log.Fatal("newListenProc: ", err)
 	}
 	go func() {
 		for {
 			c, err := netl.Accept()
 			if err != nil {
-				log.Exit(jobname, ": ", err)
+				log.Fatal(jobname, ": ", err)
 			}
 			Dprint(2, jobname, ": ", c.RemoteAddr())
 			go job(NewRpcClientServer(c))
@@ -376,7 +376,7 @@ func ioProxy(fam, server string) (workerChan chan int, l Listener, err os.Error)
 				workerChan <- 1
 				Dprint(2, "ioProxy: read ", n)
 				if err != nil {
-					log.Exit("ioProxy: ", err)
+					log.Fatal("ioProxy: ", err)
 				}
 				Dprint(2, "ioProxy: end")
 			}(conn)

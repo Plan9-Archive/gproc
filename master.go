@@ -91,12 +91,12 @@ func receiveCmds(domainSock string) os.Error {
 	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready", Exceptlist: exceptFiles}
 	l, err := Listen("unix", domainSock)
 	if err != nil {
-		log.Exit("listen error:", err)
+		log.Fatal("listen error:", err)
 	}
 	for {
 		c, err := l.Accept()
 		if err != nil {
-			log.Exitf("receiveCmds: accept on (%v) failed %v\n", l, err)
+			log.Fatalf("receiveCmds: accept on (%v) failed %v\n", l, err)
 		}
 		r := NewRpcClientServer(c)
 		go func() {
@@ -157,12 +157,12 @@ func receiveCmds(domainSock string) os.Error {
 func registerSlaves(loc Locale) os.Error {
 	l, err := Listen(defaultFam, loc.Addr())
 	if err != nil {
-		log.Exit("listen error:", err)
+		log.Fatal("listen error:", err)
 	}
 	Dprint(2, l.Addr())
 	err = loc.RegisterServer(l)
 	if err != nil {
-		log.Exit(err)
+		log.Fatal(err)
 	}
 
 	slaves = newSlaves()
@@ -170,7 +170,7 @@ func registerSlaves(loc Locale) os.Error {
 		vd := &vitalData{}
 		c, err := l.Accept()
 		if err != nil {
-			log.Exit("registerSlaves:", err)
+			log.Fatal("registerSlaves:", err)
 		}
 		r := NewRpcClientServer(c)
 		r.Recv("registerSlaves", &vd)

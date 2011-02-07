@@ -59,7 +59,7 @@ func (s *jaguar) Ip() string {
 }
 
 func (s *jaguar) SlaveIdFromVitalData(vd *vitalData) (id string) {
-	log.Exit("Implement SlaveIdFromVitalData")
+	log.Fatal("Implement SlaveIdFromVitalData")
 	return "1"
 }
 

@@ -69,7 +69,7 @@ func (l *JsonCfg) Ip() string {
 }
 
 func (s *JsonCfg) SlaveIdFromVitalData(vd *vitalData) (id string) {
-	log.Exit("Implement SlaveIdFromVitalData")
+	log.Fatal("Implement SlaveIdFromVitalData")
 	return "1"
 }
 

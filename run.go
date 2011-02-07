@@ -59,14 +59,14 @@ func run() {
 		Dprintf(2, "%s\n", c.Name)
 		_, err := writeStreamIntoFile(os.Stdin, c)
 		if err != nil {
-			log.Exit("run: writeStreamIntoFile: ", err)
+			log.Fatal("run: writeStreamIntoFile: ", err)
 		}
 	}
 
 	Dprintf(2, "run: connect to %v\n", req.Lserver)
 	n, err := fileTcpDial(req.Lserver) // connect to the ioproxy.
 	if err != nil {
-		log.Exit("tcpDial: ", err)
+		log.Fatal("tcpDial: ", err)
 	}
 	defer n.Close()
 	f := []*os.File{n, n, n}
@@ -86,18 +86,18 @@ func run() {
 	_, err = os.ForkExec(execpath, req.Args, Env, pathbase, f)
 
 	if err != nil {
-		log.Exit("run: ", err)
+		log.Fatal("run: ", err)
 		n.Write([]uint8(err.String()))
 	}
 
 	if req.Peers != nil || numOtherNodes > 0 {
 		parentConn, err := net.Dial(req.Lfam, "", req.Lserver)
 		if err != nil {
-			log.Exitf("run: ioproxy: ", err)
+			log.Fatalf("run: ioproxy: ", err)
 		}
 		workerChan, l, err = netwaiter(defaultFam, loc.Ip()+":0", len(req.Peers)+numOtherNodes, parentConn)
 		if err != nil {
-			log.Exitf("run: ioproxy: ", err)
+			log.Fatalf("run: ioproxy: ", err)
 		}
 		Dprint(2, "netwaiter locl.IP() ", loc.Ip(), " listener at ", l.Addr().String())
 		req.Lfam = l.Addr().Network()
@@ -234,7 +234,7 @@ func writeStreamIntoFile(stream *os.File, c *cmdToExec) (n int64, err os.Error) 
 		n, err = io.Copyn(f, stream, fi.Size)
 		Dprint(5, "writeStreamIntoFile: copied ", fi.Name, " ", n)
 		if err != nil {
-			log.Exit("writeStreamIntoFile: copyn: ", err)
+			log.Fatal("writeStreamIntoFile: copyn: ", err)
 		}
 		if err != nil {
 			err = os.Chown(outputFile, fi.Uid, fi.Gid)

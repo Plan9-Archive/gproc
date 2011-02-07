@@ -87,7 +87,7 @@ func RecvFunc(funcname string, r io.Reader, arg interface{}) {
 func DialFunc(fam, laddr, raddr string) {
 	e, err := netchan.Importer(fam, laddr)
 	if err != nil {
-		log.Exit("DialFunc: ", err)
+		log.Fatal("DialFunc: ", err)
 	}
 	is[raddr] = make(chan graph)
 	e.Import("graphChan", is[raddr], netchan.Recv)
@@ -96,7 +96,7 @@ func DialFunc(fam, laddr, raddr string) {
 func ListenFunc(fam, laddr string) {
 	e, err := netchan.Exporter(fam, laddr)
 	if err != nil {
-		log.Exit("ListenFunc: ", err)
+		log.Fatal("ListenFunc: ", err)
 	}
 	es[laddr] = make(chan graph)
 	e.Export("graphChan", es[laddr], netchan.Send)

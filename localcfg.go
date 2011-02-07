@@ -35,7 +35,7 @@ func (l *local) Init(role string) {
 	case "master", "slave":
 		cmd, err := ioutil.ReadFile(srvAddr)
 		if err != nil {
-			log.Exit(err)
+			log.Fatal(err)
 		}
 		l.parentAddr = "127.0.0.1:" + string(cmd)
 	case "client", "run":

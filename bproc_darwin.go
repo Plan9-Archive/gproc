@@ -16,12 +16,12 @@ import (
 )
 
 func privatemount(path string) int {
-	log.Exit("privatemount called on OSX")
+	log.Fatal("privatemount called on OSX")
 	return -1
 }
 
 func unshare() int {
-	log.Exit("privatemount called on OSX")
+	log.Fatal("privatemount called on OSX")
 	return -1
 }
 

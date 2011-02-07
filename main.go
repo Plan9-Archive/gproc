@@ -83,10 +83,10 @@ func main() {
 
 	loc, err = newLocale(*locale)
 	if err != nil {
-		log.Exit(err)
+		log.Fatal(err)
 	}
 	if loc == nil {
-		log.Exit("no locale")
+		log.Fatal("no locale")
 	}
 	switch flag.Arg(0) {
 	/* traditional bproc master, commands over unix domain socket */
@@ -133,7 +133,7 @@ func main() {
 func setupLog() {
 	logfile, err := os.Open(Logfile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
-		log.Exit("No log file", err)
+		log.Fatal("No log file", err)
 	}
 
 	log.SetOutput(logfile)
@@ -145,17 +145,17 @@ func SetDebugLevelRPC(fam, server, newlevel string) {
 	var ans SetDebugLevel
 	level, err := strconv.Atoi(newlevel)
 	if err != nil {
-		log.Exit("bad level:", err)
+		log.Fatal("bad level:", err)
 	}
 
 	a := SetDebugLevel{level} // Synchronous call
 	client, err := rpc.DialHTTP(fam, server)
 	if err != nil {
-		log.Exit("SetDebugLevelRPC: dialing: ", err)
+		log.Fatal("SetDebugLevelRPC: dialing: ", err)
 	}
 	err = client.Call("Node.Debug", a, &ans)
 	if err != nil {
-		log.Exit("error:", err)
+		log.Fatal("error:", err)
 	}
 	log.Printf("Was %d is %d\n", ans.level, level)
 }
@@ -168,7 +168,7 @@ func getConfig() (config gpconfig) {
 		}
 		err := json.Unmarshal(configdata, &config)
 		if err != nil {
-			log.Exit("Bad config file:", err)
+			log.Fatal("Bad config file:", err)
 		}
 		Dprintf(2, "config is %v\n", config)
 		break

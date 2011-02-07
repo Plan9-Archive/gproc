@@ -30,11 +30,11 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	vitalData := &vitalData{HostReady: true}
 	/* some simple sanity checking */
 	if *DoPrivateMount == true && os.Getuid() != 0 {
-		log.Exit("Need to run as root for private mounts")
+		log.Fatal("Need to run as root for private mounts")
 	}
 	client, err := Dial(fam, "", masterAddr)
 	if err != nil {
-		log.Exit("dialing:", err)
+		log.Fatal("dialing:", err)
 	}
 
 	/* vitalData -- what we're doing here is assembling information for our parent. 
@@ -106,7 +106,7 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.BytesToTransfer)
 	Dprint(2, "ForkRelay: copy wrote ", n)
 	if err != nil {
-		//log.Exit("ForkRelay: io.Copyn write error: ", err)
+		//log.Fatal("ForkRelay: io.Copyn write error: ", err)
 	}
 	Dprint(2, "ForkRelay: end")
 }
@@ -125,7 +125,7 @@ func startRelay() *exec.Cmd {
 	// Argv[0] will not always be ./gproc ...
 	p, err := exec.Run(os.Args[0], argv, nilEnv, "", exec.Pipe, exec.Pipe, exec.PassThrough)
 	if err != nil {
-		log.Exit("startRelay: run: ", err)
+		log.Fatal("startRelay: run: ", err)
 	}
 	Dprintf(2, "startRelay: forked %d\n", p.Pid)
 	go WaitAllChildren()

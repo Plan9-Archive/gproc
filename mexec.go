@@ -24,7 +24,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	/* make sure there is someone to talk to, and get the vital data */
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
-		log.Exit("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
+		log.Fatal("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
 	}
 	r := NewRpcClientServer(client)
 
@@ -32,10 +32,11 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	var vitalData vitalData
 	r.Recv("vitalData", &vitalData)
 	pv := newPackVisitor()
+	cwd, _ := os.Getwd()
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
 		for _, f := range files {
-			path.Walk(f, pv, nil)
+			path.Walk(cwd + f, pv, nil)
 		}
 	}
 	rawFiles, _ := ldd.Ldd(cmd[0], *root, *libs)
@@ -79,10 +80,9 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	ioProxyListenAddr := vitalData.HostAddr + ":" + ioProxyPort
 	workerChan, l, err := ioProxy(fam, ioProxyListenAddr)
 	if err != nil {
-		log.Exit("startExecution: ioproxy: ", err)
+		log.Fatal("startExecution: ioproxy: ", err)
 	}
 
-	cwd, _ := os.Getwd()
 	req := StartReq{
 		Command:         "e",
 		Lfam:            l.Addr().Network(),
@@ -127,7 +127,7 @@ func writeOutFiles(r *RpcClientServer, root string, cmds []*cmdToExec) {
 		Dprint(2, "writeOutFiles: wrote ", n)
 		f.Close()
 		if err != nil {
-			log.Exit("writeOutFiles: copyn: ", err)
+			log.Fatal("writeOutFiles: copyn: ", err)
 		}
 	}
 	Dprint(2, "writeOutFiles: finished")
@@ -219,7 +219,7 @@ func resolveLink(filePath string) string {
 	}
 	Dprint(4, "VisitFile: read link ", filePath, "->", linkDir+linkFile)
 	if err != nil {
-		log.Exit("VisitFile: readlink: ", err)
+		log.Fatal("VisitFile: readlink: ", err)
 	}
 	return path.Join(linkDir, linkFile)
 }
