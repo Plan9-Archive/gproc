@@ -13,7 +13,6 @@ package main
 
 import (
 	"log"
-	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -33,15 +32,7 @@ func init() {
 /* convention: kf nodes are named "kn" */
 func (s *kf) Init(role string) {
 	if *parent == "" {
-		hostname, err := os.Hostname()
-		if err != nil {
-			log.Panic("No host name!")
-		}
-		_, addrs, err := net.LookupHost(hostname)
-		if err != nil {
-			log.Panic("Can not look up " + hostname)
-		}
-		*parent = addrs[0]
+		*parent = "10.1.18.10"
 	}
 	switch role {
 	case "master":

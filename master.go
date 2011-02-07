@@ -272,5 +272,6 @@ func newStartReq(arg *StartReq) *StartReq {
 		Cmds:            arg.Cmds,
 		BytesToTransfer: arg.BytesToTransfer,
 		PeerGroupSize:   arg.PeerGroupSize,
+		Cwd: arg.Cwd,
 	}
 }

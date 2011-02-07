@@ -83,7 +83,7 @@ func run() {
 	}
 	Env = append(Env, ldLibPath)
 	Dprint(2, "run: Env ", Env)
-	_, err = os.ForkExec(execpath, req.Args, Env, pathbase, f)
+	_, err = os.ForkExec(execpath, req.Args, Env, pathbase + "/" + req.Cwd, f)
 
 	if err != nil {
 		log.Fatal("run: ", err)

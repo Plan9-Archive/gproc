@@ -36,7 +36,11 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
 		for _, f := range files {
-			path.Walk(cwd + f, pv, nil)
+			rootedpath := f
+			if f[0] != '/' {
+				rootedpath = cwd + "/"  + f
+			} 
+			path.Walk(rootedpath, pv, nil)
 		}
 	}
 	rawFiles, _ := ldd.Ldd(cmd[0], *root, *libs)
