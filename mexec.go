@@ -33,6 +33,8 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	r.Recv("vitalData", &vitalData)
 	pv := newPackVisitor()
 	cwd, _ := os.Getwd()
+	/* make sure our cwd ends up in the list of things to take along ...  but only take the dir*/
+	path.Walk(cwd + "/.", pv, nil);
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
 		for _, f := range files {
@@ -174,7 +176,12 @@ func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
 	Dprint(4, "VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
 	p.cmds = append(p.cmds, c)
 	p.alreadyVisited[filePath] = true
-
+	/* to make it possible to drag directories along, without dragging files along, we adopt that convention that 
+	 * if the user ends a dir with /., then we won't recurse
+	 */
+	if strings.HasSuffix(filePath, "/.") {
+		return false
+	}
 	return true
 }
 
