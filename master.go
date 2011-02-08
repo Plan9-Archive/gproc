@@ -56,7 +56,7 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
 	// get credentials later
 	switch {
-	case *peerGroupSize == 0:
+	case sendReq.PeerGroupSize == 0:
 		availableSlaves := slaves.ServIntersect(slaveNodes[0].Nodes)
 		Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves, " subnodes ", slaveNodes[0].Subnodes)
 
@@ -72,7 +72,7 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 
 		sendReq.Nodes = slaveNodes[0].Subnodes
 		for len(availableSlaves) > 0 {
-			numWorkers := *peerGroupSize
+			numWorkers := sendReq.PeerGroupSize
 			if numWorkers > len(availableSlaves) {
 				numWorkers = len(availableSlaves)
 			}
