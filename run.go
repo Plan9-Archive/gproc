@@ -95,7 +95,7 @@ func run() {
 		if err != nil {
 			log.Fatalf("run: ioproxy: ", err)
 		}
-		workerChan, l, err = netwaiter(defaultFam, loc.Ip()+":0", len(req.Peers)+numOtherNodes, parentConn)
+		workerChan, l, err = ioProxy(defaultFam, loc.Ip()+":0", parentConn)
 		if err != nil {
 			log.Fatalf("run: ioproxy: ", err)
 		}
@@ -109,6 +109,7 @@ func run() {
 		switch {
 		default:
 			for _, p := range req.Peers {
+				numWorkers += 2
 				go func(w chan int) {
 					cacheRelayFilesAndDelegateExec(&req, *binRoot, p)
 					w <- 1
@@ -120,7 +121,7 @@ func run() {
 			server := ""
 			server, larg.Peers = larg.Peers[0], larg.Peers[1:]
 			Dprint(2, "run: chain to ", server, " chain workers: ", larg.Peers)
-			numWorkers = 1
+			numWorkers = 2
 			workerChan = make(chan int, numWorkers)
 			go func(w chan int) {
 				cacheRelayFilesAndDelegateExec(larg, *binRoot, server)
@@ -128,7 +129,6 @@ func run() {
 			}(workerChan)
 		}
 	}
-
 	/* note: sendCommands needs to be refactored, then we can consider using
 	 * the bits. Which is true of this whole package, but that's life. Need a go func 
 	 * here so as not to hang on hung nodes
@@ -150,10 +150,13 @@ func run() {
 	}
 
 	WaitAllChildren()
+	Dprint(2, "All Children done, ", numWorkers, " workers left")
 	for numWorkers > 0 {
-		<-workerChan
+		worker := <-workerChan
+		Dprint(2, worker, " returned, ", numWorkers, " workers left")
 		numWorkers--
 	}
+	Dprint(2, "Done")
 	os.Exit(0)
 }
 

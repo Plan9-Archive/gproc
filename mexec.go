@@ -84,7 +84,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	}
 	Dprint(4, "startExecution: libList ", libList)
 	ioProxyListenAddr := vitalData.HostAddr + ":" + ioProxyPort
-	workerChan, l, err := ioProxy(fam, ioProxyListenAddr)
+	workerChan, l, err := ioProxy(fam, ioProxyListenAddr, os.Stdout)
 	if err != nil {
 		log.Fatal("startExecution: ioproxy: ", err)
 	}

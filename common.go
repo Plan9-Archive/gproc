@@ -354,7 +354,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	return nil
 }
 
-func ioProxy(fam, server string) (workerChan chan int, l Listener, err os.Error) {
+func ioProxy(fam, server string, dest io.Writer) (workerChan chan int, l Listener, err os.Error) {
 	workerChan = make(chan int, 0)
 	l, err = Listen(fam, server)
 	if err != nil {
@@ -362,7 +362,7 @@ func ioProxy(fam, server string) (workerChan chan int, l Listener, err os.Error)
 		return
 	}
 	go func() {
-		for {
+		for whichWorker := 7090;;whichWorker++{
 			conn, err := l.Accept()
 			Dprint(2, "ioProxy: connected by ", conn.RemoteAddr())
 
@@ -370,16 +370,16 @@ func ioProxy(fam, server string) (workerChan chan int, l Listener, err os.Error)
 				Dprint(2, "ioProxy: accept:", err)
 				continue
 			}
-			go func(conn net.Conn) {
+			go func(id int, conn net.Conn) {
 				Dprint(2, "ioProxy: start reading")
-				n, err := io.Copy(os.Stdout, conn)
-				workerChan <- 1
+				n, err := io.Copy(dest, conn)
+				workerChan <- whichWorker
 				Dprint(2, "ioProxy: read ", n)
 				if err != nil {
 					log.Fatal("ioProxy: ", err)
 				}
 				Dprint(2, "ioProxy: end")
-			}(conn)
+			}(whichWorker, conn)
 		}
 	}()
 	return

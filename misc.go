@@ -10,9 +10,6 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net"
 	"os"
 	"bitbucket.org/npe/ldd"
 )
@@ -32,47 +29,6 @@ func buildcmds(file, root, libs string) []*cmdToExec {
 		cmds[i].Fi = fi
 	}
 	return cmds
-}
-
-func netwaiter(fam, server string, numWorkers int, c net.Conn) (chan int, Listener, os.Error) {
-	workerChan := make(chan int, numWorkers)
-	l, err := Listen(fam, server)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Listen: %s\n", err)
-		return nil, l, err
-	}
-
-	go func() {
-		for ; numWorkers > 0; numWorkers-- {
-			conn, err := l.Accept()
-			if err != nil {
-				log.Printf("%s\n", err)
-				continue
-			}
-			go netrelay(conn, workerChan, c)
-		}
-	}()
-	return workerChan, l, nil
-}
-
-func netrelay(c net.Conn, workerChan chan int, client net.Conn) {
-	data := make([]byte, 1024)
-	for {
-		n, _ := c.Read(data)
-		if n <= 0 {
-			break
-		}
-		amt, err := client.Write(data)
-		if amt <= 0 {
-			log.Printf("Write failed: amt %d, err %v\n", amt, err)
-			break
-		}
-		if err != nil {
-			log.Printf("Write failed: %v\n", err)
-			break
-		}
-	}
-	workerChan <- 1
 }
 
 func readitin(s, root string) ([]byte, os.FileInfo, os.Error) {
