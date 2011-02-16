@@ -127,7 +127,7 @@ func startRelay() *exec.Cmd {
 	if err != nil {
 		log.Fatal("startRelay: run: ", err)
 	}
-	Dprintf(2, "startRelay: forked %d\n", p.Pid)
+	Dprintf(2, "startRelay: forked %v\n", p)
 	go WaitAllChildren()
 	return p
 }
