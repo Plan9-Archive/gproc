@@ -16,6 +16,7 @@ import (
 	"bitbucket.org/npe/ldd"
 	"io"
 	"path"
+	"path/filepath"
 	"fmt"
 )
 
@@ -34,7 +35,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	pv := newPackVisitor()
 	cwd, _ := os.Getwd()
 	/* make sure our cwd ends up in the list of things to take along ...  but only take the dir*/
-	path.Walk(cwd + "/.", pv, nil);
+	filepath.Walk(cwd + "/.", pv, nil);
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
 		for _, f := range files {
@@ -42,7 +43,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 			if f[0] != '/' {
 				rootedpath = cwd + "/"  + f
 			} 
-			path.Walk(rootedpath, pv, nil)
+			filepath.Walk(rootedpath, pv, nil)
 		}
 	}
 	rawFiles, _ := ldd.Ldd(cmd[0], *root, *libs)
@@ -63,7 +64,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 				continue
 			}
 			Dprint(4, "startExecution: not local walking '", s, "' full path is '", *root+s, "'")
-			path.Walk(*root+s, pv, nil)
+			filepath.Walk(*root+s, pv, nil)
 			Dprint(4, "finishedFiles is ", finishedFiles)
 		}
 	}
@@ -212,7 +213,7 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 		p.bytesToTransfer += f.Size
 	case f.IsSymlink():
 		c.FullPath = resolveLink(filePath)
-		path.Walk(c.FullPath, p, nil)
+		filepath.Walk(c.FullPath, p, nil)
 	}
 	p.alreadyVisited[filePath] = true
 }
