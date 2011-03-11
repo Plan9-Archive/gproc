@@ -2,7 +2,7 @@
 for i in `seq $1 $2` 
 do
 echo $i
-ssh -q root@kn$i  rm gproc_linux_386 &
+ssh -o StrictHostKeyChecking=no -q root@kn$i  rm gproc_linux_386 &
 done
 wait
 

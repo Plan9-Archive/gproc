@@ -24,7 +24,7 @@ var (
 	lowNode    = flag.Int("l", 1, "Lowest node number")
 	highNode   = flag.Int("h", 40, "Highest node number")
 	debugLevel = flag.Int("d", 0, "Debug level")
-	locale = flag.String("locale", "kf", "Locale")
+	locale = flag.String("locale", "kane", "Locale")
 	parent = flag.String("parent", "10.1.254.254", "Parent")
 )
 

@@ -32,7 +32,7 @@ func init() {
 /* convention: kf nodes are named "kn" */
 func (s *kf) Init(role string) {
 	if *parent == "" {
-		*parent = "10.1.18.10"
+		*parent = "10.1.254.254"
 	}
 	switch role {
 	case "master":
@@ -53,7 +53,8 @@ func (s *kf) Init(role string) {
 			log.Panic("No host name!")
 		}
 		which, _ := strconv.Atoi(hostname[2:])
-		thirdOctet := 30 + (which - 1) /40
+		thirdOctet := 30 + (which - 1) /240
+		//log.Printf("thirdOctet = %d", thirdOctet)
 		s.parentAddr = *parent + ":6666"
 		s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(which)
 		s.addr = s.ip + ":" + cmdPort

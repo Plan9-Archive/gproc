@@ -57,7 +57,7 @@ func (s *kane) Init(role string) {
 		 */
 		hostname, _ := os.Hostname()
 		which, _ := strconv.Atoi(hostname[2:])
-		thirdOctet := 30 + (which - 1) /40
+		thirdOctet := 30 + (which - 1) /240
 		switch {
 		case which%40 == 0:
 			s.parentAddr = *parent + ":6666"
