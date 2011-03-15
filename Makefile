@@ -50,14 +50,14 @@ startstrongbox: startstrongbox.go
 	bash -c printenv
 
 startkf:	startkf.go
-	8g startkf.go
-	8l -o startkf startkf.8
-	rm startkf.8
+	 startkf.go
+	$(LD) -o startkf startkf.$(O)
+	rm startkf.$(O)
 
 startkane:	startkane.go
-	8g startkane.go
-	8l -o startkane startkane.8
-	rm startkane.8
+	$(GC) startkane.go
+	$(LD) -o startkane startkane.$(O)
+	rm startkane.$(O)
 
 testlocal: $(TARG)
 	rm -f /tmp/g && ./gproc -debug=8 master /tmp/g &
