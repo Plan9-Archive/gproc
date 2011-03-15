@@ -29,6 +29,8 @@ GOFILES=\
 
 include $(GOROOT)/src/Make.cmd
 
+all:	$(TARG) startkf startkane
+
 testwork: $(TARG)
 	./startgproc.sh -d10 -r
 
@@ -46,7 +48,16 @@ smoketest: $(TARG)
 
 startstrongbox: startstrongbox.go
 	bash -c printenv
-	
+
+startkf:	startkf.go
+	8g startkf.go
+	8l -o startkf startkf.8
+	rm startkf.8
+
+startkane:	startkane.go
+	8g startkane.go
+	8l -o startkane startkane.8
+	rm startkane.8
 
 testlocal: $(TARG)
 	rm -f /tmp/g && ./gproc -debug=8 master /tmp/g &

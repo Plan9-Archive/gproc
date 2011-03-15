@@ -109,7 +109,7 @@ type StartReq struct {
 	 * this will result in a chain of delegations. 
 	 */
 	PeerGroupSize int
-	Cwd	string
+	Cwd           string
 }
 
 func (s *StartReq) String() string {
@@ -185,7 +185,7 @@ func SendPrint(funcname, to interface{}, arg interface{}) {
 func RecvPrint(funcname, from interface{}, arg interface{}) {
 	/* works not well. 
 	Dprintf(1, "%15s recv %25s: %s\n", funcname, IoString(from, Recv), arg)
-	 */
+	*/
 	Dprintf(1, "%v recv %v: %v\n", funcname, from, arg)
 }
 
@@ -342,14 +342,16 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	Dprintf(2, "connected to %v\n", client)
 	rpc := NewRpcClientServer(client)
 	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
-	rpc.Send("cacheRelayFilesAndDelegateExec", larg)
-	Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.BytesToTransfer, arg.LocalBin)
-	if arg.LocalBin {
-		Dprintf(2, "cmds %v\n", arg.Cmds)
-	}
-	writeOutFiles(rpc, root, arg.Cmds)
-	Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
-	/* at this point it is out of our hands */
+	go func() {
+		rpc.Send("cacheRelayFilesAndDelegateExec", larg)
+		Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.BytesToTransfer, arg.LocalBin)
+		if arg.LocalBin {
+			Dprintf(2, "cmds %v\n", arg.Cmds)
+		}
+		writeOutFiles(rpc, root, arg.Cmds)
+		Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
+		/* at this point it is out of our hands */
+	}()
 
 	return nil
 }
@@ -362,7 +364,7 @@ func ioProxy(fam, server string, dest io.Writer) (workerChan chan int, l Listene
 		return
 	}
 	go func() {
-		for whichWorker := 7090;;whichWorker++{
+		for whichWorker := 7090; ; whichWorker++ {
 			conn, err := l.Accept()
 			Dprint(2, "ioProxy: connected by ", conn.RemoteAddr())
 

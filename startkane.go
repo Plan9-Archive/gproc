@@ -20,24 +20,29 @@ func usage() {
 	os.Exit(2)
 }
 
+const (
+	BLOCKSIZE int = 20
+)
+
 var (
 	lowNode    = flag.Int("l", 1, "Lowest node number")
 	highNode   = flag.Int("h", 40, "Highest node number")
 	debugLevel = flag.Int("d", 0, "Debug level")
-	locale = flag.String("locale", "kane", "Locale")
-	parent = flag.String("parent", "10.1.254.254", "Parent")
 )
 
-func runlevel(lowNode, highNode int) {
+func runlevel(lowNode, highNode int, mod bool) {
 	reap := make(chan *os.Waitmsg, 0)
 	numspawn := 0
 	for i := lowNode; i <= highNode; i++ {
+		fmt.Printf("Check %d; mode %v; mod %v\n", i, (i%BLOCKSIZE == 0), mod)
+		if (i%BLOCKSIZE == 0) != mod {
+			continue
+		}
 		numspawn++
 		go func(anode int) {
 			node := fmt.Sprintf("root@kn%d", anode)
 
-			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_386", fmt.Sprintf("-locale=%s", *locale), fmt.Sprintf("-parent=%s", *parent), fmt.Sprintf("-debug=%d", *debugLevel), "s"}
-			fmt.Println(Args)
+			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_386", "-locale=kane", fmt.Sprintf("-debug=%d", *debugLevel), "s"}
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)
 			pid, err := os.StartProcess("/usr/bin/ssh", Args, os.Environ(), "", f)
@@ -58,6 +63,8 @@ func runlevel(lowNode, highNode int) {
 func main() {
 	flag.Usage = usage
 	flag.Parse()
+	/* use 1 for the top level. Use anything else for the next level down */
+	level1 := flag.Args()[0] == "1"
 	fmt.Printf("Start nodes %d to %d\n", *lowNode, *highNode)
-	runlevel(*lowNode, *highNode)
+	runlevel(*lowNode, *highNode, level1)
 }

@@ -10,13 +10,14 @@
 package main
 
 import (
-	"log"
-	"net"
 	"os"
 	"strconv"
 	"strings"
 )
 
+const (
+	BLOCKSIZE int = 20
+)
 
 type kane struct {
 	parentAddr string
@@ -31,15 +32,7 @@ func init() {
 /* convention: kane nodes are named "kn" */
 func (s *kane) Init(role string) {
 	if *parent == "" {
-		hostname, err := os.Hostname()
-		if err != nil {
-			log.Panic("No host name!")
-		}
-		_, addrs, err := net.LookupHost(hostname)
-		if err != nil {
-			log.Panic("Can not look up " + hostname)
-		}
-		*parent = addrs[0]
+		*parent = "10.1.254.254"
 	}
 	switch role {
 	case "master":
@@ -58,14 +51,23 @@ func (s *kane) Init(role string) {
 		hostname, _ := os.Hostname()
 		which, _ := strconv.Atoi(hostname[2:])
 		thirdOctet := 30 + (which - 1) /240
+
+		/* Our KANE IPs go 10.1.30.1-240, .31.1-240, .32.1-40 */
+		lastOctet := which
+		if which / 241 > 0 {
+			lastOctet = (which % 241) + 1
+		}
+
 		switch {
-		case which%40 == 0:
+		case which%BLOCKSIZE == 0:
 			s.parentAddr = *parent + ":6666"
 		default:
-			rackMaster := ((which + 39)/40) * 40
+			//rackMaster := ((which + BLOCKSIZE-1)/BLOCKSIZE) * BLOCKSIZE
+			rackMaster := ((lastOctet + BLOCKSIZE-1)/BLOCKSIZE) * BLOCKSIZE
 			s.parentAddr = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(int(rackMaster)) + ":6666"
 		}
-		s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(which)
+		//s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(which)
+		s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(lastOctet)
 		s.addr = s.ip + ":" + cmdPort
 	case "client":
 	}
