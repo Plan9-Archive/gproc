@@ -50,7 +50,7 @@ startstrongbox: startstrongbox.go
 	bash -c printenv
 
 startkf:	startkf.go
-	 startkf.go
+	$(GC) startkf.go
 	$(LD) -o startkf startkf.$(O)
 	rm startkf.$(O)
 
