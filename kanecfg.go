@@ -36,15 +36,13 @@ func (s *kane) Init(role string) {
 	}
 	switch role {
 	case "master":
-		cmdPort = "6666"
 		/* we hardwire this because the LocalAddr of a 
 		 * connected socket has an address of 0.0.0.0 !!
 		 */
 		s.ip = *parent
-		s.addr = s.ip + ":" + cmdPort
+		s.addr = s.ip + ":" + *cmdPort
 		s.parentAddr = ""
 	case "slave", "run":
-		cmdPort = "6666"
 		/* on kane there's only ever one.
 		 * pick out the lowest-level octet.
 		 */
@@ -60,15 +58,15 @@ func (s *kane) Init(role string) {
 
 		switch {
 		case which%BLOCKSIZE == 0:
-			s.parentAddr = *parent + ":6666"
+			s.parentAddr = *parent + ":" + *cmdPort
 		default:
 			//rackMaster := ((which + BLOCKSIZE-1)/BLOCKSIZE) * BLOCKSIZE
 			rackMaster := ((lastOctet + BLOCKSIZE-1)/BLOCKSIZE) * BLOCKSIZE
-			s.parentAddr = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(int(rackMaster)) + ":6666"
+			s.parentAddr = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(int(rackMaster)) + ":" + *cmdPort
 		}
 		//s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(which)
 		s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(lastOctet)
-		s.addr = s.ip + ":" + cmdPort
+		s.addr = s.ip + ":" + *cmdPort
 	case "client":
 	}
 }

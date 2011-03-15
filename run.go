@@ -90,6 +90,8 @@ func run() {
 		n.Write([]uint8(err.String()))
 	}
 
+	log.Printf("peers = %s", req.Peers)
+
 	if req.Peers != nil || numOtherNodes > 0 {
 		parentConn, err := net.Dial(req.Lfam, "", req.Lserver)
 		if err != nil {

@@ -36,15 +36,13 @@ func (s *kf) Init(role string) {
 	}
 	switch role {
 	case "master":
-		cmdPort = "6666"
 		/* we hardwire this because the LocalAddr of a 
 		 * connected socket has an address of 0.0.0.0 !!
 		 */
 		s.ip = *parent
-		s.addr = s.ip + ":" + cmdPort
+		s.addr = s.ip + ":" + *cmdPort
 		s.parentAddr = ""
 	case "slave", "run":
-		cmdPort = "6666"
 		/* on kf there's only ever one.
 		 * pick out the lowest-level octet.
 		 */
@@ -55,9 +53,9 @@ func (s *kf) Init(role string) {
 		which, _ := strconv.Atoi(hostname[2:])
 		thirdOctet := 30 + (which - 1) /240
 		//log.Printf("thirdOctet = %d", thirdOctet)
-		s.parentAddr = *parent + ":6666"
+		s.parentAddr = *parent + ":" + *cmdPort
 		s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(which)
-		s.addr = s.ip + ":" + cmdPort
+		s.addr = s.ip + ":" + *cmdPort
 	case "client":
 	}
 }

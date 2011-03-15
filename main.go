@@ -60,12 +60,13 @@ var (
 	loc              Locale
 	ioProxyPort      = flag.String("iopp", "0", "io proxy port")
 	parent           = flag.String("parent", "", "parent for some configurations")
+	cmdPort		= flag.String("cmdport", "6666", "command port")
 	/* these are not switches */
 	role = "client"
 	/* these are determined by your local, and these values are "reasonable defaults" */
 	/* they are intended to be modified as needed by localInit */
 	defaultFam = "tcp4" /* arguably you might make this an option but it's kind of useless to do so */
-	cmdPort    = "0"
+	/* cmdPort    = "0" */
 	/* covering for issues in Go libraries */
 	/* net.LookUpHost fails if there is no DNS -- an incorrect behavior. On some locales (strongbox)
 	* you can load this up with cn hostnames. On Jaguar, may be impractical. 
