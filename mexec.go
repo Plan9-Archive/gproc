@@ -212,13 +212,18 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	case f.IsRegular():
 		p.bytesToTransfer += f.Size
 	case f.IsSymlink():
-		c.FullPath = resolveLink(filePath)
-		filepath.Walk(c.FullPath, p, nil)
+	     /* we have to read the link but also get a path the file for 
+	      * further walking. We think. 
+	      */
+	      var walkPath string
+		c.FullPath, walkPath = resolveLink(filePath)
+		Dprint(4, "c.FullPath ", c.FullPath, " filePath ", filePath)
+		filepath.Walk(walkPath, p, nil)
 	}
 	p.alreadyVisited[filePath] = true
 }
 
-func resolveLink(filePath string) string {
+func resolveLink(filePath string) (linkPath, fullPath string) {
 	// BUG: what about relative paths in the link?
 	linkPath, err := os.Readlink(filePath)
 	linkDir, linkFile := path.Split(linkPath)
@@ -233,5 +238,6 @@ func resolveLink(filePath string) string {
 	if err != nil {
 		log.Fatal("VisitFile: readlink: ", err)
 	}
-	return path.Join(linkDir, linkFile)
+	fullPath = path.Join(linkDir, linkFile)
+	return
 }
