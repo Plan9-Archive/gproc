@@ -1,17 +1,47 @@
-Run the master, then the slaves to join the master, then the commands.
+Gproc provides a system for running programs across clusters. A command and a set of nodes upon which to run it are specified at the command line; the binary, any required libraries, and any additional files specified at the command line are packaged up and sent out to the selected nodes for execution. The outputs are then forwarded back to the control node.
 
-Master: 
-gproc m <unix-domain-socket>, e.g. gproc m /tmp/g
+The structure of the cluster is defined in a locale, for example "kane" or "kf", defined in the files "kanecfg.go" and "kfcfg.go", respectively.
 
-Note the socket number: 0.0.0.0:42092
+"kf" describes the KANE cluster as a flat network; when working with many nodes, this will be slow.
 
-start  slave: 
-It has to run as root due to the private name space setup. 
-sudo ./gproc s  tcp4 127.0.0.1:42092
+"kane" describes KANE as a tree; every 20th node is set as a rack master. The front-end transfers files to the rack masters, which then serve the 19 nodes under them.
 
-Then run a command: 
-./gproc  -f /etc/hosts,/tmp -localbin e  /tmp/x tcp 0.0.0.0:0 '1' /bin/ls -ld
+** Node specification syntax **
+<nodes> ::= <nodeset> | <nodeset> "/" <nodeset> | <nodeset> "," <nodes>
+<nodeset> ::= <node> | <node> "-" <node>
+<node> ::= "." | <number>
 
+Examples:
 
-and it should all work.
+	1-80	# Specifies nodes 1 through 80, inclusive
+	.	# Specifies all available nodes (flat network) or all first-level nodes (tree)
+	1/.	# Specifies all second-level nodes under the first level-1 node
+		# In the "kane" config, this would select the first 20 nodes
+	./.	# All nodes, all levels.
 
+** KANE config (static tree) **
+For the best control, you'll want 4 shells open to the front-end node, cesspool.
+
+Copy the gproc binary out to the nodes you'll be using:
+sh copytokane.sh 1 80
+
+Run the master:
+./gproc_linux_386 -locale=kane -debug=3 m 
+(This command creates a socket in /tmp/g. If you wish to re-run the master, remove /tmp/g before running)
+
+Start the level 1 nodes:
+./startkane -l 1 -h 80 1
+
+Start the second level nodes:
+./startkane -l 1 -h 80 2
+
+Run your command:
+./gproc_linux_386 e ./. /bin/date
+
+When you're done, Ctrl-C the master process; all the slaves should then automatically exit.
+
+** KF config (flat network) **
+sh copytokane 1 80
+./gproc_linux_386 -locale=kf -debug=3 m
+./startkf -l 1 -h 80
+./gproc_linux_386 e . /bin/date
