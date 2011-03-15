@@ -393,6 +393,14 @@ type nodeExecList struct {
 }
 
 /* might be fun to do this as a goroutine feeding a chan of nodeExecList */
+/* precedence: comma lowest, then /, then -. I hope. 
+ * this makes semi-sensible stuff work. 
+ * 1-3/1-3 is all of nodes 1-3 on nodes 1-3. If you want, say, node 1, 2, 
+ * and 3/1-3, then write it as 1-2,3/1-3. This form is oriented to what we
+ * learned in practice with bproc and xcpu. BTW one thing we learned
+ * the really hard way: few people understand regular expressions. So we
+ * don't use them. 
+ */
 func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 	/* bust it apart by , */
 	ranges := strings.Split(l, ",", -1)
@@ -406,8 +414,10 @@ func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 			ne.Subnodes = l[1]
 		}
 		if len(be) == 1 {
+		   	   /* if it is '.' then it expands */
 			ne.Nodes[0] = be[0]
 		} else {
+			/* BOGUS! check for bad range here. */
 			beg, _ := strconv.Atoi(be[0])
 			end, _ := strconv.Atoi(be[1])
 			for i := beg; i <= end; i++ {
