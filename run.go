@@ -90,7 +90,7 @@ func run() {
 		n.Write([]uint8(err.String()))
 	}
 
-	log.Printf("peers = %s", req.Peers)
+	Dprint(4,"peers = %s", req.Peers)
 
 	if req.Peers != nil || numOtherNodes > 0 {
 		parentConn, err := net.Dial(req.Lfam, "", req.Lserver)
@@ -124,7 +124,6 @@ func run() {
 			server, larg.Peers = larg.Peers[0], larg.Peers[1:]
 			Dprint(2, "run: chain to ", server, " chain workers: ", larg.Peers)
 			numWorkers = 2
-			workerChan = make(chan int, numWorkers)
 			go func(w chan int) {
 				cacheRelayFilesAndDelegateExec(larg, *binRoot, server)
 				w <- 1

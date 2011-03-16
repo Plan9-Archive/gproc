@@ -78,9 +78,12 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 			}
 			// the first available node is the server, the rest of the reservation are peers
 			sendReq.Peers = availableSlaves[1:numWorkers]
+			numnodes++
+			if len(sendReq.Peers) > 0 {
+				numnodes++
+			}
 			na := *sendReq // copy argument
 			cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
-			numnodes += numWorkers + connsperNode
 			availableSlaves = availableSlaves[numWorkers:]
 		}
 	}

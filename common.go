@@ -373,9 +373,9 @@ func ioProxy(fam, server string, dest io.Writer) (workerChan chan int, l Listene
 				continue
 			}
 			go func(id int, conn net.Conn) {
-				Dprint(2, "ioProxy: start reading")
+				Dprint(2, "ioProxy: start reading ", id)
 				n, err := io.Copy(dest, conn)
-				workerChan <- whichWorker
+				workerChan <- id
 				Dprint(2, "ioProxy: read ", n)
 				if err != nil {
 					log.Fatal("ioProxy: ", err)

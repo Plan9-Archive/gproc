@@ -87,11 +87,12 @@ func (s *kane) SlaveIdFromVitalData(vd *vitalData) (id string) {
 	addrs := strings.Split(vd.ServerAddr, ":", 2)
 	octets := strings.Split(addrs[0], ".", 4)
 	which, _ := strconv.Atoi(octets[3])
+	thirdOctet, _ := strconv.Atoi(octets[2])
 	/* get the lowest octet, take it mod 40 */
-	if which%40 == 0 {
-		id = strconv.Itoa(which / 40)
+	if which%BLOCKSIZE == 0 {
+		id = strconv.Itoa(which / BLOCKSIZE + (thirdOctet - 30)*(240/BLOCKSIZE))
 	} else {
-		id = strconv.Itoa(which % 40)
+		id = strconv.Itoa(which % BLOCKSIZE)
 	}
 	return
 }
