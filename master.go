@@ -32,7 +32,7 @@ func startMaster(domainSock string, loc Locale) {
 	registerSlaves(loc)
 }
 
-func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
+func sendCommandsToANode(r *RpcClientServer, sendReq *StartReq, aNode nodeExecList) (numnodes int) {
 	/* for efficiency, on the slave node, if there is one proc, 
 	 * it connects directly to the parent IO forwarder. 
 	 * If the slave node is tasking other nodes, it will also spawn
@@ -45,32 +45,26 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 	 * This is kludgy, but again, it's not clear what the Best Choice is.
 	 */
 	connsperNode := 1
-	slaveNodes, err := parseNodeList(sendReq.Nodes)
-	if len(slaveNodes[0].Subnodes) > 0 {
+	if len(aNode.Subnodes) > 0 {
 		connsperNode = 2
 	}
-	if err != nil {
-		r.Send("receiveCmds", Resp{NumNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
-		return
-	}
-	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
 	// get credentials later
 	switch {
 	case sendReq.PeerGroupSize == 0:
-		availableSlaves := slaves.ServIntersect(slaveNodes[0].Nodes)
-		Dprint(2, "receiveCmds: slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves, " subnodes ", slaveNodes[0].Subnodes)
-
-		sendReq.Nodes = slaveNodes[0].Subnodes
+		availableSlaves := slaves.ServIntersect(aNode.Nodes)
+		Dprint(2, "receiveCmds: slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves, " subnodes ", aNode.Subnodes)
+		
+		sendReq.Nodes = aNode.Subnodes
 		for _, s := range availableSlaves {
 			if cacheRelayFilesAndDelegateExec(sendReq, "", s) == nil {
 				numnodes += connsperNode
 			}
 		}
 	default:
-		availableSlaves := slaves.ServIntersect(slaveNodes[0].Nodes)
-		Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", slaveNodes, " availableSlaves: ", availableSlaves)
+		availableSlaves := slaves.ServIntersect(aNode.Nodes)
+		Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves)
 
-		sendReq.Nodes = slaveNodes[0].Subnodes
+		sendReq.Nodes = aNode.Subnodes
 		for len(availableSlaves) > 0 {
 			numWorkers := sendReq.PeerGroupSize
 			if numWorkers > len(availableSlaves) {
@@ -86,6 +80,22 @@ func sendCommands(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 			cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
 			availableSlaves = availableSlaves[numWorkers:]
 		}
+	}
+	return
+}
+
+func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
+	slaveNodes, err := parseNodeList(sendReq.Nodes)
+	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
+	if err != nil {
+		r.Send("receiveCmds", Resp{NumNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
+		return
+	}
+	for _, aNode := range slaveNodes {
+		/* would be nice to spawn these async but we need the 
+		 * nodecount ...
+		 */
+		numnodes += sendCommandsToANode(r, sendReq, aNode)
 	}
 	return
 }
@@ -143,7 +153,7 @@ func receiveCmds(domainSock string) os.Error {
 					if !vitalData.HostReady {
 						return
 					}
-					numnodes := sendCommands(r, &a)
+					numnodes := sendCommandsToNodes(r, &a)
 					r.Send("receiveCmds", Resp{NumNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
 			default:

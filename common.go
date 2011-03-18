@@ -414,7 +414,6 @@ func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 			ne.Subnodes = l[1]
 		}
 		if len(be) == 1 {
-		   	   /* if it is '.' then it expands */
 			ne.Nodes[0] = be[0]
 		} else {
 			/* BOGUS! check for bad range here. */
