@@ -419,6 +419,9 @@ func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 			/* BOGUS! check for bad range here. */
 			beg, _ := strconv.Atoi(be[0])
 			end, _ := strconv.Atoi(be[1])
+			if end < beg {
+				goto BadRange
+			}
 			for i := beg; i <= end; i++ {
 				ne.Nodes = append(ne.Nodes, fmt.Sprintf("%d", i))
 			}

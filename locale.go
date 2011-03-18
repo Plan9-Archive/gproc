@@ -93,7 +93,7 @@ func newLocale(name string) (loc Locale, err os.Error) {
 			return
 		}
 	}
-BadLocale:
+	//BadLocale:
 	// I am leaving this in with a petulant comment. If we're just going to do errno, 
 	// why pretend otherwise? 
 	//err = BadLocaleErr

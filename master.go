@@ -32,7 +32,7 @@ func startMaster(domainSock string, loc Locale) {
 	registerSlaves(loc)
 }
 
-func sendCommandsToANode(r *RpcClientServer, sendReq *StartReq, aNode nodeExecList) (numnodes int) {
+func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList) (numnodes int) {
 	/* for efficiency, on the slave node, if there is one proc, 
 	 * it connects directly to the parent IO forwarder. 
 	 * If the slave node is tasking other nodes, it will also spawn
@@ -95,7 +95,7 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 		/* would be nice to spawn these async but we need the 
 		 * nodecount ...
 		 */
-		numnodes += sendCommandsToANode(r, sendReq, aNode)
+		numnodes += sendCommandsToANode(sendReq, aNode)
 	}
 	return
 }
