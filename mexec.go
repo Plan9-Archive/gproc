@@ -1,10 +1,12 @@
 /*
  * gproc, a Go reimplementation of the LANL version of bproc and the LANL XCPU software. 
  * 
- * This software is released under the GNU Lesser General Public License, version 2, incorporated herein by reference. 
+ * This software is released under the GNU Lesser General Public License,
+ * version 2, incorporated herein by reference. 
  *
- * Copyright (2010) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, 
- * the U.S. Government retains certain rights in this software.
+ * Copyright (2010) Sandia Corporation. Under the terms of Contract 
+ * DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains 
+ * certain rights in this software.
  */
 
 package main
@@ -14,7 +16,6 @@ import (
 	"os"
 	"strings"
 	"bitbucket.org/npe/ldd"
-	"io"
 	"path"
 	"path/filepath"
 	"fmt"
@@ -117,33 +118,11 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	Dprintln(3, "startExecution: finished")
 }
 
-func writeOutFiles(r *RpcClientServer, root string, cmds []*cmdToExec) {
-	for _, c := range cmds {
-		Dprint(2, "writeOutFiles: next cmd")
-		if !c.Fi.IsRegular() {
-			continue
-		}
-		fullpath := root + c.FullPath
-		f, err := os.Open(fullpath, os.O_RDONLY, 0)
-		if err != nil {
-			log.Printf("Open %v failed: %v\n", fullpath, err)
-		}
-		Dprint(2, "writeOutFiles: copying ", c.Fi.Size, " from ", f)
-		// us -> master -> slaves
-		n, err := io.Copyn(r.ReadWriter(), f, c.Fi.Size)
-		Dprint(2, "writeOutFiles: wrote ", n)
-		f.Close()
-		if err != nil {
-			log.Fatal("writeOutFiles: copyn: ", err)
-		}
-	}
-	Dprint(2, "writeOutFiles: finished")
-}
-
-
+/* This doesn't seem to be used anymore
 func isNum(c byte) bool {
 	return '0' <= c && c <= '9'
 }
+*/
 
 var (
 	BadRangeErr = os.NewError("bad range format")
