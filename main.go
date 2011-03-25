@@ -20,10 +20,6 @@ import (
 	"io/ioutil"
 )
 
-const (
-	srvAddr = "/tmp/srvaddr"
-)
-
 type noderange struct {
 	Base int
 	Ip   string
@@ -123,9 +119,6 @@ func main() {
 		loc.Init("init")
 		exceptOK := except(*defaultMasterUDS, flag.Args()[1:])
 		fmt.Print(exceptOK)
-	case "RUN", "run", "R":
-		loc.Init("run")
-		run()
 	default:
 		flag.Usage()
 	}

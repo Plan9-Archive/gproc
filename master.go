@@ -172,6 +172,7 @@ func registerSlaves(loc Locale) os.Error {
 	if err != nil {
 		log.Fatal("listen error:", err)
 	}
+	Dprint(0, "-cmdport=", l.Addr())
 	Dprint(2, l.Addr())
 	err = loc.RegisterServer(l)
 	if err != nil {

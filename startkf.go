@@ -21,13 +21,13 @@ func usage() {
 }
 
 var (
-	lowNode    = flag.Int("l", 1, "Lowest node number")
-	highNode   = flag.Int("h", 40, "Highest node number")
-	debugLevel = flag.Int("d", 0, "Debug level")
-	privateMount = flag.Bool("p", true, "private mounts")	
-	locale = flag.String("locale", "kf", "Locale")
-	parent = flag.String("parent", "10.1.254.254", "Parent")
-	cmdPort = flag.String("cmdport", "6666", "Command port")
+	lowNode      = flag.Int("l", 1, "Lowest node number")
+	highNode     = flag.Int("h", 40, "Highest node number")
+	debugLevel   = flag.Int("d", 0, "Debug level")
+	privateMount = flag.Bool("p", true, "private mounts")
+	locale       = flag.String("locale", "kf", "Locale")
+	parent       = flag.String("parent", "10.1.254.254", "Parent")
+	cmdPort      = flag.String("cmdport", "6666", "Command port")
 )
 
 func runlevel(lowNode, highNode int) {
@@ -42,7 +42,7 @@ func runlevel(lowNode, highNode int) {
 			fmt.Println(Args)
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)
-			pid, err := os.StartProcess("/usr/bin/ssh", Args, os.Environ(), "", f)
+			pid, err := os.StartProcess("/usr/bin/ssh", Args, &os.ProcAttr{Files: f})
 			if err != nil {
 				fmt.Print("Forkexec fails: ", err)
 			}

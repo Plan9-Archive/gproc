@@ -16,6 +16,7 @@ import (
 	"log"
 	"io"
 	"gob"
+	"rog-go.googlecode.com/hg/exp/filemarshal"
 	"strconv"
 	"strings"
 	"syscall"
@@ -196,27 +197,21 @@ var roleFunc func(role string)
 // no, this is stupid.
 
 type RpcClientServer struct {
-	rw io.ReadWriter
-	e  *gob.Encoder
-	d  *gob.Decoder
+	e  filemarshal.Encoder
+	d  filemarshal.Decoder
 }
 
 func NewRpcClientServer(rw io.ReadWriter) *RpcClientServer {
 	return &RpcClientServer{
-		rw: rw,
-		e:  gob.NewEncoder(rw),
-		d:  gob.NewDecoder(rw),
+		e:  filemarshal.NewEncoder(gob.NewEncoder(rw)),
+		d:  filemarshal.NewDecoder(gob.NewDecoder(rw)),
 	}
-}
-
-func (r *RpcClientServer) ReadWriter() io.ReadWriter {
-	return r.rw
 }
 
 var onSendFunc func(funcname string, w io.Writer, arg interface{})
 
 func (r *RpcClientServer) Send(funcname string, arg interface{}) {
-	SendPrint(funcname, r.rw, arg)
+	SendPrint(funcname, r, arg)
 	err := r.e.Encode(arg)
 	if err != nil {
 		log.Fatal(funcname, ": Send: ", err)
@@ -230,20 +225,12 @@ func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
 	if err != nil {
 		log.Fatal(funcname, ": Recv error: ", err)
 	}
-	RecvPrint(funcname, r.rw, arg)
+	RecvPrint(funcname, r, arg)
+	/* maybe some other time 
 	if onRecvFunc != nil {
-		onRecvFunc(funcname, r.rw, arg)
+		onRecvFunc(funcname, r, arg)
 	}
-}
-
-func (r *RpcClientServer) Read(p []byte) (n int, err os.Error) {
-	n, err = r.ReadWriter().Read(p)
-	return
-}
-
-func (r *RpcClientServer) Write(p []byte) (n int, err os.Error) {
-	n, err = r.ReadWriter().Write(p)
-	return
+	*/
 }
 
 
@@ -334,6 +321,18 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	larg := newStartReq(arg)
+	for _, c := range larg.Cmds {
+		Dprint(2, "setupFiles: next cmd")
+		if !c.Fi.IsRegular() {
+			continue
+		}
+		fullpath := root + c.FullPath
+		file, err := os.Open(fullpath, os.O_RDONLY, 0)
+		if err != nil {
+			log.Printf("Open %v failed: %v\n", fullpath, err)
+		}
+		defer file.Close()
+	}
 	client, err := Dial(defaultFam, "", Server)
 	if err != nil {
 		log.Print("dialing:", err)
@@ -348,7 +347,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 		if arg.LocalBin {
 			Dprintf(2, "cmds %v\n", arg.Cmds)
 		}
-		writeOutFiles(rpc, root, arg.Cmds)
+		//writeOutFiles(rpc, root, arg.Cmds)
 		Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
 		/* at this point it is out of our hands */
 	}()
@@ -435,3 +434,33 @@ BadRange:
 	err = BadRangeErr
 	return
 }
+
+func doPrivateMount(pathbase string) {
+	unshare()
+	_ = unmount(*binRoot)
+	syscallerr := privatemount(*binRoot)
+	if syscallerr != 0 {
+		log.Print("Mount failed ", syscallerr)
+		os.Exit(1)
+	}
+}
+
+func fileTcpDial(server string) (*os.File, os.Error) {
+	var laddr net.TCPAddr
+	raddr, err := net.ResolveTCPAddr(server)
+	if err != nil {
+		return nil, err
+	}
+	c, err := net.DialTCP(defaultFam, &laddr, raddr)
+	if err != nil {
+		return nil, err
+	}
+	f, err := c.File()
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+
+	return f, nil
+}
+

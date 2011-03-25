@@ -10,12 +10,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"io"
-	"exec"
 	"strings"
 	"os"
+	"path"
 )
 
 var id string
@@ -52,6 +50,20 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	initSlave(r, vitalData)
 	go registerSlaves(loc)
 	for {
+		/* make sure the directory exists and then do the private name space mount */
+		/* there are enough pathological cases to deal with here that it doesn't hurt to 
+		 * do the mkdir each time. Even though, abusive users can screw us: 
+		 * suppose they run rm -rf /tmp/xproc. Nothing is perfect. 
+		 */
+		os.Mkdir(*root, 0700)
+		if *DoPrivateMount == true {
+			doPrivateMount(*root)
+		}
+		/* don't ever make this 'go slaveProc'. This really needs to be synchronous lest you 
+		 * privatize the name space out from under yourself. It makes some sense: you really 
+		 * want to serialize on receiving the packet, unpacking it, and then forking the kid. 
+		 * Once the child is running you have no further worries. 
+		 */
 		slaveProc(r)
 	}
 }
@@ -67,28 +79,13 @@ func initSlave(r *RpcClientServer, v *vitalData) {
 
 func slaveProc(r *RpcClientServer) {
 	req := &StartReq{}
-	// receives from cacheRelayFilesAndDelegateExec?
 	r.Recv("slaveProc", req)
-	ForkRelay(req, r)
-	/* well, *maybe* we should do this, but we're commenting it out for now ...
-	 * none of the clients look for this message and in the case of a delegation
-	 * we're getting EPIPE
-	 *
-	r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
-	*/
-	Dprintln(2, "slaveProc: ", req, " ends\n")
+	go runLocal(req)
 
 }
 
-func ForkRelay(req *StartReq, rpc *RpcClientServer) {
+func RunChild(req *StartReq) (nsend *nodeExecList){
 	Dprintln(2, "ForkRelay: ", req.Nodes, " fileServer: ", req)
-	p := startRelay()
-	/* relay data to the child */
-	if req.LocalBin {
-		Dprintf(2, "ForkRelay arg.LocalBin %v arg.Cmds %v\n", req.LocalBin, req.Cmds)
-	}
-	rrpc := NewRpcClientServer(p.Stdin)
-	rrpc.Send("ForkRelay", req)
 	/* create the array of strings to send. You can't just send the slaveinfo struct as Go won't like that. 
 	 * You don't have fork
 	 * and you can't do it here as the child will build a private name space. 
@@ -97,37 +94,53 @@ func ForkRelay(req *StartReq, rpc *RpcClientServer) {
 	 * this is almost ready but it won't make it.
 	 */
 	ne, _ := parseNodeList(req.Nodes)
-	nsend := nodeExecList{Subnodes: ne[0].Subnodes}
+	nsend = &nodeExecList{Subnodes: ne[0].Subnodes}
 	nsend.Nodes = slaves.ServIntersect(ne[0].Nodes)
 	Dprint(2, "Parsed node list to ", ne, " and nsend is ", nsend)
-	/* the run code will then have a list of servers and node list to send to them */
-	rrpc.Send("ForkRelay", &nsend)
-	// receives from cacheRelayFilesAndDelegateExec?
-	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.BytesToTransfer)
-	Dprint(2, "ForkRelay: copy wrote ", n)
-	if err != nil {
-		//log.Fatal("ForkRelay: io.Copyn write error: ", err)
-	}
-	Dprint(2, "ForkRelay: end")
+	return nsend
+	/* for now; later this will be a call to cache files etc. etc. */
 }
 
-func startRelay() *exec.Cmd {
-	Dprintf(2, "startRelay:  starting")
-	argv := []string{
-		"gproc",
-		fmt.Sprintf("-debug=%d", *DebugLevel),
-		fmt.Sprintf("-p=%v", *DoPrivateMount),
-		fmt.Sprintf("-locale=%v", *locale),
-		"-prefix=" + id,
-		"R",
+/* given the commands, build the tree they need. The actual
+ * file unpacking is done by file marshall. 
+ * todo: make file marshall do all this stuff.
+ */
+func writeReqTree( c *cmdToExec) (n int64, err os.Error) {
+	outputFile := path.Join(*binRoot, c.Name)
+	fi := c.Fi
+	Dprintf(2, "writeStreamIntoFile: ", outputFile, " ", c)
+	switch {
+	case fi.IsDirectory():
+		Dprint(5, "writeStreamIntoFile: is dir ", fi.Name)
+		err = os.MkdirAll(outputFile, fi.Mode&0777)
+		if err != nil {
+			err = os.Chown(outputFile, fi.Uid, fi.Gid)
+		}
+	case fi.IsSymlink():
+		Dprint(5, "writeStreamIntoFile: is link")
+		// c.Fullpath is the symlink target
+		dir, _ := path.Split(outputFile)
+		_, err = os.Lstat(dir)
+		if err != nil {
+			os.MkdirAll(dir, 0777)
+			err = nil
+		}
+
+		if c.FullPath[0] == '/' {
+			// if the link is absolute we glom on our root prefix
+			c.FullPath = *binRoot + c.FullPath
+		}
+		err = os.Symlink(c.FullPath, outputFile)
+		// kinda a weird bug. When not using provate mounts
+		// and a symlink already exists it has err ="file exists"
+		// but is not == to os.EEXIST.. need to check gocode for actual return
+		// its probably not exported either...
+	case fi.IsRegular():
+		Dprint(5, "writeStreamIntoFile: is regular file")
+	default:
+		return
 	}
-	nilEnv := []string{""}
-	// Argv[0] will not always be ./gproc ...
-	p, err := exec.Run(os.Args[0], argv, nilEnv, "", exec.Pipe, exec.Pipe, exec.PassThrough)
-	if err != nil {
-		log.Fatal("startRelay: run: ", err)
-	}
-	Dprintf(2, "startRelay: forked %v\n", p)
-	go WaitAllChildren()
-	return p
+
+	Dprint(2, "writeStreamIntoFile: finished ", outputFile)
+	return
 }

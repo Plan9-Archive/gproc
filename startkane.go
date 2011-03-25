@@ -45,7 +45,7 @@ func runlevel(lowNode, highNode int, mod bool) {
 			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_386", "-locale=kane", fmt.Sprintf("-debug=%d", *debugLevel), "s"}
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)
-			pid, err := os.StartProcess("/usr/bin/ssh", Args, os.Environ(), "", f)
+			pid, err := os.StartProcess("/usr/bin/ssh", Args, &os.ProcAttr{Files: f})
 			if err != nil {
 				fmt.Print("Forkexec fails: ", err)
 			}
