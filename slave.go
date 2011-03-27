@@ -55,9 +55,9 @@ func startSlave(fam, masterAddr string, loc Locale) {
 		 * do the mkdir each time. Even though, abusive users can screw us: 
 		 * suppose they run rm -rf /tmp/xproc. Nothing is perfect. 
 		 */
-		os.Mkdir(*root, 0700)
+		os.Mkdir(*binRoot, 0700)
 		if *DoPrivateMount == true {
-			doPrivateMount(*root)
+			doPrivateMount(*binRoot)
 		}
 		/* don't ever make this 'go slaveProc'. This really needs to be synchronous lest you 
 		 * privatize the name space out from under yourself. It makes some sense: you really 

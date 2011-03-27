@@ -51,11 +51,13 @@ func (l *local) Ip() string {
 func (s *local) SlaveIdFromVitalData(vd *vitalData) string {
 	/* grab the server address from vital data and index into our map */
 	addrs := strings.Split(vd.ServerAddr, ":", 2)
-	id, ok := s.idMap[addrs[0]]
+	id, ok := s.idMap[addrs[1]]
+
 	if !ok {
 		s.maxid++
-		s.idMap[addrs[0]] = strconv.Itoa(s.maxid), ok
+		s.idMap[addrs[1]] = strconv.Itoa(s.maxid), ok
 	}
+	Dprint(2, "SlaveIdFromVitalData: %v -> %v", vd.ServerAddr, id)
 	return id
 }
 

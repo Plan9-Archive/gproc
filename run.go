@@ -21,6 +21,7 @@ func runLocal(req *StartReq) {
 		log.Fatal("tcpDial: ", err)
 	}
 	defer n.Close()
+	Dprint(2, "runLocal: dialed %v", n)
 	f := []*os.File{n, n, n}
 	var pathbase = *binRoot
 	execpath := pathbase + req.Path + req.Args[0]
