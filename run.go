@@ -37,8 +37,10 @@ func runLocal(req *StartReq) {
 	}
 	Env = append(Env, ldLibPath)
 	Dprint(2, "run: Env ", Env)
-	procattr := os.ProcAttr{Env: os.Environ(), Dir: pathbase + "/" + req.Cwd,
-		Files: f}
+//	procattr := os.ProcAttr{Env: os.Environ(), Dir: pathbase + "/" + req.Cwd,
+//		Files: f}
+	Dprint(2, "run: dir: ", pathbase + "/" + req.Cwd)
+	procattr := os.ProcAttr{Env: nil, Dir: "", Files: f}
 	_, err = os.StartProcess(execpath, req.Args, &procattr)
 
 	if err != nil {
@@ -56,7 +58,7 @@ func runPeers(req *StartReq, nodes *nodeExecList) {
 	Dprint(4, "peers = %s", req.Peers)
 
 	if req.Peers != nil || numOtherNodes > 0 {
-		parentConn, err := net.Dial(req.Lfam, "", req.Lserver)
+		parentConn, err := net.Dial(req.Lfam, req.Lserver)
 		if err != nil {
 			log.Fatalf("run: ioproxy: ", err)
 		}

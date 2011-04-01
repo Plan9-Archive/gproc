@@ -240,11 +240,19 @@ func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
 	if onDialFunc != nil {
 		onDialFunc(fam, laddr, raddr)
 	}
-	c, err = net.Dial(fam, laddr, raddr)
-	if err != nil {
-		return
-	}
-	Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
+	/* This is terrible, please fix it. Better yet, make the Go guys un-break net.Dial -- John */
+	if fam == "tcp" {
+		ra, _ := net.ResolveTCPAddr(raddr)
+		la, _ := net.ResolveTCPAddr(laddr)
+		c, err = net.DialTCP(fam, la, ra)
+		if err != nil {
+			return
+		}
+		//Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
+	} else {
+		c, err = net.Dial(fam, raddr)
+		//Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
+	}  
 	return
 }
 
