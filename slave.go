@@ -13,7 +13,6 @@ import (
 	"log"
 	"strings"
 	"os"
-	"path"
 )
 
 var id string
