@@ -336,12 +336,6 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	larg := newStartReq(arg)
-//	tf, _ := ioutil.TempFile("", "wat")
-//	tf, _ := os.Open("/etc/hosts", os.O_RDONLY, 0)
-//	f := filemarshal.NewFile(tf)
-//	f.Name = "/tmp/xproc/hosts"
-//	tf.Write([]byte("i am the very model of a modern major general"))
-//	larg.File = append(larg.File, f)
 
 	for _, c := range larg.Cmds {
 		Dprint(2, "setupFiles: next cmd")
@@ -357,6 +351,9 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	}
 
 	for _, c := range larg.Cmds {
+		if !c.Fi.IsRegular() {
+			continue
+		}
 		fullpath := root + c.FullPath
 		Dprint(2, "fullpath: ", fullpath)
 		file, err := os.Open(fullpath, os.O_RDONLY, 0)
