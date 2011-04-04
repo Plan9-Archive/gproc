@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"io"
+	//"io/ioutil"
 	"gob"
 	"rog-go.googlecode.com/hg/exp/filemarshal"
 	"strconv"
@@ -111,6 +112,8 @@ type StartReq struct {
 	 */
 	PeerGroupSize int
 	Cwd           string
+	/* This is where I try the filemarshal thing */
+	File		[]*filemarshal.File
 }
 
 func (s *StartReq) String() string {
@@ -201,10 +204,14 @@ type RpcClientServer struct {
 	d  filemarshal.Decoder
 }
 
-func NewRpcClientServer(rw io.ReadWriter) *RpcClientServer {
+// This is the best way I've come up with to let the slave specify where
+// binaries should go.
+// You should probably just use *binRoot everywhere here, although it will
+// only be used by the slave.
+func NewRpcClientServer(rw io.ReadWriter, root string) *RpcClientServer {
 	return &RpcClientServer{
 		e:  filemarshal.NewEncoder(gob.NewEncoder(rw)),
-		d:  filemarshal.NewDecoder(gob.NewDecoder(rw)),
+		d:  filemarshal.NewDecoder(gob.NewDecoder(rw), root),
 	}
 }
 
@@ -319,7 +326,7 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 				log.Fatal(jobname, ": ", err)
 			}
 			Dprint(2, jobname, ": ", c.RemoteAddr())
-			go job(NewRpcClientServer(c))
+			go job(NewRpcClientServer(c, *binRoot))
 		}
 	}()
 	return netl.Addr().String()
@@ -329,6 +336,13 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	larg := newStartReq(arg)
+//	tf, _ := ioutil.TempFile("", "wat")
+//	tf, _ := os.Open("/etc/hosts", os.O_RDONLY, 0)
+//	f := filemarshal.NewFile(tf)
+//	f.Name = "/tmp/xproc/hosts"
+//	tf.Write([]byte("i am the very model of a modern major general"))
+//	larg.File = append(larg.File, f)
+
 	for _, c := range larg.Cmds {
 		Dprint(2, "setupFiles: next cmd")
 		if !c.Fi.IsRegular() {
@@ -341,13 +355,28 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 		}
 		defer file.Close()
 	}
+
+	for _, c := range larg.Cmds {
+		fullpath := root + c.FullPath
+		Dprint(2, "fullpath: ", fullpath)
+		file, err := os.Open(fullpath, os.O_RDONLY, 0)
+		if err != nil {
+			log.Printf("Open %v failed: %v\n", fullpath, err)
+		}
+		f := filemarshal.NewFile(file)
+		f.Name = c.Name
+		f.FullPath = fullpath
+		larg.File = append(larg.File, f)
+		defer file.Close()
+	}
+
 	client, err := Dial(defaultFam, "", Server)
 	if err != nil {
 		log.Print("dialing:", err)
 		return err
 	}
 	Dprintf(2, "connected to %v\n", client)
-	rpc := NewRpcClientServer(client)
+	rpc := NewRpcClientServer(client, *binRoot)
 	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
 	go func() {
 		rpc.Send("cacheRelayFilesAndDelegateExec", larg)

@@ -20,7 +20,7 @@ func except(masterAddr string, files []string) (exceptOK *Resp) {
 	if err != nil {
 		log.Fatal("startExecution: dialing: ", masterAddr, " ", err)
 	}
-	r := NewRpcClientServer(client)
+	r := NewRpcClientServer(client, *binRoot)
 
 	/* master sends us vital data */
 	var vitalData vitalData

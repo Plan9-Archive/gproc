@@ -46,7 +46,8 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	vitalData.ServerAddr = newListenProc("slaveProc", slaveProc, peerAddr)
 	vitalData.HostAddr = client.LocalAddr().String()
 	vitalData.ParentAddr = client.RemoteAddr().String()
-	r := NewRpcClientServer(client)
+	r := NewRpcClientServer(client, *binRoot)
+	//Dprint(2, "DestDir = ", r.d.DestDir)
 	initSlave(r, vitalData)
 	go registerSlaves(loc)
 	for {

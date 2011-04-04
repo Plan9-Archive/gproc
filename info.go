@@ -21,7 +21,7 @@ func getInfo(masterAddr, query string) (info *Resp) {
 	if err != nil {
 		log.Fatal("startExecution: dialing: ", masterAddr, " ", err)
 	}
-	r := NewRpcClientServer(client)
+	r := NewRpcClientServer(client, *binRoot)
 
 	/* master sends us vital data */
 	var vitalData vitalData

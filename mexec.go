@@ -26,7 +26,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	if err != nil {
 		log.Fatal("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
 	}
-	r := NewRpcClientServer(client)
+	r := NewRpcClientServer(client, *binRoot)
 
 	/* master sends us vital data */
 	var vitalData vitalData

@@ -111,7 +111,7 @@ func receiveCmds(domainSock string) os.Error {
 		if err != nil {
 			log.Fatalf("receiveCmds: accept on (%v) failed %v\n", l, err)
 		}
-		r := NewRpcClientServer(c)
+		r := NewRpcClientServer(c, *binRoot)
 		go func() {
 			var a StartReq
 
@@ -186,7 +186,7 @@ func registerSlaves(loc Locale) os.Error {
 		if err != nil {
 			log.Fatal("registerSlaves:", err)
 		}
-		r := NewRpcClientServer(c)
+		r := NewRpcClientServer(c, *binRoot)
 		r.Recv("registerSlaves", &vd)
 		/* quite the hack. At some point, on a really complex system, 
 		 * we'll need to return a set of listen addresses for a daemon, but we've yet to
