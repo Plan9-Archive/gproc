@@ -349,6 +349,8 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 		defer file.Close()
 	}
 
+	// I don't think this second loop should stick around, but this helps
+	// keep it separate from the rest of the old stuff.
 	for _, c := range larg.Cmds {
 		if !c.Fi.IsRegular() {
 			continue
@@ -380,7 +382,6 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 		if arg.LocalBin {
 			Dprintf(2, "cmds %v\n", arg.Cmds)
 		}
-		//writeOutFiles(rpc, root, arg.Cmds)
 		Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
 		/* at this point it is out of our hands */
 	}()
