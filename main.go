@@ -56,7 +56,7 @@ var (
 	loc              Locale
 	ioProxyPort      = flag.String("iopp", "0", "io proxy port")
 	parent           = flag.String("parent", "", "parent for some configurations")
-	cmdPort		= flag.String("cmdport", "6666", "command port")
+	cmdPort          = flag.String("cmdport", "6666", "command port")
 	/* these are not switches */
 	role = "client"
 	/* these are determined by your local, and these values are "reasonable defaults" */
@@ -125,7 +125,7 @@ func main() {
 }
 
 func setupLog() {
-	logfile, err := os.Open(Logfile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
+	logfile, err := os.OpenFile(Logfile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		log.Fatal("No log file", err)
 	}

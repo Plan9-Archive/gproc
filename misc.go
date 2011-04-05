@@ -33,7 +33,7 @@ func buildcmds(file, root, libs string) []*cmdToExec {
 
 func readitin(s, root string) ([]byte, os.FileInfo, os.Error) {
 	fi, _ := os.Stat(root + s)
-	f, _ := os.Open(s, os.O_RDONLY, 0)
+	f, _ := os.Open(s)
 	bytes := make([]byte, fi.Size)
 	f.Read(bytes)
 	return bytes, *fi, nil

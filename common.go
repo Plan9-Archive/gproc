@@ -342,7 +342,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 			continue
 		}
 		fullpath := root + c.FullPath
-		file, err := os.Open(fullpath, os.O_RDONLY, 0)
+		file, err := os.Open(fullpath)
 		if err != nil {
 			log.Printf("Open %v failed: %v\n", fullpath, err)
 		}
@@ -355,7 +355,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 		fullpath := root + c.FullPath
 		Dprint(2, "fullpath: ", fullpath)
 		f := new(filemarshal.File)
-		if c.Fi.IsRegular() ||  c.Fi.IsDirectory() || c.Fi.IsSymlink() {
+		if c.Fi.IsRegular() || c.Fi.IsDirectory() || c.Fi.IsSymlink() {
 			f = &filemarshal.File{Name: c.Name, Fi: *c.Fi, FullPath: c.FullPath}
 		} else {
 			continue
