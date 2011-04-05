@@ -13,7 +13,7 @@ import (
 	"log"
 	"os"
 	"strings"
-	"bitbucket.org/npe/ldd"
+	"bitbucket.org/floren/ldd"
 	"path"
 	"path/filepath"
 	"fmt"
@@ -112,6 +112,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	for numWorkers > 0 {
 		<-workerChan
 		numWorkers--
+		Dprintln(3, "startExecution: read from a workerchan, numworkers = ", numWorkers)
 	}
 	Dprintln(3, "startExecution: finished")
 }

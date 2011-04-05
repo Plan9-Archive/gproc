@@ -11,7 +11,7 @@ package main
 
 import (
 	"os"
-	"bitbucket.org/npe/ldd"
+	"bitbucket.org/floren/ldd"
 )
 
 /* let's be nice and do an Ldd on each file. That's helpful to people. Later. */
