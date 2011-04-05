@@ -37,12 +37,12 @@ func runLocal(req *StartReq) {
 	}
 	Env = append(Env, ldLibPath)
 	Dprint(2, "run: Env ", Env)
-//	procattr := os.ProcAttr{Env: os.Environ(), Dir: pathbase + "/" + req.Cwd,
-//		Files: f}
+	procattr := os.ProcAttr{Env: os.Environ(), Dir: pathbase + "/" + req.Cwd,
+		Files: f}
 	Dprint(2, "run: dir: ", pathbase + "/" + req.Cwd)
-	procattr := os.ProcAttr{Env: nil, Dir: "", Files: f}
+//	procattr := os.ProcAttr{Env: nil, Dir: "", Files: f}
 	_, err = os.StartProcess(execpath, req.Args, &procattr)
-
+	Dprint(2, "run: process exited")
 	if err != nil {
 		log.Fatal("run: ", err)
 		n.Write([]uint8(err.String()))

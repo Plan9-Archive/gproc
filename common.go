@@ -112,7 +112,7 @@ type StartReq struct {
 	PeerGroupSize int
 	Cwd           string
 	/* This is where I try the filemarshal thing */
-	File		[]*filemarshal.File
+	File []*filemarshal.File
 }
 
 func (s *StartReq) String() string {
@@ -199,8 +199,8 @@ var roleFunc func(role string)
 // no, this is stupid.
 
 type RpcClientServer struct {
-	e  filemarshal.Encoder
-	d  filemarshal.Decoder
+	e filemarshal.Encoder
+	d filemarshal.Decoder
 }
 
 // This is the best way I've come up with to let the slave specify where
@@ -209,8 +209,8 @@ type RpcClientServer struct {
 // only be used by the slave.
 func NewRpcClientServer(rw io.ReadWriter, root string) *RpcClientServer {
 	return &RpcClientServer{
-		e:  filemarshal.NewEncoder(gob.NewEncoder(rw)),
-		d:  filemarshal.NewDecoder(gob.NewDecoder(rw), root),
+		e: filemarshal.NewEncoder(gob.NewEncoder(rw)),
+		d: filemarshal.NewDecoder(gob.NewDecoder(rw), root),
 	}
 }
 
@@ -258,7 +258,7 @@ func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
 	} else {
 		c, err = net.Dial(fam, raddr)
 		//Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
-	}  
+	}
 	return
 }
 
@@ -337,7 +337,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	larg := newStartReq(arg)
 
 	for _, c := range larg.Cmds {
-		Dprint(2, "setupFiles: next cmd")
+		Dprint(2, "setupFiles: next cmd: ", c.FullPath)
 		if !c.Fi.IsRegular() {
 			continue
 		}
@@ -352,20 +352,24 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	// I don't think this second loop should stick around, but this helps
 	// keep it separate from the rest of the old stuff.
 	for _, c := range larg.Cmds {
-		if !c.Fi.IsRegular() {
-			continue
-		}
 		fullpath := root + c.FullPath
 		Dprint(2, "fullpath: ", fullpath)
-		file, err := os.Open(fullpath, os.O_RDONLY, 0)
-		if err != nil {
-			log.Printf("Open %v failed: %v\n", fullpath, err)
+		f := new(filemarshal.File)
+		if c.Fi.IsRegular() {
+			file, err := os.Open(fullpath, os.O_RDONLY, 0)
+			if err != nil {
+				log.Printf("Open %v failed: %v\n", fullpath, err)
+			}
+			f = filemarshal.NewFile(file)
+			f.Name = c.Name
+			f.FullPath = fullpath
+			defer file.Close()
+		} else if c.Fi.IsDirectory() || c.Fi.IsSymlink() {
+			f = &filemarshal.File{Name: c.Name, Fi: *c.Fi, FullPath: c.FullPath}
+		} else {
+			continue
 		}
-		f := filemarshal.NewFile(file)
-		f.Name = c.Name
-		f.FullPath = fullpath
 		larg.File = append(larg.File, f)
-		defer file.Close()
 	}
 
 	client, err := Dial(defaultFam, "", Server)
@@ -497,4 +501,3 @@ func fileTcpDial(server string) (*os.File, os.Error) {
 
 	return f, nil
 }
-
