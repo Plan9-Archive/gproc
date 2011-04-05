@@ -346,7 +346,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 		if err != nil {
 			log.Printf("Open %v failed: %v\n", fullpath, err)
 		}
-		defer file.Close()
+		file.Close()
 	}
 
 	// I don't think this second loop should stick around, but this helps
