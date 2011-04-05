@@ -80,6 +80,7 @@ func initSlave(r *RpcClientServer, v *vitalData) {
 func slaveProc(r *RpcClientServer) {
 	req := &StartReq{}
 	r.Recv("slaveProc", req)
+	Dprint(2, "slaveProc: req ", *req)
 	go runLocal(req)
 
 }
