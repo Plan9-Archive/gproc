@@ -63,6 +63,8 @@ func startSlave(fam, masterAddr string, loc Locale) {
 		 * privatize the name space out from under yourself. It makes some sense: you really 
 		 * want to serialize on receiving the packet, unpacking it, and then forking the kid. 
 		 * Once the child is running you have no further worries. 
+		 * what's interesting is to think about whether we should fork a gproc e for any 
+		 * 'relay' uses. 
 		 */
 		slaveProc(r)
 	}
@@ -82,6 +84,11 @@ func slaveProc(r *RpcClientServer) {
 	r.Recv("slaveProc", req)
 	Dprint(2, "slaveProc: req ", *req)
 	go runLocal(req)
+	/* the child may end before we even get here, but since we still own this name 
+	 * space, the files are still there. 
+	 */
+	nnodes := sendCommandsToNodes(r, req)
+	Dprint(2, "Sent to ", nnodes, " nodes")
 
 }
 
