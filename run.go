@@ -47,7 +47,6 @@ func runLocal(req *StartReq) {
 		log.Fatal("run: ", err)
 		n.Write([]uint8(err.String()))
 	}
-
 }
 
 func runPeers(req *StartReq, nodes *nodeExecList) {
