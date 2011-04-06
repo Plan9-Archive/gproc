@@ -474,21 +474,21 @@ func doPrivateMount(pathbase string) {
 	}
 }
 
-func fileTcpDial(server string) (*os.File, os.Error) {
+func fileTcpDial(server string) (*os.File, net.Conn, os.Error) {
 	var laddr net.TCPAddr
 	raddr, err := net.ResolveTCPAddr(server)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	c, err := net.DialTCP(defaultFam, &laddr, raddr)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	f, err := c.File()
 	if err != nil {
 		c.Close()
-		return nil, err
+		return nil, nil, err
 	}
 
-	return f, nil
+	return f, c, nil
 }

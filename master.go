@@ -32,7 +32,7 @@ func startMaster(domainSock string, loc Locale) {
 	registerSlaves(loc)
 }
 
-func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList) (numnodes int) {
+func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string) (numnodes int) {
 	/* for efficiency, on the slave node, if there is one proc, 
 	 * it connects directly to the parent IO forwarder. 
 	 * If the slave node is tasking other nodes, it will also spawn
@@ -56,7 +56,7 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList) (numnodes int) {
 		
 		sendReq.Nodes = aNode.Subnodes
 		for _, s := range availableSlaves {
-			if cacheRelayFilesAndDelegateExec(sendReq, "", s) == nil {
+			if cacheRelayFilesAndDelegateExec(sendReq, root, s) == nil {
 				numnodes += connsperNode
 			}
 		}
@@ -77,14 +77,14 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList) (numnodes int) {
 				numnodes++
 			}
 			na := *sendReq // copy argument
-			cacheRelayFilesAndDelegateExec(&na, "", availableSlaves[0])
+			cacheRelayFilesAndDelegateExec(&na, root, availableSlaves[0])
 			availableSlaves = availableSlaves[numWorkers:]
 		}
 	}
 	return
 }
 
-func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
+func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (numnodes int) {
 	slaveNodes, err := parseNodeList(sendReq.Nodes)
 	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
 	if err != nil {
@@ -95,7 +95,7 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq) (numnodes int) {
 		/* would be nice to spawn these async but we need the 
 		 * nodecount ...
 		 */
-		numnodes += sendCommandsToANode(sendReq, aNode)
+		numnodes += sendCommandsToANode(sendReq, aNode, root)
 	}
 	return
 }
@@ -153,7 +153,7 @@ func receiveCmds(domainSock string) os.Error {
 					if !vitalData.HostReady {
 						return
 					}
-					numnodes := sendCommandsToNodes(r, &a)
+					numnodes := sendCommandsToNodes(r, &a, "")
 					r.Send("receiveCmds", Resp{NumNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
 			default:

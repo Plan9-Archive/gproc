@@ -16,7 +16,7 @@ import (
 )
 
 func runLocal(req *StartReq) {
-	n, err := fileTcpDial(req.Lserver)
+	n, c, err := fileTcpDial(req.Lserver)
 	if err != nil {
 		log.Fatal("tcpDial: ", err)
 	}
@@ -40,13 +40,15 @@ func runLocal(req *StartReq) {
 	procattr := os.ProcAttr{Env: os.Environ(), Dir: pathbase + "/" + req.Cwd,
 		Files: f}
 	Dprint(2, "run: dir: ", pathbase + "/" + req.Cwd)
-//	procattr := os.ProcAttr{Env: nil, Dir: "", Files: f}
-	_, err = os.StartProcess(execpath, req.Args, &procattr)
-	Dprint(2, "run: process exited")
+	p, err := os.StartProcess(execpath, req.Args, &procattr)
 	if err != nil {
 		log.Fatal("run: ", err)
 		n.Write([]uint8(err.String()))
+	} else {
+		w, _ := p.Wait(0)
+		Dprint(2, "run: process returned ", w.String())
 	}
+	c.Close()
 }
 
 func runPeers(req *StartReq, nodes *nodeExecList) {

@@ -87,7 +87,7 @@ func slaveProc(r *RpcClientServer) {
 	/* the child may end before we even get here, but since we still own this name 
 	 * space, the files are still there. 
 	 */
-	nnodes := sendCommandsToNodes(r, req)
+	nnodes := sendCommandsToNodes(r, req, *binRoot)
 	Dprint(2, "Sent to ", nnodes, " nodes")
 
 }
