@@ -38,7 +38,7 @@ func runlevel(lowNode, highNode int) {
 		go func(anode int) {
 			node := fmt.Sprintf("root@kn%d", anode)
 
-			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_386", fmt.Sprintf("-p=%v ", *privateMount), fmt.Sprintf("--cmdport=%s", *cmdPort), fmt.Sprintf("-locale=%s ", *locale), fmt.Sprintf("-parent=%s ", *parent), fmt.Sprintf("-debug=%d ", *debugLevel), "s"}
+			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_amd64", fmt.Sprintf("-p=%v ", *privateMount), fmt.Sprintf("--cmdport=%s", *cmdPort), fmt.Sprintf("-locale=%s ", *locale), fmt.Sprintf("-parent=%s ", *parent), fmt.Sprintf("-debug=%d ", *debugLevel), "s"}
 			fmt.Println(Args)
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)

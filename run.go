@@ -37,7 +37,7 @@ func runLocal(req *StartReq) {
 	}
 	Env = append(Env, ldLibPath)
 	Dprint(2, "run: Env ", Env)
-	procattr := os.ProcAttr{Env: os.Environ(), Dir: pathbase + "/" + req.Cwd,
+	procattr := os.ProcAttr{Env: Env, Dir: pathbase + "/" + req.Cwd,
 		Files: f}
 	Dprint(2, "run: dir: ", pathbase + "/" + req.Cwd)
 	p, err := os.StartProcess(execpath, req.Args, &procattr)
