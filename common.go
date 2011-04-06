@@ -48,14 +48,15 @@ type SetDebugLevel struct {
 }
 
 type cmdToExec struct {
-	Name     string
-	FullPath string
+	CurrentName     string
+	DestName		string
+	SymlinkTarget	string
 	Local    int
 	Fi       *os.FileInfo
 }
 
 func (a *cmdToExec) String() string {
-	return fmt.Sprint(a.Name)
+	return fmt.Sprint(a.CurrentName)
 }
 
 /* vitalData is data from the master to the user or slaves to parent (other slaves or master)
@@ -336,27 +337,29 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 
 	larg := newStartReq(arg)
 
+/*
 	for _, c := range larg.Cmds {
-		Dprint(2, "setupFiles: next cmd: ", c.FullPath)
+		Dprint(2, "setupFiles: next cmd: ", c.CurrentName)
 		if !c.Fi.IsRegular() {
 			continue
 		}
-		fullpath := root + c.FullPath
+		fullpath := root + c.CurrentName
 		file, err := os.Open(fullpath)
 		if err != nil {
 			log.Printf("Open %v failed: %v\n", fullpath, err)
 		}
 		file.Close()
 	}
+*/
 
 	// I don't think this second loop should stick around, but this helps
 	// keep it separate from the rest of the old stuff.
 	for _, c := range larg.Cmds {
-		fullpath := root + c.FullPath
-		Dprint(2, "fullpath: ", fullpath)
+		comesfrom := root + c.DestName
+		Dprint(2, "current cmd comesfrom = ", comesfrom, ", DestName = ", c.DestName, ", CurrentName = ", c.CurrentName, ", SymlinkTarget = ", c.SymlinkTarget)
 		f := new(filemarshal.File)
 		if c.Fi.IsRegular() || c.Fi.IsDirectory() || c.Fi.IsSymlink() {
-			f = &filemarshal.File{Name: c.Name, Fi: *c.Fi, FullPath: c.FullPath}
+			f = &filemarshal.File{CurrentName: comesfrom, Fi: *c.Fi, SymlinkTarget: c.SymlinkTarget, DestName: c.DestName}
 		} else {
 			continue
 		}

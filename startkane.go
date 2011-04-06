@@ -28,6 +28,7 @@ var (
 	lowNode    = flag.Int("l", 1, "Lowest node number")
 	highNode   = flag.Int("h", 40, "Highest node number")
 	debugLevel = flag.Int("d", 0, "Debug level")
+	privateMount = flag.Bool("p", true, "private mounts")
 )
 
 func runlevel(lowNode, highNode int, mod bool) {
@@ -42,7 +43,7 @@ func runlevel(lowNode, highNode int, mod bool) {
 		go func(anode int) {
 			node := fmt.Sprintf("root@kn%d", anode)
 
-			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_amd64", "-locale=kane", fmt.Sprintf("-debug=%d", *debugLevel), "s"}
+			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_amd64", "-locale=kane", fmt.Sprintf("-p=%v ", *privateMount), fmt.Sprintf("-debug=%d", *debugLevel), "s"}
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)
 			pid, err := os.StartProcess("/usr/bin/ssh", Args, &os.ProcAttr{Files: f})

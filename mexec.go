@@ -68,6 +68,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		}
 	}
 	/* build the library list given that we may have a different root */
+
 	libList := strings.Split(*libs, ":", -1)
 	rootedLibList := []string{}
 	for _, s := range libList {
@@ -146,8 +147,8 @@ func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
 	//	_, file := path.Split(filePath)
 	c := &cmdToExec{
 		//		name: file,
-		Name:     filePath,
-		FullPath: filePath,
+		CurrentName:     filePath,
+		DestName: filePath,
 		Local:    0,
 		Fi:       f,
 	}
@@ -176,8 +177,8 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	}
 	c := &cmdToExec{
 		//		name: file,
-		Name:     filePath,
-		FullPath: filePath,
+		CurrentName:     filePath,
+		DestName: filePath,
 		Local:    0,
 		Fi:       f,
 	}
@@ -193,8 +194,8 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	      * further walking. We think. 
 	      */
 	      var walkPath string
-		c.FullPath, walkPath = resolveLink(filePath)
-		Dprint(4, "c.FullPath ", c.FullPath, " filePath ", filePath)
+		c.SymlinkTarget, walkPath = resolveLink(filePath)
+		Dprint(4, "c.CurrentName", c.CurrentName, " filePath ", filePath)
 		filepath.Walk(walkPath, p, nil)
 	}
 	p.alreadyVisited[filePath] = true
