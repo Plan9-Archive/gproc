@@ -45,9 +45,9 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string) (nu
 	 * This is kludgy, but again, it's not clear what the Best Choice is.
 	 */
 	connsperNode := 1
-	if len(aNode.Subnodes) > 0 {
-		connsperNode = 2
-	}
+//	if len(aNode.Subnodes) > 0 {
+//		connsperNode = 2
+//	}
 	// get credentials later
 	switch {
 	case sendReq.PeerGroupSize == 0:
@@ -154,7 +154,7 @@ func receiveCmds(domainSock string) os.Error {
 					if !vitalData.HostReady {
 						return
 					}
-					numnodes := sendCommandsToNodes(r, &a, "") / 2 // Fix this, shouldn't divide by 2 but it's a quick dirty fix
+					numnodes := sendCommandsToNodes(r, &a, "") // Fix this, shouldn't divide by 2 but it's a quick dirty fix
 					r.Send("receiveCmds", Resp{NumNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
 			default:
