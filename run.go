@@ -13,13 +13,15 @@ import (
 	"os"
 	"log"
 	"net"
+	//"fmt"
 )
 
-func runLocal(req *StartReq) {
-	n, c, err := fileTcpDial(req.Lserver)
-	if err != nil {
-		log.Fatal("tcpDial: ", err)
-	}
+func runLocal(req *StartReq, c net.Conn, n *os.File, done chan int) {
+
+//	n, c, err := fileTcpDial(req.Lserver)
+//	if err != nil {
+//		log.Fatal("tcpDial: ", err)
+//	}
 	defer n.Close()
 	Dprint(2, "runLocal: dialed %v", n)
 	f := []*os.File{n, n, n}
@@ -48,7 +50,8 @@ func runLocal(req *StartReq) {
 		w, _ := p.Wait(0)
 		Dprint(2, "run: process returned ", w.String())
 	}
-	c.Close()
+	done <- 1
+//	c.Close()
 }
 
 func runPeers(req *StartReq, nodes *nodeExecList) {

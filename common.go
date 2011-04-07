@@ -112,7 +112,7 @@ type StartReq struct {
 	 */
 	PeerGroupSize int
 	Cwd           string
-	/* This is where I try the filemarshal thing */
+	/* The File element should really replace Cmds */
 	File []*filemarshal.File
 }
 

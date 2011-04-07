@@ -80,16 +80,62 @@ func initSlave(r *RpcClientServer, v *vitalData) {
 }
 
 func slaveProc(r *RpcClientServer) {
+	done := make(chan int, 0)
 	req := &StartReq{}
 	r.Recv("slaveProc", req)
 	Dprint(2, "slaveProc: req ", *req)
-	go runLocal(req)
+
+	n, c, err := fileTcpDial(req.Lserver)
+	if err != nil {
+		log.Fatal("tcpDial: ", err)
+	}
+
+	go runLocal(req, c, n, done)
 	/* the child may end before we even get here, but since we still own this name 
 	 * space, the files are still there. 
 	 */
+
+	var nodesCopy string
+	var l Listener
+	var workerChan chan int
+	var numWorkers int
+	numWorkers = 0
+	nodesCopy = req.Nodes
+	slaveNodes, err := parseNodeList(nodesCopy)
+	Dprint(2, "receiveCmds: sendReq.Nodes: ", req.Nodes, " expands to ", slaveNodes)
+	if err != nil {
+		r.Send("receiveCmds", Resp{NumNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
+		return
+	}
+	for _, aNode := range slaveNodes {
+		availableSlaves := slaves.ServIntersect(aNode.Nodes)
+		
+		if len(availableSlaves) > 0 {
+			workerChan, l, err = ioProxy(defaultFam, loc.Ip()+":0", c)
+			if err != nil {
+				log.Fatalf("slave: ioproxy: ", err)
+			}
+			Dprint(2, "netwaiter locl.Ip() ", loc.Ip(), " listener at ", l.Addr().String())
+			req.Lfam = l.Addr().Network()
+			req.Lserver = l.Addr().String()
+
+			for _, _ = range availableSlaves {
+				numWorkers += 1
+			}
+		}	
+	}
+	//WaitAllChildren()
 	nnodes := sendCommandsToNodes(r, req, *binRoot)
 	Dprint(2, "Sent to ", nnodes, " nodes")
-
+	for numWorkers > 0 {
+		worker := <-workerChan
+		Dprint(2, worker, " returned, ", numWorkers, " workers left")
+		numWorkers--
+	}
+	<-done
+	c.Close()
+	n.Close()
+	Dprint(2, "Exiting slaveProc")
 }
 
 func RunChild(req *StartReq) (nsend *nodeExecList){

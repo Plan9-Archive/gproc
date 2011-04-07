@@ -97,6 +97,7 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (nu
 		 */
 		numnodes += sendCommandsToANode(sendReq, aNode, root)
 	}
+	Dprint(2, "numnodes = ", numnodes)
 	return
 }
 
@@ -153,7 +154,7 @@ func receiveCmds(domainSock string) os.Error {
 					if !vitalData.HostReady {
 						return
 					}
-					numnodes := sendCommandsToNodes(r, &a, "")
+					numnodes := sendCommandsToNodes(r, &a, "") / 2 // Fix this, shouldn't divide by 2 but it's a quick dirty fix
 					r.Send("receiveCmds", Resp{NumNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
 			default:
