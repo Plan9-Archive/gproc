@@ -29,7 +29,7 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	if *DoPrivateMount == true && os.Getuid() != 0 {
 		log.Fatal("Need to run as root for private mounts")
 	}
-	client, err := Dial(fam, "", masterAddr)
+	master, err := Dial(fam, "", masterAddr)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
@@ -40,13 +40,12 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	 * kernels going back a long time, we might as well tell the master its own address for
 	 * the socket, since *the master can't get it*. True! 
 	 */
-	addr := strings.Split(client.LocalAddr().String(), ":", -1)
+	addr := strings.Split(master.LocalAddr().String(), ":", -1)
 	peerAddr := addr[0] + ":0"
 	vitalData.ServerAddr = newListenProc("slaveProc", slaveProc, peerAddr)
-	vitalData.HostAddr = client.LocalAddr().String()
-	vitalData.ParentAddr = client.RemoteAddr().String()
-	r := NewRpcClientServer(client, *binRoot)
-	//Dprint(2, "DestDir = ", r.d.DestDir)
+	vitalData.HostAddr = master.LocalAddr().String()
+	vitalData.ParentAddr = master.RemoteAddr().String()
+	r := NewRpcClientServer(master, *binRoot)
 	initSlave(r, vitalData)
 	go registerSlaves(loc)
 	for {
@@ -79,6 +78,12 @@ func initSlave(r *RpcClientServer, v *vitalData) {
 	log.SetPrefix("slave " + id + ": ")
 }
 
+/*
+ * Receive a StartReq (and, thanks to filemarshal, all the files we need), 
+ * then go off and run the program with runLocal. While that's happening,
+ * we set up ioproxies as needed, then forward on the StartReq we received
+ * to any sub-nodes we may have.
+ */
 func slaveProc(r *RpcClientServer) {
 	done := make(chan int, 0)
 	req := &StartReq{}
@@ -107,6 +112,7 @@ func slaveProc(r *RpcClientServer) {
 		r.Send("receiveCmds", Resp{NumNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
 		return
 	}
+
 	for _, aNode := range slaveNodes {
 		availableSlaves := slaves.ServIntersect(aNode.Nodes)
 		
