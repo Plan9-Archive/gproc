@@ -51,6 +51,7 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string) (nu
 	// get credentials later
 	switch {
 	case sendReq.PeerGroupSize == 0:
+		// This is the case when not using "peerspawn"
 		availableSlaves := slaves.ServIntersect(aNode.Nodes)
 		Dprint(2, "receiveCmds: slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves, " subnodes ", aNode.Subnodes)
 		
@@ -61,6 +62,7 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string) (nu
 			}
 		}
 	default:
+		// Peerspawn isn't actually very good, this should go away. We'll see how Don's DHT works
 		availableSlaves := slaves.ServIntersect(aNode.Nodes)
 		Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves)
 
@@ -84,6 +86,9 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string) (nu
 	return
 }
 
+/*
+ * Both the master and the slaves now call this to distribute commands and files to their sub-nodes
+ */
 func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (numnodes int) {
 	slaveNodes, err := parseNodeList(sendReq.Nodes)
 	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
@@ -101,6 +106,9 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (nu
 	return
 }
 
+/*
+ * The master sits in a loop listening for commands to come in over the Unix domain socket.
+ */
 func receiveCmds(domainSock string) os.Error {
 	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready", Exceptlist: exceptFiles}
 	l, err := Listen("unix", domainSock)
@@ -154,7 +162,7 @@ func receiveCmds(domainSock string) os.Error {
 					if !vitalData.HostReady {
 						return
 					}
-					numnodes := sendCommandsToNodes(r, &a, "") // Fix this, shouldn't divide by 2 but it's a quick dirty fix
+					numnodes := sendCommandsToNodes(r, &a, "")
 					r.Send("receiveCmds", Resp{NumNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
 				}
 			default:
@@ -270,24 +278,3 @@ func (sv *Slaves) ServIntersect(set []string) (i []string) {
 }
 
 var slaves Slaves
-
-
-func newStartReq(arg *StartReq) *StartReq {
-	return &StartReq{
-		Command:         arg.Command,
-		Nodes:           arg.Nodes,
-		ThisNode:        true,
-		LocalBin:        arg.LocalBin,
-		Peers:           arg.Peers,
-		Args:            arg.Args,
-		Env:             arg.Env,
-		LibList:         arg.LibList,
-		Path:            arg.Path,
-		Lfam:            arg.Lfam,
-		Lserver:         arg.Lserver,
-		Cmds:            arg.Cmds,
-		BytesToTransfer: arg.BytesToTransfer,
-		PeerGroupSize:   arg.PeerGroupSize,
-		Cwd: arg.Cwd,
-	}
-}

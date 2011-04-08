@@ -113,7 +113,7 @@ type StartReq struct {
 	PeerGroupSize int
 	Cwd           string
 	/* The File element should really replace Cmds */
-	File []*filemarshal.File
+	File 			[]*filemarshal.File
 }
 
 func (s *StartReq) String() string {
@@ -196,8 +196,6 @@ func RecvPrint(funcname, from interface{}, arg interface{}) {
 // this group depends on gob
 
 var roleFunc func(role string)
-
-// no, this is stupid.
 
 type RpcClientServer struct {
 	e filemarshal.Encoder
@@ -332,28 +330,17 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 	return netl.Addr().String()
 }
 
-func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error {
-	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
+/*
+ * This name isn't very good any more.
+ * This function builds up a list of files that need to go out to the current node's sub-nodes.
+ * It is called by both the master and, if a more complex hierarchy is used, the upper-level slaves.
+ */
+func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.Error {
+	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", clientnode, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	larg := newStartReq(arg)
 
-/*
-	for _, c := range larg.Cmds {
-		Dprint(2, "setupFiles: next cmd: ", c.CurrentName)
-		if !c.Fi.IsRegular() {
-			continue
-		}
-		fullpath := root + c.CurrentName
-		file, err := os.Open(fullpath)
-		if err != nil {
-			log.Printf("Open %v failed: %v\n", fullpath, err)
-		}
-		file.Close()
-	}
-*/
-
-	// I don't think this second loop should stick around, but this helps
-	// keep it separate from the rest of the old stuff.
+	/* Build up a list of filemarshal.File so the filemarshal can transmit the needed files */
 	for _, c := range larg.Cmds {
 		comesfrom := root + c.DestName
 		Dprint(2, "current cmd comesfrom = ", comesfrom, ", DestName = ", c.DestName, ", CurrentName = ", c.CurrentName, ", SymlinkTarget = ", c.SymlinkTarget)
@@ -366,7 +353,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 		larg.File = append(larg.File, f)
 	}
 
-	client, err := Dial(defaultFam, "", Server)
+	client, err := Dial(defaultFam, "", clientnode)
 	if err != nil {
 		log.Print("dialing:", err)
 		return err
@@ -375,6 +362,9 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 	rpc := NewRpcClientServer(client, *binRoot)
 	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
 	go func() {
+		// This Send pushes our larg struct to filemarshal. Since it contains a
+		// []*filemarshal.File, the filemarshal grabs the list of files and sends
+		// the file contents too.
 		rpc.Send("cacheRelayFilesAndDelegateExec", larg)
 		Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.BytesToTransfer, arg.LocalBin)
 		if arg.LocalBin {
@@ -386,7 +376,17 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error
 
 	return nil
 }
-
+/*
+ * The ioProxy listens for incoming connections. Sub-nodes will connect to it
+ * and use the connection as stdin, stdout, and stderr for the programs they
+ * execute. ioProxy copies the output of the connection to 'dest', which will
+ * be a connection to another ioProxy if we're on a slave or simply stdout
+ * if we're in the gproc issuing the exec command.
+ * 
+ * Whoever calls the ioProxy should read from workerChan to know when I/O is 
+ * finished. workerChan will contain one int for every client which has 
+ * completed and disconnected.
+ */
 func ioProxy(fam, server string, dest io.Writer) (workerChan chan int, l Listener, err os.Error) {
 	workerChan = make(chan int, 0)
 	l, err = Listen(fam, server)
@@ -477,6 +477,10 @@ func doPrivateMount(pathbase string) {
 	}
 }
 
+/*
+ * Make a TCP connection to a server, return both the connection and
+ * a File pointing to that connection.
+ */
 func fileTcpDial(server string) (*os.File, net.Conn, os.Error) {
 	var laddr net.TCPAddr
 	raddr, err := net.ResolveTCPAddr(server)
@@ -494,4 +498,24 @@ func fileTcpDial(server string) (*os.File, net.Conn, os.Error) {
 	}
 
 	return f, c, nil
+}
+
+func newStartReq(arg *StartReq) *StartReq {
+	return &StartReq{
+		Command:         arg.Command,
+		Nodes:           arg.Nodes,
+		ThisNode:        true,
+		LocalBin:        arg.LocalBin,
+		Peers:           arg.Peers,
+		Args:            arg.Args,
+		Env:             arg.Env,
+		LibList:         arg.LibList,
+		Path:            arg.Path,
+		Lfam:            arg.Lfam,
+		Lserver:         arg.Lserver,
+		Cmds:            arg.Cmds,
+		BytesToTransfer: arg.BytesToTransfer,
+		PeerGroupSize:   arg.PeerGroupSize,
+		Cwd: arg.Cwd,
+	}
 }

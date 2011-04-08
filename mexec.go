@@ -91,6 +91,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	}
 	Dprint(4, "startExecution: libList ", libList)
 	ioProxyListenAddr := vitalData.HostAddr + ":" + ioProxyPort
+	/* The ioProxy brings back the standard i/o streams from the slaves */
 	workerChan, l, err := ioProxy(fam, ioProxyListenAddr, os.Stdout)
 	if err != nil {
 		log.Fatal("startExecution: ioproxy: ", err)
@@ -114,6 +115,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	r.Send("startExecution", req)
 	resp := &Resp{}
 	r.Recv("startExecution", resp)
+	/* numWorkers tells us how many nodes will be connecting to our ioProxy */
 	numWorkers := resp.NumNodes
 	Dprintln(3, "startExecution: waiting for ", numWorkers)
 	for numWorkers > 0 {
