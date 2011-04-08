@@ -18,15 +18,6 @@ import (
 	"flag"
 )
 
-type noderange struct {
-	Base int
-	Ip   string
-}
-
-type gpconfig struct {
-	Noderanges []noderange
-}
-
 func usage() {
 	fmt.Fprint(os.Stderr, "usage: gproc m\n")
 	fmt.Fprint(os.Stderr, "usage: gproc s <family> <address> <server address>\n")
@@ -67,7 +58,6 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 	log.SetPrefix("newgproc " + *prefix + ": ")
-	//setupLog()
 	Dprintln(2, "starting:", os.Args, "debuglevel", *DebugLevel)
 
 	loc, err = newLocale(*locale)
@@ -116,17 +106,6 @@ func main() {
 	default:
 		flag.Usage()
 	}
-}
-
-func setupLog() {
-	logfile, err := os.OpenFile(Logfile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
-	if err != nil {
-		log.Fatal("No log file", err)
-	}
-
-	log.SetOutput(logfile)
-
-	log.Printf("DoPrivateMount: %v\n", DoPrivateMount)
 }
 
 func SetDebugLevelRPC(fam, server, newlevel string) {
