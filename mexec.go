@@ -7,6 +7,12 @@
  * the U.S. Government retains certain rights in this software.
  */
 
+/*
+ * The functions in this file are meant to be called when you give an "e" command,
+ * to execute a program, on the command line. They pack up the necessary files and
+ * send them to the master for distribution
+ */
+
 package main
 
 import (
@@ -116,11 +122,6 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		Dprintln(3, "startExecution: read from a workerchan, numworkers = ", numWorkers)
 	}
 	Dprintln(3, "startExecution: finished")
-}
-
-
-func isNum(c byte) bool {
-	return '0' <= c && c <= '9'
 }
 
 var (
