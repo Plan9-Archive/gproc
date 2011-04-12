@@ -13,6 +13,7 @@ import (
 	"log"
 	"strings"
 	"os"
+	"net"
 )
 
 var id string
@@ -42,13 +43,21 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	 */
 	addr := strings.Split(master.LocalAddr().String(), ":", -1)
 	peerAddr := addr[0] + ":0"
-	vitalData.ServerAddr = newListenProc("slaveProc", slaveProc, peerAddr)
+
+	netl, err := net.Listen(defaultFam, peerAddr) // this is how we're ditching newListenProc -- John
+	vitalData.ServerAddr = netl.Addr().String()
+//	vitalData.ServerAddr = newListenProc("slaveProc", slaveProc, peerAddr)
 	vitalData.HostAddr = master.LocalAddr().String()
 	vitalData.ParentAddr = master.RemoteAddr().String()
 	r := NewRpcClientServer(master, *binRoot)
 	initSlave(r, vitalData)
 	go registerSlaves(loc)
 	for {
+		c, err := netl.Accept()
+		if err != nil {
+			log.Fatal("problem in netl.Accept()")
+		}
+		Dprint(3, "Received connection from: ", c.RemoteAddr())
 		/* make sure the directory exists and then do the private name space mount */
 		/* there are enough pathological cases to deal with here that it doesn't hurt to 
 		 * do the mkdir each time. Even though, abusive users can screw us: 
@@ -65,7 +74,8 @@ func startSlave(fam, masterAddr string, loc Locale) {
 		 * what's interesting is to think about whether we should fork a gproc e for any 
 		 * 'relay' uses. 
 		 */
-		slaveProc(r)
+		//slaveProc(r)
+		slaveProc(NewRpcClientServer(c, *binRoot))
 	}
 }
 

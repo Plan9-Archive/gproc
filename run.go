@@ -22,7 +22,7 @@ func runLocal(req *StartReq, c net.Conn, n *os.File, done chan int) {
 //	if err != nil {
 //		log.Fatal("tcpDial: ", err)
 //	}
-	defer n.Close()
+//	defer n.Close()
 	Dprint(2, "runLocal: dialed %v", n)
 	f := []*os.File{n, n, n}
 	var pathbase = *binRoot
