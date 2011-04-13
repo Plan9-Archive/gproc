@@ -132,6 +132,7 @@ type SlaveInfo struct {
 	Addr   string
 	Server string
 	Nodes  []string
+	Rpc		*RpcClientServer
 }
 
 func (s *SlaveInfo) String() string {

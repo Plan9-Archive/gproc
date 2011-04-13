@@ -220,6 +220,7 @@ func registerSlaves(loc Locale) os.Error {
 		resp := slaves.Add(vd, r)
 		r.Send("registerSlaves", resp)
 	}
+	Dprint(2, "registerSlaves is exiting! That can't be good!")
 	return nil
 }
 
@@ -242,6 +243,7 @@ func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 		Addr:   vd.HostAddr,
 		Server: vd.ServerAddr,
 		Nodes:  vd.Nodes,
+		Rpc:	r,
 	}
 	sv.Slaves[s.Id] = s
 	sv.Addr2id[s.Server] = s.Id

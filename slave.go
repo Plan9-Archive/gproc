@@ -32,6 +32,7 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	if *DoPrivateMount == true && os.Getuid() != 0 {
 		log.Fatal("Need to run as root for private mounts")
 	}
+	Dprint(2, "dialing masterAddr ", masterAddr)
 	master, err := Dial(fam, "", masterAddr)
 	if err != nil {
 		log.Fatal("dialing:", err)
@@ -98,6 +99,8 @@ func startSlave(fam, masterAddr string, loc Locale) {
 				Dprint(2, "startSlave: process returned ", w.String())
 			}
 			c.Close()
+			writep.Close()
+			readp2.Close()
 		}
 	}()
 
