@@ -14,6 +14,8 @@ import (
 	"strings"
 	"os"
 	"net"
+	"fmt"
+	"gob"
 )
 
 var id string
@@ -44,39 +46,64 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	addr := strings.Split(master.LocalAddr().String(), ":", -1)
 	peerAddr := addr[0] + ":0"
 
-	netl, err := net.Listen(defaultFam, peerAddr) // this is how we're ditching newListenProc -- John
+	laddr, _ := net.ResolveTCPAddr(peerAddr) // This multiple-return business sometimes gets annoying
+	netl, err := net.ListenTCP(defaultFam, laddr) // this is how we're ditching newListenProc
 	vitalData.ServerAddr = netl.Addr().String()
-//	vitalData.ServerAddr = newListenProc("slaveProc", slaveProc, peerAddr)
 	vitalData.HostAddr = master.LocalAddr().String()
 	vitalData.ParentAddr = master.RemoteAddr().String()
 	r := NewRpcClientServer(master, *binRoot)
 	initSlave(r, vitalData)
 	go registerSlaves(loc)
-	for {
-		c, err := netl.Accept()
-		if err != nil {
-			log.Fatal("problem in netl.Accept()")
+	go func() {
+		for {
+			// Wait for a connection from the master
+			c, err := netl.AcceptTCP()
+			if err != nil {
+				log.Fatal("problem in netl.Accept()")
+			}
+			Dprint(3, "Received connection from: ", c.RemoteAddr())
+
+			// start a new process, give it 'c' as stdin.
+			connFile, _ := c.File()
+			readp, writep, _ := os.Pipe() // we'll send a list of slaves over this
+			readp2, writep2, _ := os.Pipe() // the child will send a list of nodes and ask for a list of slaves
+			f := []*os.File{connFile, readp, os.Stderr, writep2} // we can't use Stderr because the child wants to write to it
+			cwd, _ := os.Getwd()
+			procattr := os.ProcAttr{Env: nil, Dir: cwd, Files: f}
+			argv := []string{
+                "gproc",
+                fmt.Sprintf("-debug=%d", *DebugLevel),
+                fmt.Sprintf("-p=%v", *DoPrivateMount),
+                fmt.Sprintf("-locale=%v", *locale),
+				fmt.Sprintf("-binRoot=%v", *binRoot),	
+                "-prefix=" + id,
+                "R",
+			}
+			// Start the new process
+			p, err := os.StartProcess(os.Args[0], argv, &procattr)
+			if err != nil {
+				log.Fatal("startSlave: ", err)
+			} else {
+				passrpc := &RpcClientServer{ E: gob.NewEncoder(writep), D: gob.NewDecoder(writep) }
+				returnrpc := &RpcClientServer{ E: gob.NewEncoder(readp2), D: gob.NewDecoder(readp2) }
+
+				var ne nodeExecList
+				// This is the list of nodes the child got in its request
+				returnrpc.Recv("startSlave getting nodes ", &ne)
+				// The child doesn't have the slaves populated, so we have to do it
+				ne.Nodes = slaves.ServIntersect(ne.Nodes)
+				passrpc.Send("startSlave sending nodes ", ne)
+				
+				w, _ := p.Wait(0)
+				Dprint(2, "startSlave: process returned ", w.String())
+			}
+			c.Close()
 		}
-		Dprint(3, "Received connection from: ", c.RemoteAddr())
-		/* make sure the directory exists and then do the private name space mount */
-		/* there are enough pathological cases to deal with here that it doesn't hurt to 
-		 * do the mkdir each time. Even though, abusive users can screw us: 
-		 * suppose they run rm -rf /tmp/xproc. Nothing is perfect. 
-		 */
-		os.Mkdir(*binRoot, 0700)
-		if *DoPrivateMount == true {
-			doPrivateMount(*binRoot)
-		}
-		/* don't ever make this 'go slaveProc'. This really needs to be synchronous lest you 
-		 * privatize the name space out from under yourself. It makes some sense: you really 
-		 * want to serialize on receiving the packet, unpacking it, and then forking the kid. 
-		 * Once the child is running you have no further worries. 
-		 * what's interesting is to think about whether we should fork a gproc e for any 
-		 * 'relay' uses. 
-		 */
-		//slaveProc(r)
-		slaveProc(NewRpcClientServer(c, *binRoot))
-	}
+	}()
+
+	// This read doesn't really matter, the important thing is that it will fail when the master goes away
+	foo := &StartReq{}
+	r.Recv("slaveProc done", &foo)
 }
 
 func initSlave(r *RpcClientServer, v *vitalData) {
@@ -93,11 +120,18 @@ func initSlave(r *RpcClientServer, v *vitalData) {
  * then go off and run the program with runLocal. While that's happening,
  * we set up ioproxies as needed, then forward on the StartReq we received
  * to any sub-nodes we may have.
+ *
+ * This is a bit of a beast, but it's more efficient than the last iteration.
  */
-func slaveProc(r *RpcClientServer) {
+func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClientServer) {
+	//go registerSlaves(loc)
+	os.Mkdir(*binRoot, 0700)
+	if *DoPrivateMount == true {
+		doPrivateMount(*binRoot)
+	}
 	done := make(chan int, 0)
 	req := &StartReq{}
-	r.Recv("slaveProc", req)
+	r.Recv("slaveProc", &req)
 	Dprint(2, "slaveProc: req ", *req)
 
 	n, c, err := fileTcpDial(req.Lserver)
@@ -117,16 +151,16 @@ func slaveProc(r *RpcClientServer) {
 	numWorkers = 0
 	nodesCopy = req.Nodes
 	slaveNodes, err := parseNodeList(nodesCopy)
+	returnrpc.Send("send slaveNodes ", slaveNodes[0])
+	var availableSlaves nodeExecList
+	inforpc.Recv("recv availableSlaves", &availableSlaves)
+
 	Dprint(2, "receiveCmds: sendReq.Nodes: ", req.Nodes, " expands to ", slaveNodes)
 	if err != nil {
-		r.Send("receiveCmds", Resp{NumNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
 		return
 	}
 
-	for _, aNode := range slaveNodes {
-		availableSlaves := slaves.ServIntersect(aNode.Nodes)
-		
-		if len(availableSlaves) > 0 {
+	if len(availableSlaves.Nodes) > 0 {
 			workerChan, l, err = ioProxy(defaultFam, loc.Ip()+":0", c)
 			if err != nil {
 				log.Fatalf("slave: ioproxy: ", err)
@@ -135,13 +169,11 @@ func slaveProc(r *RpcClientServer) {
 			req.Lfam = l.Addr().Network()
 			req.Lserver = l.Addr().String()
 
-			for _, _ = range availableSlaves {
+			for _, _ = range availableSlaves.Nodes {
 				numWorkers += 1
 			}
-		}	
-	}
-	//WaitAllChildren()
-	nnodes := sendCommandsToNodes(r, req, *binRoot)
+	}	
+	nnodes := sendCommandsToANode(req, slaveNodes[0], *binRoot, availableSlaves.Nodes)
 	Dprint(2, "Sent to ", nnodes, " nodes")
 	for numWorkers > 0 {
 		worker := <-workerChan
@@ -154,19 +186,3 @@ func slaveProc(r *RpcClientServer) {
 	Dprint(2, "Exiting slaveProc")
 }
 
-func RunChild(req *StartReq) (nsend *nodeExecList){
-	Dprintln(2, "ForkRelay: ", req.Nodes, " fileServer: ", req)
-	/* create the array of strings to send. You can't just send the slaveinfo struct as Go won't like that. 
-	 * You don't have fork
-	 * and you can't do it here as the child will build a private name space. 
-	 * So take the req.Nodes, bust them into bits just as the master does, and create an array of 
-	 * socket names {'"a.b.c.d/x"...} and the subnode names {"1-5"} and pass them down. 
-	 * this is almost ready but it won't make it.
-	 */
-	ne, _ := parseNodeList(req.Nodes)
-	nsend = &nodeExecList{Subnodes: ne[0].Subnodes}
-	nsend.Nodes = slaves.ServIntersect(ne[0].Nodes)
-	Dprint(2, "Parsed node list to ", ne, " and nsend is ", nsend)
-	return nsend
-	/* for now; later this will be a call to cache files etc. etc. */
-}

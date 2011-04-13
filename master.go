@@ -32,7 +32,7 @@ func startMaster(domainSock string, loc Locale) {
 	registerSlaves(loc)
 }
 
-func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string) (numnodes int) {
+func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string, availableSlaves []string) (numnodes int) {
 	/* for efficiency, on the slave node, if there is one proc, 
 	 * it connects directly to the parent IO forwarder. 
 	 * If the slave node is tasking other nodes, it will also spawn
@@ -52,7 +52,7 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string) (nu
 	switch {
 	case sendReq.PeerGroupSize == 0:
 		// This is the case when not using "peerspawn"
-		availableSlaves := slaves.ServIntersect(aNode.Nodes)
+		//availableSlaves := slaves.ServIntersect(aNode.Nodes)
 		Dprint(2, "receiveCmds: slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves, " subnodes ", aNode.Subnodes)
 		
 		sendReq.Nodes = aNode.Subnodes
@@ -63,7 +63,7 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string) (nu
 		}
 	default:
 		// Peerspawn isn't actually very good, this should go away. We'll see how Don's DHT works
-		availableSlaves := slaves.ServIntersect(aNode.Nodes)
+		//availableSlaves := slaves.ServIntersect(aNode.Nodes)
 		Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves)
 
 		sendReq.Nodes = aNode.Subnodes
@@ -100,7 +100,8 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (nu
 		/* would be nice to spawn these async but we need the 
 		 * nodecount ...
 		 */
-		numnodes += sendCommandsToANode(sendReq, aNode, root)
+		availableSlaves := slaves.ServIntersect(aNode.Nodes)
+		numnodes += sendCommandsToANode(sendReq, aNode, root, availableSlaves)
 	}
 	Dprint(2, "numnodes = ", numnodes)
 	return
@@ -150,10 +151,10 @@ func receiveCmds(domainSock string) os.Error {
 			case a.Command[0] == uint8('i'):
 				{
 					hostinfo := Resp{}
-					for i, s := range slaves.addr2id {
+					for i, s := range slaves.Addr2id {
 						hostinfo.Msg += i + " " + s + "\n"
 					}
-					hostinfo.NumNodes = len(slaves.addr2id)
+					hostinfo.NumNodes = len(slaves.Addr2id)
 					Dprint(8, "Respond to info request ", hostinfo)
 					r.Send("hostinfo", hostinfo)
 				}
@@ -224,34 +225,33 @@ func registerSlaves(loc Locale) os.Error {
 
 
 type Slaves struct {
-	slaves  map[string]*SlaveInfo
-	addr2id map[string]string
+	Slaves  map[string]*SlaveInfo
+	Addr2id map[string]string
 }
 
 func newSlaves() (s Slaves) {
-	s.slaves = make(map[string]*SlaveInfo)
-	s.addr2id = make(map[string]string)
+	s.Slaves = make(map[string]*SlaveInfo)
+	s.Addr2id = make(map[string]string)
 	return
 }
 
 func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 	var s *SlaveInfo
 	s = &SlaveInfo{
-		id:     loc.SlaveIdFromVitalData(vd),
+		Id:     loc.SlaveIdFromVitalData(vd),
 		Addr:   vd.HostAddr,
 		Server: vd.ServerAddr,
 		Nodes:  vd.Nodes,
-		rpc:    r,
 	}
-	sv.slaves[s.id] = s
-	sv.addr2id[s.Server] = s.id
-	Dprintln(2, "slave Add: id: ", s)
-	resp.Id = s.id
+	sv.Slaves[s.Id] = s
+	sv.Addr2id[s.Server] = s.Id
+	Dprintln(2, "slave Add: Id: ", s)
+	resp.Id = s.Id
 	return
 }
 
 func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
-	s, ok = sv.slaves[n]
+	s, ok = sv.Slaves[n]
 	return
 }
 
@@ -262,7 +262,7 @@ func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
 func (sv *Slaves) ServIntersect(set []string) (i []string) {
 	switch set[0] {
 	case ".":
-		for _, n := range sv.slaves {
+		for _, n := range sv.Slaves {
 			i = append(i, n.Server)
 		}
 	default:

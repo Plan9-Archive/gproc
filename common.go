@@ -113,7 +113,7 @@ type StartReq struct {
 	PeerGroupSize int
 	Cwd           string
 	/* The File element should really replace Cmds */
-	File 			[]*filemarshal.File
+	Files 			[]*filemarshal.File
 }
 
 func (s *StartReq) String() string {
@@ -128,18 +128,17 @@ type Worker struct {
 }
 
 type SlaveInfo struct {
-	id     string
+	Id     string
 	Addr   string
 	Server string
 	Nodes  []string
-	rpc    *RpcClientServer
 }
 
 func (s *SlaveInfo) String() string {
 	if s == nil {
 		return "<nil>"
 	}
-	return fmt.Sprint(s.id, " ", s.Addr)
+	return fmt.Sprint(s.Id, " ", s.Addr)
 }
 
 
@@ -198,8 +197,8 @@ func RecvPrint(funcname, from interface{}, arg interface{}) {
 var roleFunc func(role string)
 
 type RpcClientServer struct {
-	e filemarshal.Encoder
-	d filemarshal.Decoder
+	E filemarshal.Encoder
+	D filemarshal.Decoder
 }
 
 // This is the best way I've come up with to let the slave specify where
@@ -208,8 +207,8 @@ type RpcClientServer struct {
 // only be used by the slave.
 func NewRpcClientServer(rw io.ReadWriter, root string) *RpcClientServer {
 	return &RpcClientServer{
-		e: filemarshal.NewEncoder(gob.NewEncoder(rw)),
-		d: filemarshal.NewDecoder(gob.NewDecoder(rw), root),
+		E: filemarshal.NewEncoder(gob.NewEncoder(rw)),
+		D: filemarshal.NewDecoder(gob.NewDecoder(rw), root),
 	}
 }
 
@@ -217,7 +216,7 @@ var onSendFunc func(funcname string, w io.Writer, arg interface{})
 
 func (r *RpcClientServer) Send(funcname string, arg interface{}) {
 	SendPrint(funcname, r, arg)
-	err := r.e.Encode(arg)
+	err := r.E.Encode(arg)
 	if err != nil {
 		log.Fatal(funcname, ": Send: ", err)
 	}
@@ -226,7 +225,7 @@ func (r *RpcClientServer) Send(funcname string, arg interface{}) {
 var onRecvFunc func(funcname string, r io.Reader, arg interface{})
 
 func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
-	err := r.d.Decode(arg)
+	err := r.D.Decode(arg)
 	if err != nil {
 		log.Fatal(funcname, ": Recv error: ", err)
 	}
@@ -350,7 +349,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.E
 		} else {
 			continue
 		}
-		larg.File = append(larg.File, f)
+		larg.Files = append(larg.Files, f)
 	}
 
 	client, err := Dial(defaultFam, "", clientnode)
@@ -367,6 +366,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.E
 		// the file contents too.
 		rpc.Send("cacheRelayFilesAndDelegateExec", larg)
 		Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.BytesToTransfer, arg.LocalBin)
+
 		if arg.LocalBin {
 			Dprintf(2, "cmds %v\n", arg.Cmds)
 		}

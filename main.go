@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"strconv"
 	"flag"
+	"gob"
 )
 
 func usage() {
@@ -103,6 +104,9 @@ func main() {
 		loc.Init("init")
 		exceptOK := except(*defaultMasterUDS, flag.Args()[1:])
 		fmt.Print(exceptOK)
+	case "R":
+		loc.Init("run")
+		slaveProc(NewRpcClientServer(os.Stdin, *binRoot), &RpcClientServer{ E: gob.NewEncoder(os.Stdout), D: gob.NewDecoder(os.Stdout) }, &RpcClientServer{ E: gob.NewEncoder(os.NewFile(3, "pipe")), D: gob.NewDecoder(os.NewFile(3, "pipe")) })
 	default:
 		flag.Usage()
 	}
