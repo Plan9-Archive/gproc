@@ -520,3 +520,112 @@ func newStartReq(arg *StartReq) *StartReq {
 		Cwd: arg.Cwd,
 	}
 }
+
+
+/*
+ * Functions and data types for keeping track of slave nodes
+ */
+
+
+func registerSlaves(loc Locale) os.Error {
+	l, err := Listen(defaultFam, loc.Addr())
+	if err != nil {
+		log.Fatal("listen error:", err)
+	}
+
+	Dprint(0, "-cmdport=", l.Addr())
+	Dprint(2, l.Addr())
+	err = loc.RegisterServer(l)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	slaves = newSlaves()
+	for {
+		vd := &vitalData{}
+		c, err := l.Accept()
+		if err != nil {
+			log.Fatal("registerSlaves:", err)
+		}
+		r := NewRpcClientServer(c, *binRoot)
+		r.Recv("registerSlaves", &vd)
+		/* quite the hack. At some point, on a really complex system, 
+		 * we'll need to return a set of listen addresses for a daemon, but we've yet to
+		 * see that in actual practice. We can't use LocalAddr here, since it returns our listen
+		 * address, not the address we accepted on, and if that's 0.0.0.0, that's useless. 
+		 */
+		if netaddr == "" {
+			addr := strings.Split(vd.ParentAddr, ":", 2)
+			Dprint(2, "addr is ", addr)
+			netaddr = addr[0]
+		}
+		/* depending on the machine we are on, it is possible we don't get a usable IP address 
+		 * in the ServerAddr. We'll have a good port, however, In this case, we need
+		 * to cons one up, which is easily done. 
+		 */
+		if vd.ServerAddr[0:len("0.0.0.0")] == "0.0.0.0" {
+			vd.ServerAddr = strings.Split(c.RemoteAddr().String(), ":", 2)[0] + vd.ServerAddr[7:]
+			Dprint(2, "Guessed remote slave ServerAddr is ", vd.ServerAddr)
+		}
+		resp := slaves.Add(vd, r)
+		r.Send("registerSlaves", resp)
+	}
+	Dprint(2, "registerSlaves is exiting! That can't be good!")
+	return nil
+}
+
+type Slaves struct {
+	Slaves  map[string]*SlaveInfo
+	Addr2id map[string]string
+}
+
+func newSlaves() (s Slaves) {
+	s.Slaves = make(map[string]*SlaveInfo)
+	s.Addr2id = make(map[string]string)
+	return
+}
+
+func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
+	var s *SlaveInfo
+	s = &SlaveInfo{
+		Id:     loc.SlaveIdFromVitalData(vd),
+		Addr:   vd.HostAddr,
+		Server: vd.ServerAddr,
+		Nodes:  vd.Nodes,
+		Rpc:	r,
+	}
+	sv.Slaves[s.Id] = s
+	sv.Addr2id[s.Server] = s.Id
+	Dprintln(2, "slave Add: Id: ", s)
+	resp.Id = s.Id
+	return
+}
+
+func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
+	s, ok = sv.Slaves[n]
+	return
+}
+
+/* a hack for now. Sorry, we need to clean up the whole parsenodelist/intersect thing
+ * but I need something that works and we're still putting the ideas 
+ * together. So sue me. 
+ */
+func (sv *Slaves) ServIntersect(set []string) (i []string) {
+	switch set[0] {
+	case ".":
+		for _, n := range sv.Slaves {
+			i = append(i, n.Server)
+		}
+	default:
+		for _, n := range set {
+			s, ok := sv.Get(n)
+			if !ok {
+				continue
+			}
+			i = append(i, s.Server)
+		}
+	}
+	return
+}
+
+var slaves Slaves
