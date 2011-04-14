@@ -10,12 +10,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"io"
-	"exec"
 	"strings"
 	"os"
+	"net"
+	"fmt"
+	"gob"
 )
 
 var id string
@@ -32,7 +32,8 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	if *DoPrivateMount == true && os.Getuid() != 0 {
 		log.Fatal("Need to run as root for private mounts")
 	}
-	client, err := Dial(fam, "", masterAddr)
+	Dprint(2, "dialing masterAddr ", masterAddr)
+	master, err := Dial(fam, "", masterAddr)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
@@ -43,17 +44,70 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	 * kernels going back a long time, we might as well tell the master its own address for
 	 * the socket, since *the master can't get it*. True! 
 	 */
-	addr := strings.Split(client.LocalAddr().String(), ":", -1)
+	addr := strings.Split(master.LocalAddr().String(), ":", -1)
 	peerAddr := addr[0] + ":0"
-	vitalData.ServerAddr = newListenProc("slaveProc", slaveProc, peerAddr)
-	vitalData.HostAddr = client.LocalAddr().String()
-	vitalData.ParentAddr = client.RemoteAddr().String()
-	r := NewRpcClientServer(client)
+
+	laddr, _ := net.ResolveTCPAddr(peerAddr)      // This multiple-return business sometimes gets annoying
+	netl, err := net.ListenTCP(defaultFam, laddr) // this is how we're ditching newListenProc
+	vitalData.ServerAddr = netl.Addr().String()
+	vitalData.HostAddr = master.LocalAddr().String()
+	vitalData.ParentAddr = master.RemoteAddr().String()
+	r := NewRpcClientServer(master, *binRoot)
 	initSlave(r, vitalData)
 	go registerSlaves(loc)
-	for {
-		slaveProc(r)
-	}
+	go func() {
+		for {
+			// Wait for a connection from the master
+			c, err := netl.AcceptTCP()
+			if err != nil {
+				log.Fatal("problem in netl.Accept()")
+			}
+			Dprint(3, "Received connection from: ", c.RemoteAddr())
+
+			// start a new process, give it 'c' as stdin.
+			connFile, _ := c.File()                              // the new process will read a StartReq from connFile
+			readp, writep, _ := os.Pipe()                        // we'll send a list of slaves over this
+			readp2, writep2, _ := os.Pipe()                      // the child will send a list of nodes and ask for a list of slaves
+			f := []*os.File{connFile, readp, os.Stderr, writep2} // we can't use Stderr because the child wants to write to it
+			cwd, _ := os.Getwd()
+			procattr := os.ProcAttr{Env: nil, Dir: cwd, Files: f}
+			argv := []string{
+				"gproc",
+				fmt.Sprintf("-debug=%d", *DebugLevel),
+				fmt.Sprintf("-p=%v", *DoPrivateMount),
+				fmt.Sprintf("-locale=%v", *locale),
+				fmt.Sprintf("-binRoot=%v", *binRoot),
+				"-prefix=" + id,
+				"R", // "R" = run a program
+			}
+			// Start the new process
+			p, err := os.StartProcess(os.Args[0], argv, &procattr)
+			if err != nil {
+				log.Fatal("startSlave: ", err)
+			} else {
+				// The process started, let's make some RpcClientServers on our end to communicate with it
+				passrpc := &RpcClientServer{E: gob.NewEncoder(writep), D: gob.NewDecoder(writep)}
+				returnrpc := &RpcClientServer{E: gob.NewEncoder(readp2), D: gob.NewDecoder(readp2)}
+
+				var ne nodeExecList
+				// This is the list of nodes the child got in its request
+				returnrpc.Recv("startSlave getting nodes ", &ne)
+				// The child doesn't have the slaves populated, so we have to do it
+				ne.Nodes = slaves.ServIntersect(ne.Nodes)
+				passrpc.Send("startSlave sending nodes ", ne)
+
+				w, _ := p.Wait(0) // Wait until the child process is finished. We need to do things sorta synchronously
+				Dprint(2, "startSlave: process returned ", w.String())
+			}
+			c.Close()
+			writep.Close()
+			readp2.Close()
+		}
+	}()
+
+	// This read doesn't really matter, the important thing is that it will fail when the master goes away
+	foo := &StartReq{}
+	r.Recv("slaveProc done", &foo)
 }
 
 func initSlave(r *RpcClientServer, v *vitalData) {
@@ -65,69 +119,123 @@ func initSlave(r *RpcClientServer, v *vitalData) {
 	log.SetPrefix("slave " + id + ": ")
 }
 
-func slaveProc(r *RpcClientServer) {
+/*
+ * Receive a StartReq (and, thanks to filemarshal, all the files we need), 
+ * then go off and run the program with runLocal. While that's happening,
+ * we set up ioproxies as needed, then forward on the StartReq we received
+ * to any sub-nodes we may have.
+ *
+ * This is a bit of a beast, but it's more efficient than the last iteration.
+ *
+ * There are 3 RpcClientServer arguments, because of the way things work.
+ * 'r' is connected to this node's parent/master so we can read the StartReq
+ * 'inforpc' is connected to the original slave process, which knows our slaves and can send us a nodeExecList
+ * 'returnrpc' is used to ask the original slave process for a nodeExecList after we get the StartReq
+ */
+func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClientServer) {
+	// Make sure the root (default /tmp/xproc) exists
+	os.Mkdir(*binRoot, 0700)
+	// Do a private mount if necessary
+	if *DoPrivateMount == true {
+		doPrivateMount(*binRoot)
+	}
+
+	done := make(chan int, 0) // this is how we'll know the command is done
+
+	// Receive a StartReq from the master/parent
 	req := &StartReq{}
-	// receives from cacheRelayFilesAndDelegateExec?
-	r.Recv("slaveProc", req)
-	ForkRelay(req, r)
-	/* well, *maybe* we should do this, but we're commenting it out for now ...
-	 * none of the clients look for this message and in the case of a delegation
-	 * we're getting EPIPE
-	 *
-	r.Send("slaveProc", Resp{Msg: []byte("slave finished")})
-	*/
-	Dprintln(2, "slaveProc: ", req, " ends\n")
+	r.Recv("slaveProc", &req)
+	Dprint(2, "slaveProc: req ", *req)
 
-}
-
-func ForkRelay(req *StartReq, rpc *RpcClientServer) {
-	Dprintln(2, "ForkRelay: ", req.Nodes, " fileServer: ", req)
-	p := startRelay()
-	/* relay data to the child */
-	if req.LocalBin {
-		Dprintf(2, "ForkRelay arg.LocalBin %v arg.Cmds %v\n", req.LocalBin, req.Cmds)
+	// Establish a connection to the IO proxy
+	n, c, err := fileTcpDial(req.Lserver)
+	if err != nil {
+		log.Fatal("tcpDial: ", err)
 	}
-	rrpc := NewRpcClientServer(p.Stdin)
-	rrpc.Send("ForkRelay", req)
-	/* create the array of strings to send. You can't just send the slaveinfo struct as Go won't like that. 
-	 * You don't have fork
-	 * and you can't do it here as the child will build a private name space. 
-	 * So take the req.Nodes, bust them into bits just as the master does, and create an array of 
-	 * socket names {'"a.b.c.d/x"...} and the subnode names {"1-5"} and pass them down. 
-	 * this is almost ready but it won't make it.
+
+	// Run the program
+	go runLocal(req, n, done)
+
+	/* the child may end before we even get here, but since we still own this name 
+	 * space, the files are still there. Now we set up an ioProxy and copy the StartReq
+	 * and files to any children we may have.
 	 */
-	ne, _ := parseNodeList(req.Nodes)
-	nsend := nodeExecList{Subnodes: ne[0].Subnodes}
-	nsend.Nodes = slaves.ServIntersect(ne[0].Nodes)
-	Dprint(2, "Parsed node list to ", ne, " and nsend is ", nsend)
-	/* the run code will then have a list of servers and node list to send to them */
-	rrpc.Send("ForkRelay", &nsend)
-	// receives from cacheRelayFilesAndDelegateExec?
-	n, err := io.Copyn(rrpc.ReadWriter(), rpc.ReadWriter(), req.BytesToTransfer)
-	Dprint(2, "ForkRelay: copy wrote ", n)
+	var nodesCopy string
+	var l Listener
+	var workerChan chan int
+	var numWorkers int
+	numWorkers = 0
+	nodesCopy = req.Nodes
+	slaveNodes, err := parseNodeList(nodesCopy)
+	returnrpc.Send("send slaveNodes ", slaveNodes[0])
+	var availableSlaves nodeExecList
+	inforpc.Recv("recv availableSlaves", &availableSlaves)
+
+	Dprint(2, "receiveCmds: sendReq.Nodes: ", req.Nodes, " expands to ", slaveNodes)
 	if err != nil {
-		//log.Fatal("ForkRelay: io.Copyn write error: ", err)
+		return
 	}
-	Dprint(2, "ForkRelay: end")
+
+	if len(availableSlaves.Nodes) > 0 {
+		workerChan, l, err = ioProxy(defaultFam, loc.Ip()+":0", c)
+		if err != nil {
+			log.Fatalf("slave: ioproxy: ", err)
+		}
+		Dprint(2, "netwaiter locl.Ip() ", loc.Ip(), " listener at ", l.Addr().String())
+		req.Lfam = l.Addr().Network()
+		req.Lserver = l.Addr().String()
+
+		for _, _ = range availableSlaves.Nodes {
+			numWorkers += 1
+		}
+	}
+	nnodes := sendCommandsToANode(req, slaveNodes[0], *binRoot, availableSlaves.Nodes)
+	Dprint(2, "Sent to ", nnodes, " nodes")
+	// Wait for all the children to finish execution
+	for numWorkers > 0 {
+		worker := <-workerChan
+		Dprint(2, worker, " returned, ", numWorkers, " workers left")
+		numWorkers--
+	}
+	<-done // wait until our own instance has finished executing
+	c.Close()
+	n.Close()
+	Dprint(2, "Exiting slaveProc")
 }
 
-func startRelay() *exec.Cmd {
-	Dprintf(2, "startRelay:  starting")
-	argv := []string{
-		"gproc",
-		fmt.Sprintf("-debug=%d", *DebugLevel),
-		fmt.Sprintf("-p=%v", *DoPrivateMount),
-		fmt.Sprintf("-locale=%v", *locale),
-		"-prefix=" + id,
-		"R",
+/*
+ * This function is used to run a program which has been specified in
+ * a StartReq and sent to the slave.
+ *
+ * 'n' points to a connection to the ioProxy directly "above" us.
+ */
+func runLocal(req *StartReq, n *os.File, done chan int) {
+	Dprint(2, "runLocal: dialed %v", n)
+	f := []*os.File{n, n, n} // set up stdin/stdout/stderr for the program
+	var pathbase = *binRoot
+	execpath := pathbase + req.Path + req.Args[0]
+	if req.LocalBin {
+		execpath = req.Args[0]
 	}
-	nilEnv := []string{""}
-	// Argv[0] will not always be ./gproc ...
-	p, err := exec.Run(os.Args[0], argv, nilEnv, "", exec.Pipe, exec.Pipe, exec.PassThrough)
+	Dprint(2, "run: execpath: ", execpath)
+	Env := req.Env
+	/* now build the LD_LIBRARY_PATH variable */
+	ldLibPath := "LD_LIBRARY_PATH="
+	for _, s := range req.LibList {
+		ldLibPath = ldLibPath + *binRoot + req.Path + s + ":"
+	}
+	Env = append(Env, ldLibPath)
+	Dprint(2, "run: Env ", Env)
+	procattr := os.ProcAttr{Env: Env, Dir: pathbase + "/" + req.Cwd,
+		Files: f}
+	Dprint(2, "run: dir: ", pathbase+"/"+req.Cwd)
+	p, err := os.StartProcess(execpath, req.Args, &procattr)
 	if err != nil {
-		log.Fatal("startRelay: run: ", err)
+		log.Fatal("run: ", err)
+		n.Write([]uint8(err.String()))
+	} else {
+		w, _ := p.Wait(0)
+		Dprint(2, "run: process returned ", w.String())
 	}
-	Dprintf(2, "startRelay: forked %v\n", p)
-	go WaitAllChildren()
-	return p
+	done <- 1 // we're called as a goroutine, so notify that we're done
 }

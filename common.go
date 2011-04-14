@@ -16,6 +16,7 @@ import (
 	"log"
 	"io"
 	"gob"
+	"bitbucket.org/floren/filemarshal"
 	"strconv"
 	"strings"
 	"syscall"
@@ -47,14 +48,15 @@ type SetDebugLevel struct {
 }
 
 type cmdToExec struct {
-	Name     string
-	FullPath string
-	Local    int
-	Fi       *os.FileInfo
+	CurrentName   string
+	DestName      string
+	SymlinkTarget string
+	Local         int
+	Fi            *os.FileInfo
 }
 
 func (a *cmdToExec) String() string {
-	return fmt.Sprint(a.Name)
+	return fmt.Sprint(a.CurrentName)
 }
 
 /* vitalData is data from the master to the user or slaves to parent (other slaves or master)
@@ -110,6 +112,8 @@ type StartReq struct {
 	 */
 	PeerGroupSize int
 	Cwd           string
+	/* The File element should really replace Cmds */
+	Files []*filemarshal.File
 }
 
 func (s *StartReq) String() string {
@@ -124,18 +128,18 @@ type Worker struct {
 }
 
 type SlaveInfo struct {
-	id     string
+	Id     string
 	Addr   string
 	Server string
 	Nodes  []string
-	rpc    *RpcClientServer
+	Rpc    *RpcClientServer
 }
 
 func (s *SlaveInfo) String() string {
 	if s == nil {
 		return "<nil>"
 	}
-	return fmt.Sprint(s.id, " ", s.Addr)
+	return fmt.Sprint(s.Id, " ", s.Addr)
 }
 
 
@@ -193,31 +197,27 @@ func RecvPrint(funcname, from interface{}, arg interface{}) {
 
 var roleFunc func(role string)
 
-// no, this is stupid.
-
 type RpcClientServer struct {
-	rw io.ReadWriter
-	e  *gob.Encoder
-	d  *gob.Decoder
+	E filemarshal.Encoder
+	D filemarshal.Decoder
 }
 
-func NewRpcClientServer(rw io.ReadWriter) *RpcClientServer {
+// This is the best way I've come up with to let the slave specify where
+// binaries should go.
+// You should probably just use *binRoot everywhere here, although it will
+// only be used by the slave.
+func NewRpcClientServer(rw io.ReadWriter, root string) *RpcClientServer {
 	return &RpcClientServer{
-		rw: rw,
-		e:  gob.NewEncoder(rw),
-		d:  gob.NewDecoder(rw),
+		E: filemarshal.NewEncoder(gob.NewEncoder(rw)),
+		D: filemarshal.NewDecoder(gob.NewDecoder(rw), root),
 	}
-}
-
-func (r *RpcClientServer) ReadWriter() io.ReadWriter {
-	return r.rw
 }
 
 var onSendFunc func(funcname string, w io.Writer, arg interface{})
 
 func (r *RpcClientServer) Send(funcname string, arg interface{}) {
-	SendPrint(funcname, r.rw, arg)
-	err := r.e.Encode(arg)
+	SendPrint(funcname, r, arg)
+	err := r.E.Encode(arg)
 	if err != nil {
 		log.Fatal(funcname, ": Send: ", err)
 	}
@@ -226,24 +226,16 @@ func (r *RpcClientServer) Send(funcname string, arg interface{}) {
 var onRecvFunc func(funcname string, r io.Reader, arg interface{})
 
 func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
-	err := r.d.Decode(arg)
+	err := r.D.Decode(arg)
 	if err != nil {
 		log.Fatal(funcname, ": Recv error: ", err)
 	}
-	RecvPrint(funcname, r.rw, arg)
+	RecvPrint(funcname, r, arg)
+	/* maybe some other time 
 	if onRecvFunc != nil {
-		onRecvFunc(funcname, r.rw, arg)
+		onRecvFunc(funcname, r, arg)
 	}
-}
-
-func (r *RpcClientServer) Read(p []byte) (n int, err os.Error) {
-	n, err = r.ReadWriter().Read(p)
-	return
-}
-
-func (r *RpcClientServer) Write(p []byte) (n int, err os.Error) {
-	n, err = r.ReadWriter().Write(p)
-	return
+	*/
 }
 
 
@@ -253,11 +245,19 @@ func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
 	if onDialFunc != nil {
 		onDialFunc(fam, laddr, raddr)
 	}
-	c, err = net.Dial(fam, laddr, raddr)
-	if err != nil {
-		return
+	/* This is terrible, please fix it. Better yet, make the Go guys un-break net.Dial -- John */
+	if fam == "tcp" {
+		ra, _ := net.ResolveTCPAddr(raddr)
+		la, _ := net.ResolveTCPAddr(laddr)
+		c, err = net.DialTCP(fam, la, ra)
+		if err != nil {
+			return
+		}
+		//Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
+	} else {
+		c, err = net.Dial(fam, raddr)
+		//Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
 	}
-	Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
 	return
 }
 
@@ -324,61 +324,70 @@ func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string)
 				log.Fatal(jobname, ": ", err)
 			}
 			Dprint(2, jobname, ": ", c.RemoteAddr())
-			go job(NewRpcClientServer(c))
+			go job(NewRpcClientServer(c, *binRoot))
 		}
 	}()
 	return netl.Addr().String()
 }
 
-func writeOutFiles(r *RpcClientServer, root string, cmds []*cmdToExec) {
-	for _, c := range cmds {
-		Dprint(2, "writeOutFiles: next cmd")
-		if !c.Fi.IsRegular() {
-			continue
-		}
-		fullpath := root + c.FullPath
-		f, err := os.Open(fullpath, os.O_RDONLY, 0)
-		if err != nil {
-			log.Printf("Open %v failed: %v\n", fullpath, err)
-		}
-		Dprint(2, "writeOutFiles: copying ", c.Fi.Size, " from ", f)
-		// us -> master -> slaves
-		n, err := io.Copyn(r.ReadWriter(), f, c.Fi.Size)
-		Dprint(2, "writeOutFiles: wrote ", n)
-		f.Close()
-		if err != nil {
-			log.Fatal("writeOutFiles: copyn: ", err)
-		}
-	}
-	Dprint(2, "writeOutFiles: finished")
-}
-
-func cacheRelayFilesAndDelegateExec(arg *StartReq, root, Server string) os.Error {
-	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", Server, " fileServer: ", arg.Lfam, arg.Lserver)
+/*
+ * This name isn't very good any more.
+ * This function builds up a list of files that need to go out to the current node's sub-nodes.
+ * It is called by both the master and, if a more complex hierarchy is used, the upper-level slaves.
+ */
+func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.Error {
+	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", clientnode, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	larg := newStartReq(arg)
-	client, err := Dial(defaultFam, "", Server)
+
+	/* Build up a list of filemarshal.File so the filemarshal can transmit the needed files */
+	for _, c := range larg.Cmds {
+		comesfrom := root + c.DestName
+		Dprint(2, "current cmd comesfrom = ", comesfrom, ", DestName = ", c.DestName, ", CurrentName = ", c.CurrentName, ", SymlinkTarget = ", c.SymlinkTarget)
+		f := new(filemarshal.File)
+		if c.Fi.IsRegular() || c.Fi.IsDirectory() || c.Fi.IsSymlink() {
+			f = &filemarshal.File{CurrentName: comesfrom, Fi: *c.Fi, SymlinkTarget: c.SymlinkTarget, DestName: c.DestName}
+		} else {
+			continue
+		}
+		larg.Files = append(larg.Files, f)
+	}
+
+	client, err := Dial(defaultFam, "", clientnode)
 	if err != nil {
 		log.Print("dialing:", err)
 		return err
 	}
 	Dprintf(2, "connected to %v\n", client)
-	rpc := NewRpcClientServer(client)
+	rpc := NewRpcClientServer(client, *binRoot)
 	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
 	go func() {
+		// This Send pushes our larg struct to filemarshal. Since it contains a
+		// []*filemarshal.File, the filemarshal grabs the list of files and sends
+		// the file contents too.
 		rpc.Send("cacheRelayFilesAndDelegateExec", larg)
 		Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.BytesToTransfer, arg.LocalBin)
+
 		if arg.LocalBin {
 			Dprintf(2, "cmds %v\n", arg.Cmds)
 		}
-		writeOutFiles(rpc, root, arg.Cmds)
 		Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
 		/* at this point it is out of our hands */
 	}()
 
 	return nil
 }
-
+/*
+ * The ioProxy listens for incoming connections. Sub-nodes will connect to it
+ * and use the connection as stdin, stdout, and stderr for the programs they
+ * execute. ioProxy copies the output of the connection to 'dest', which will
+ * be a connection to another ioProxy if we're on a slave or simply stdout
+ * if we're in the gproc issuing the exec command.
+ * 
+ * Whoever calls the ioProxy should read from workerChan to know when I/O is 
+ * finished. workerChan will contain one int for every client which has 
+ * completed and disconnected.
+ */
 func ioProxy(fam, server string, dest io.Writer) (workerChan chan int, l Listener, err os.Error) {
 	workerChan = make(chan int, 0)
 	l, err = Listen(fam, server)
@@ -458,3 +467,164 @@ BadRange:
 	err = BadRangeErr
 	return
 }
+
+func doPrivateMount(pathbase string) {
+	unshare()
+	_ = unmount(*binRoot)
+	syscallerr := privatemount(*binRoot)
+	if syscallerr != 0 {
+		log.Print("Mount failed ", syscallerr)
+		os.Exit(1)
+	}
+}
+
+/*
+ * Make a TCP connection to a server, return both the connection and
+ * a File pointing to that connection.
+ */
+func fileTcpDial(server string) (*os.File, net.Conn, os.Error) {
+	var laddr net.TCPAddr
+	raddr, err := net.ResolveTCPAddr(server)
+	if err != nil {
+		return nil, nil, err
+	}
+	c, err := net.DialTCP(defaultFam, &laddr, raddr)
+	if err != nil {
+		return nil, nil, err
+	}
+	f, err := c.File()
+	if err != nil {
+		c.Close()
+		return nil, nil, err
+	}
+
+	return f, c, nil
+}
+
+func newStartReq(arg *StartReq) *StartReq {
+	return &StartReq{
+		Command:         arg.Command,
+		Nodes:           arg.Nodes,
+		ThisNode:        true,
+		LocalBin:        arg.LocalBin,
+		Peers:           arg.Peers,
+		Args:            arg.Args,
+		Env:             arg.Env,
+		LibList:         arg.LibList,
+		Path:            arg.Path,
+		Lfam:            arg.Lfam,
+		Lserver:         arg.Lserver,
+		Cmds:            arg.Cmds,
+		BytesToTransfer: arg.BytesToTransfer,
+		Cwd:             arg.Cwd,
+	}
+}
+
+
+/*
+ * Functions and data types for keeping track of slave nodes
+ */
+
+
+func registerSlaves(loc Locale) os.Error {
+	l, err := Listen(defaultFam, loc.Addr())
+	if err != nil {
+		log.Fatal("listen error:", err)
+	}
+
+	Dprint(0, "-cmdport=", l.Addr())
+	Dprint(2, l.Addr())
+	err = loc.RegisterServer(l)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	slaves = newSlaves()
+	for {
+		vd := &vitalData{}
+		c, err := l.Accept()
+		if err != nil {
+			log.Fatal("registerSlaves:", err)
+		}
+		r := NewRpcClientServer(c, *binRoot)
+		r.Recv("registerSlaves", &vd)
+		/* quite the hack. At some point, on a really complex system, 
+		 * we'll need to return a set of listen addresses for a daemon, but we've yet to
+		 * see that in actual practice. We can't use LocalAddr here, since it returns our listen
+		 * address, not the address we accepted on, and if that's 0.0.0.0, that's useless. 
+		 */
+		if netaddr == "" {
+			addr := strings.Split(vd.ParentAddr, ":", 2)
+			Dprint(2, "addr is ", addr)
+			netaddr = addr[0]
+		}
+		/* depending on the machine we are on, it is possible we don't get a usable IP address 
+		 * in the ServerAddr. We'll have a good port, however, In this case, we need
+		 * to cons one up, which is easily done. 
+		 */
+		if vd.ServerAddr[0:len("0.0.0.0")] == "0.0.0.0" {
+			vd.ServerAddr = strings.Split(c.RemoteAddr().String(), ":", 2)[0] + vd.ServerAddr[7:]
+			Dprint(2, "Guessed remote slave ServerAddr is ", vd.ServerAddr)
+		}
+		resp := slaves.Add(vd, r)
+		r.Send("registerSlaves", resp)
+	}
+	Dprint(2, "registerSlaves is exiting! That can't be good!")
+	return nil
+}
+
+type Slaves struct {
+	Slaves  map[string]*SlaveInfo
+	Addr2id map[string]string
+}
+
+func newSlaves() (s Slaves) {
+	s.Slaves = make(map[string]*SlaveInfo)
+	s.Addr2id = make(map[string]string)
+	return
+}
+
+func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
+	var s *SlaveInfo
+	s = &SlaveInfo{
+		Id:     loc.SlaveIdFromVitalData(vd),
+		Addr:   vd.HostAddr,
+		Server: vd.ServerAddr,
+		Nodes:  vd.Nodes,
+		Rpc:    r,
+	}
+	sv.Slaves[s.Id] = s
+	sv.Addr2id[s.Server] = s.Id
+	Dprintln(2, "slave Add: Id: ", s)
+	resp.Id = s.Id
+	return
+}
+
+func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
+	s, ok = sv.Slaves[n]
+	return
+}
+
+/* a hack for now. Sorry, we need to clean up the whole parsenodelist/intersect thing
+ * but I need something that works and we're still putting the ideas 
+ * together. So sue me. 
+ */
+func (sv *Slaves) ServIntersect(set []string) (i []string) {
+	switch set[0] {
+	case ".":
+		for _, n := range sv.Slaves {
+			i = append(i, n.Server)
+		}
+	default:
+		for _, n := range set {
+			s, ok := sv.Get(n)
+			if !ok {
+				continue
+			}
+			i = append(i, s.Server)
+		}
+	}
+	return
+}
+
+var slaves Slaves

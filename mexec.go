@@ -9,18 +9,28 @@
  * certain rights in this software.
  */
 
+/*
+ * The functions in this file are meant to be called when you give an "e" command,
+ * to execute a program, on the command line. They pack up the necessary files and
+ * send them to the master for distribution
+ */
+
 package main
 
 import (
 	"log"
 	"os"
 	"strings"
-	"bitbucket.org/npe/ldd"
+	"bitbucket.org/floren/ldd"
 	"path"
 	"path/filepath"
 	"fmt"
 )
 
+/*
+ * This function is called when you give gproc an "e" argument, in order to run a specified
+ * command on the selected nodes
+ */
 func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []string) {
 	log.SetPrefix("mexec " + *prefix + ": ")
 	/* make sure there is someone to talk to, and get the vital data */
@@ -28,7 +38,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	if err != nil {
 		log.Fatal("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
 	}
-	r := NewRpcClientServer(client)
+	r := NewRpcClientServer(client, *binRoot)
 
 	/* master sends us vital data */
 	var vitalData vitalData
@@ -36,14 +46,14 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	pv := newPackVisitor()
 	cwd, _ := os.Getwd()
 	/* make sure our cwd ends up in the list of things to take along ...  but only take the dir*/
-	filepath.Walk(cwd + "/.", pv, nil);
+	filepath.Walk(cwd+"/.", pv, nil)
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
 		for _, f := range files {
 			rootedpath := f
 			if f[0] != '/' {
-				rootedpath = cwd + "/"  + f
-			} 
+				rootedpath = cwd + "/" + f
+			}
 			filepath.Walk(rootedpath, pv, nil)
 		}
 	}
@@ -52,7 +62,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 
 	/* now filter out the files we will not need */
 	finishedFiles := []string{}
-	for _, s := range(rawFiles) {
+	for _, s := range rawFiles {
 		if len(vitalData.Exceptlist) > 0 && vitalData.Exceptlist[s] {
 			continue
 		}
@@ -70,6 +80,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		}
 	}
 	/* build the library list given that we may have a different root */
+
 	libList := strings.Split(*libs, ":", -1)
 	rootedLibList := []string{}
 	for _, s := range libList {
@@ -86,6 +97,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	}
 	Dprint(4, "startExecution: libList ", libList)
 	ioProxyListenAddr := vitalData.HostAddr + ":" + ioProxyPort
+	/* The ioProxy brings back the standard i/o streams from the slaves */
 	workerChan, l, err := ioProxy(fam, ioProxyListenAddr, os.Stdout)
 	if err != nil {
 		log.Fatal("startExecution: ioproxy: ", err)
@@ -102,27 +114,22 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		Path:            *root,
 		Nodes:           slaveNodes,
 		Cmds:            pv.cmds,
-		PeerGroupSize:   *peerGroupSize,
-		Cwd:		cwd,
+		Cwd:             cwd,
 	}
 
 	r.Send("startExecution", req)
 	resp := &Resp{}
 	r.Recv("startExecution", resp)
+	/* numWorkers tells us how many nodes will be connecting to our ioProxy */
 	numWorkers := resp.NumNodes
 	Dprintln(3, "startExecution: waiting for ", numWorkers)
 	for numWorkers > 0 {
 		<-workerChan
 		numWorkers--
+		Dprintln(3, "startExecution: read from a workerchan, numworkers = ", numWorkers)
 	}
 	Dprintln(3, "startExecution: finished")
 }
-
-/* This doesn't seem to be used anymore
-func isNum(c byte) bool {
-	return '0' <= c && c <= '9'
-}
-*/
 
 var (
 	BadRangeErr = os.NewError("bad range format")
@@ -148,10 +155,10 @@ func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
 	//	_, file := path.Split(filePath)
 	c := &cmdToExec{
 		//		name: file,
-		Name:     filePath,
-		FullPath: filePath,
-		Local:    0,
-		Fi:       f,
+		CurrentName: filePath,
+		DestName:    filePath,
+		Local:       0,
+		Fi:          f,
 	}
 	Dprint(4, "VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
 	p.cmds = append(p.cmds, c)
@@ -178,10 +185,10 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	}
 	c := &cmdToExec{
 		//		name: file,
-		Name:     filePath,
-		FullPath: filePath,
-		Local:    0,
-		Fi:       f,
+		CurrentName: filePath,
+		DestName:    filePath,
+		Local:       0,
+		Fi:          f,
 	}
 	Dprint(4, "VisitFile: appending ", f.Name, " ", f.Size, " ", []byte(filePath), " ", p.alreadyVisited)
 
@@ -191,12 +198,12 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	case f.IsRegular():
 		p.bytesToTransfer += f.Size
 	case f.IsSymlink():
-	     /* we have to read the link but also get a path the file for 
-	      * further walking. We think. 
-	      */
-	      var walkPath string
-		c.FullPath, walkPath = resolveLink(filePath)
-		Dprint(4, "c.FullPath ", c.FullPath, " filePath ", filePath)
+		/* we have to read the link but also get a path the file for 
+		 * further walking. We think. 
+		 */
+		var walkPath string
+		c.SymlinkTarget, walkPath = resolveLink(filePath)
+		Dprint(4, "c.CurrentName", c.CurrentName, " filePath ", filePath)
 		filepath.Walk(walkPath, p, nil)
 	}
 	p.alreadyVisited[filePath] = true

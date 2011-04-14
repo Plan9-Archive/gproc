@@ -48,7 +48,7 @@ func (s *kane) Init(role string) {
 		 */
 		hostname, _ := os.Hostname()
 		which, _ := strconv.Atoi(hostname[2:])
-		thirdOctet := 30 + (which - 1) /240
+		thirdOctet := 30 + (which-1)/240
 
 		/* Our KANE IPs go 10.1.30.1-240, .31.1-240, .32.1-40 */
 		lastOctet := which
@@ -61,7 +61,7 @@ func (s *kane) Init(role string) {
 			s.parentAddr = *parent + ":" + *cmdPort
 		default:
 			//rackMaster := ((which + BLOCKSIZE-1)/BLOCKSIZE) * BLOCKSIZE
-			rackMaster := ((lastOctet + BLOCKSIZE-1)/BLOCKSIZE) * BLOCKSIZE
+			rackMaster := ((lastOctet + BLOCKSIZE - 1) / BLOCKSIZE) * BLOCKSIZE
 			s.parentAddr = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(int(rackMaster)) + ":" + *cmdPort
 		}
 		//s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(which)
@@ -90,7 +90,7 @@ func (s *kane) SlaveIdFromVitalData(vd *vitalData) (id string) {
 	thirdOctet, _ := strconv.Atoi(octets[2])
 	/* get the lowest octet, take it mod 40 */
 	if which%BLOCKSIZE == 0 {
-		id = strconv.Itoa(which / BLOCKSIZE + (thirdOctet - 30)*(240/BLOCKSIZE))
+		id = strconv.Itoa(which/BLOCKSIZE + (thirdOctet-30)*(240/BLOCKSIZE))
 	} else {
 		id = strconv.Itoa(which % BLOCKSIZE)
 	}

@@ -12,8 +12,6 @@ package main
 import (
 	"os"
 	"strings"
-	"io/ioutil"
-	"log"
 	"strconv"
 )
 
@@ -33,11 +31,7 @@ func init() {
 func (l *local) Init(role string) {
 	switch role {
 	case "master", "slave":
-		cmd, err := ioutil.ReadFile(srvAddr)
-		if err != nil {
-			log.Fatal(err)
-		}
-		l.parentAddr = "127.0.0.1:" + string(cmd)
+		l.parentAddr = "127.0.0.1:" + *cmdPort
 	case "client", "run":
 	}
 }
@@ -57,16 +51,17 @@ func (l *local) Ip() string {
 func (s *local) SlaveIdFromVitalData(vd *vitalData) string {
 	/* grab the server address from vital data and index into our map */
 	addrs := strings.Split(vd.ServerAddr, ":", 2)
-	id, ok := s.idMap[addrs[0]]
+	id, ok := s.idMap[addrs[1]]
+
 	if !ok {
 		s.maxid++
-		s.idMap[addrs[0]] = strconv.Itoa(s.maxid), ok
+		s.idMap[addrs[1]] = strconv.Itoa(s.maxid), ok
 	}
+	Dprint(2, "SlaveIdFromVitalData: %v -> %v", vd.ServerAddr, id)
 	return id
 }
 
 func (loc *local) RegisterServer(l Listener) (err os.Error) {
-	/* take the port only -- the address shows as 0.0.0.0 */
-	addr := strings.Split(l.Addr().String(), ":", 2)
-	return ioutil.WriteFile(srvAddr, []byte(addr[1]), 0644)
+	err = nil
+	return
 }
