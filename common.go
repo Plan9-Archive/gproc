@@ -516,7 +516,6 @@ func newStartReq(arg *StartReq) *StartReq {
 		Lserver:         arg.Lserver,
 		Cmds:            arg.Cmds,
 		BytesToTransfer: arg.BytesToTransfer,
-		PeerGroupSize:   arg.PeerGroupSize,
 		Cwd: arg.Cwd,
 	}
 }

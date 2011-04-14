@@ -39,7 +39,6 @@ var (
 	filesToTakeAlong = flag.String("f", "", "comma-seperated list of files/directories to take along")
 	root             = flag.String("r", "", "root for finding binaries")
 	libs             = flag.String("L", "/lib:/usr/lib", "library path")
-	peerGroupSize    = flag.Int("npeers", 0, "number of peers to delegate to")
 	binRoot          = flag.String("binRoot", "/tmp/xproc", "Where to put binaries and libraries")
 	defaultMasterUDS = flag.String("defaultMasterUDS", "/tmp/g", "Default Master Unix Domain Socket")
 	locale           = flag.String("locale", "local", "Your locale -- jaguar, strongbox, etc. defaults to local -- i.e. all daemons on same machine")

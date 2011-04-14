@@ -108,7 +108,6 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		Path:            *root,
 		Nodes:           slaveNodes,
 		Cmds:            pv.cmds,
-		PeerGroupSize:   *peerGroupSize,
 		Cwd:		cwd,
 	}
 
