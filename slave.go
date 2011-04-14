@@ -47,7 +47,7 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	addr := strings.Split(master.LocalAddr().String(), ":", -1)
 	peerAddr := addr[0] + ":0"
 
-	laddr, _ := net.ResolveTCPAddr(peerAddr) // This multiple-return business sometimes gets annoying
+	laddr, _ := net.ResolveTCPAddr(peerAddr)      // This multiple-return business sometimes gets annoying
 	netl, err := net.ListenTCP(defaultFam, laddr) // this is how we're ditching newListenProc
 	vitalData.ServerAddr = netl.Addr().String()
 	vitalData.HostAddr = master.LocalAddr().String()
@@ -65,20 +65,20 @@ func startSlave(fam, masterAddr string, loc Locale) {
 			Dprint(3, "Received connection from: ", c.RemoteAddr())
 
 			// start a new process, give it 'c' as stdin.
-			connFile, _ := c.File() // the new process will read a StartReq from connFile
-			readp, writep, _ := os.Pipe() // we'll send a list of slaves over this
-			readp2, writep2, _ := os.Pipe() // the child will send a list of nodes and ask for a list of slaves
+			connFile, _ := c.File()                              // the new process will read a StartReq from connFile
+			readp, writep, _ := os.Pipe()                        // we'll send a list of slaves over this
+			readp2, writep2, _ := os.Pipe()                      // the child will send a list of nodes and ask for a list of slaves
 			f := []*os.File{connFile, readp, os.Stderr, writep2} // we can't use Stderr because the child wants to write to it
 			cwd, _ := os.Getwd()
 			procattr := os.ProcAttr{Env: nil, Dir: cwd, Files: f}
 			argv := []string{
-                "gproc",
-                fmt.Sprintf("-debug=%d", *DebugLevel),
-                fmt.Sprintf("-p=%v", *DoPrivateMount),
-                fmt.Sprintf("-locale=%v", *locale),
-				fmt.Sprintf("-binRoot=%v", *binRoot),	
-                "-prefix=" + id,
-                "R", // "R" = run a program
+				"gproc",
+				fmt.Sprintf("-debug=%d", *DebugLevel),
+				fmt.Sprintf("-p=%v", *DoPrivateMount),
+				fmt.Sprintf("-locale=%v", *locale),
+				fmt.Sprintf("-binRoot=%v", *binRoot),
+				"-prefix=" + id,
+				"R", // "R" = run a program
 			}
 			// Start the new process
 			p, err := os.StartProcess(os.Args[0], argv, &procattr)
@@ -86,8 +86,8 @@ func startSlave(fam, masterAddr string, loc Locale) {
 				log.Fatal("startSlave: ", err)
 			} else {
 				// The process started, let's make some RpcClientServers on our end to communicate with it
-				passrpc := &RpcClientServer{ E: gob.NewEncoder(writep), D: gob.NewDecoder(writep) }
-				returnrpc := &RpcClientServer{ E: gob.NewEncoder(readp2), D: gob.NewDecoder(readp2) }
+				passrpc := &RpcClientServer{E: gob.NewEncoder(writep), D: gob.NewDecoder(writep)}
+				returnrpc := &RpcClientServer{E: gob.NewEncoder(readp2), D: gob.NewDecoder(readp2)}
 
 				var ne nodeExecList
 				// This is the list of nodes the child got in its request
@@ -95,7 +95,7 @@ func startSlave(fam, masterAddr string, loc Locale) {
 				// The child doesn't have the slaves populated, so we have to do it
 				ne.Nodes = slaves.ServIntersect(ne.Nodes)
 				passrpc.Send("startSlave sending nodes ", ne)
-				
+
 				w, _ := p.Wait(0) // Wait until the child process is finished. We need to do things sorta synchronously
 				Dprint(2, "startSlave: process returned ", w.String())
 			}
@@ -177,18 +177,18 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
 	}
 
 	if len(availableSlaves.Nodes) > 0 {
-			workerChan, l, err = ioProxy(defaultFam, loc.Ip()+":0", c)
-			if err != nil {
-				log.Fatalf("slave: ioproxy: ", err)
-			}
-			Dprint(2, "netwaiter locl.Ip() ", loc.Ip(), " listener at ", l.Addr().String())
-			req.Lfam = l.Addr().Network()
-			req.Lserver = l.Addr().String()
+		workerChan, l, err = ioProxy(defaultFam, loc.Ip()+":0", c)
+		if err != nil {
+			log.Fatalf("slave: ioproxy: ", err)
+		}
+		Dprint(2, "netwaiter locl.Ip() ", loc.Ip(), " listener at ", l.Addr().String())
+		req.Lfam = l.Addr().Network()
+		req.Lserver = l.Addr().String()
 
-			for _, _ = range availableSlaves.Nodes {
-				numWorkers += 1
-			}
-	}	
+		for _, _ = range availableSlaves.Nodes {
+			numWorkers += 1
+		}
+	}
 	nnodes := sendCommandsToANode(req, slaveNodes[0], *binRoot, availableSlaves.Nodes)
 	Dprint(2, "Sent to ", nnodes, " nodes")
 	// Wait for all the children to finish execution
@@ -228,7 +228,7 @@ func runLocal(req *StartReq, n *os.File, done chan int) {
 	Dprint(2, "run: Env ", Env)
 	procattr := os.ProcAttr{Env: Env, Dir: pathbase + "/" + req.Cwd,
 		Files: f}
-	Dprint(2, "run: dir: ", pathbase + "/" + req.Cwd)
+	Dprint(2, "run: dir: ", pathbase+"/"+req.Cwd)
 	p, err := os.StartProcess(execpath, req.Args, &procattr)
 	if err != nil {
 		log.Fatal("run: ", err)
