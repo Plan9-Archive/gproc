@@ -44,44 +44,16 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string, ava
 	 * This is kludgy, but again, it's not clear what the Best Choice is.
 	 */
 	connsperNode := 1
-//	if len(aNode.Subnodes) > 0 {
-//		connsperNode = 2
-//	}
-	// get credentials later
-	switch {
-	case sendReq.PeerGroupSize == 0:
-		// This is the case when not using "peerspawn"
-		//availableSlaves := slaves.ServIntersect(aNode.Nodes)
-		Dprint(2, "receiveCmds: slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves, " subnodes ", aNode.Subnodes)
-		
-		sendReq.Nodes = aNode.Subnodes
-		for _, s := range availableSlaves {
-			if cacheRelayFilesAndDelegateExec(sendReq, root, s) == nil {
-				numnodes += connsperNode
-			}
-		}
-	default:
-		// Peerspawn isn't actually very good, this should go away. We'll see how Don's DHT works
-		//availableSlaves := slaves.ServIntersect(aNode.Nodes)
-		Dprint(2, "receiveCmds: peerGroup > 0 slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves)
 
-		sendReq.Nodes = aNode.Subnodes
-		for len(availableSlaves) > 0 {
-			numWorkers := sendReq.PeerGroupSize
-			if numWorkers > len(availableSlaves) {
-				numWorkers = len(availableSlaves)
-			}
-			// the first available node is the server, the rest of the reservation are peers
-			sendReq.Peers = availableSlaves[1:numWorkers]
-			numnodes++
-			if len(sendReq.Peers) > 0 {
-				numnodes++
-			}
-			na := *sendReq // copy argument
-			cacheRelayFilesAndDelegateExec(&na, root, availableSlaves[0])
-			availableSlaves = availableSlaves[numWorkers:]
+	Dprint(2, "receiveCmds: slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves, " subnodes ", aNode.Subnodes)
+	
+	sendReq.Nodes = aNode.Subnodes
+	for _, s := range availableSlaves {
+		if cacheRelayFilesAndDelegateExec(sendReq, root, s) == nil {
+			numnodes += connsperNode
 		}
 	}
+
 	return
 }
 
