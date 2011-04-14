@@ -16,7 +16,6 @@ GOFILES=\
 	main.go\
 	master.go\
 	misc.go \
-	run.go\
 	slave.go\
 	kanecfg.go \
 	kfcfg.go \
@@ -24,8 +23,6 @@ GOFILES=\
 	strongboxcfg.go\
 	jaguarcfg.go\
 	jsoncfg.go\
-	
-	#	graphviz.go\
 
 include $(GOROOT)/src/Make.cmd
 
