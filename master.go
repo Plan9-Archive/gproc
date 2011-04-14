@@ -46,7 +46,7 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string, ava
 	connsperNode := 1
 
 	Dprint(2, "receiveCmds: slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves, " subnodes ", aNode.Subnodes)
-	
+
 	sendReq.Nodes = aNode.Subnodes
 	for _, s := range availableSlaves {
 		if cacheRelayFilesAndDelegateExec(sendReq, root, s) == nil {
@@ -146,4 +146,3 @@ func receiveCmds(domainSock string) os.Error {
 	}
 	return nil
 }
-

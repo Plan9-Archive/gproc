@@ -44,14 +44,14 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	pv := newPackVisitor()
 	cwd, _ := os.Getwd()
 	/* make sure our cwd ends up in the list of things to take along ...  but only take the dir*/
-	filepath.Walk(cwd + "/.", pv, nil);
+	filepath.Walk(cwd+"/.", pv, nil)
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.Split(*filesToTakeAlong, ",", -1)
 		for _, f := range files {
 			rootedpath := f
 			if f[0] != '/' {
-				rootedpath = cwd + "/"  + f
-			} 
+				rootedpath = cwd + "/" + f
+			}
 			filepath.Walk(rootedpath, pv, nil)
 		}
 	}
@@ -60,7 +60,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 
 	/* now filter out the files we will not need */
 	finishedFiles := []string{}
-	for _, s := range(rawFiles) {
+	for _, s := range rawFiles {
 		if len(vitalData.Exceptlist) > 0 && vitalData.Exceptlist[s] {
 			continue
 		}
@@ -112,7 +112,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		Path:            *root,
 		Nodes:           slaveNodes,
 		Cmds:            pv.cmds,
-		Cwd:		cwd,
+		Cwd:             cwd,
 	}
 
 	r.Send("startExecution", req)
@@ -153,10 +153,10 @@ func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
 	//	_, file := path.Split(filePath)
 	c := &cmdToExec{
 		//		name: file,
-		CurrentName:     filePath,
-		DestName: filePath,
-		Local:    0,
-		Fi:       f,
+		CurrentName: filePath,
+		DestName:    filePath,
+		Local:       0,
+		Fi:          f,
 	}
 	Dprint(4, "VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
 	p.cmds = append(p.cmds, c)
@@ -183,10 +183,10 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	}
 	c := &cmdToExec{
 		//		name: file,
-		CurrentName:     filePath,
-		DestName: filePath,
-		Local:    0,
-		Fi:       f,
+		CurrentName: filePath,
+		DestName:    filePath,
+		Local:       0,
+		Fi:          f,
 	}
 	Dprint(4, "VisitFile: appending ", f.Name, " ", f.Size, " ", []byte(filePath), " ", p.alreadyVisited)
 
@@ -196,10 +196,10 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 	case f.IsRegular():
 		p.bytesToTransfer += f.Size
 	case f.IsSymlink():
-	     /* we have to read the link but also get a path the file for 
-	      * further walking. We think. 
-	      */
-	      var walkPath string
+		/* we have to read the link but also get a path the file for 
+		 * further walking. We think. 
+		 */
+		var walkPath string
 		c.SymlinkTarget, walkPath = resolveLink(filePath)
 		Dprint(4, "c.CurrentName", c.CurrentName, " filePath ", filePath)
 		filepath.Walk(walkPath, p, nil)

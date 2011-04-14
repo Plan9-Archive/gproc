@@ -51,7 +51,7 @@ func (s *kf) Init(role string) {
 			log.Panic("No host name!")
 		}
 		which, _ := strconv.Atoi(hostname[2:])
-		thirdOctet := 30 + (which - 1) /240
+		thirdOctet := 30 + (which-1)/240
 		//log.Printf("thirdOctet = %d", thirdOctet)
 		s.parentAddr = *parent + ":" + *cmdPort
 		s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(which)
@@ -77,7 +77,7 @@ func (s *kf) SlaveIdFromVitalData(vd *vitalData) (id string) {
 	octets := strings.Split(addrs[0], ".", 4)
 	high, _ := strconv.Atoi(octets[2])
 	low, _ := strconv.Atoi(octets[3])
-	id = strconv.Itoa((high-30) * 240 + low)
+	id = strconv.Itoa((high-30)*240 + low)
 	return
 }
 

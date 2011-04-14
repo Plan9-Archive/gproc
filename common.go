@@ -48,11 +48,11 @@ type SetDebugLevel struct {
 }
 
 type cmdToExec struct {
-	CurrentName     string
-	DestName		string
-	SymlinkTarget	string
-	Local    int
-	Fi       *os.FileInfo
+	CurrentName   string
+	DestName      string
+	SymlinkTarget string
+	Local         int
+	Fi            *os.FileInfo
 }
 
 func (a *cmdToExec) String() string {
@@ -113,7 +113,7 @@ type StartReq struct {
 	PeerGroupSize int
 	Cwd           string
 	/* The File element should really replace Cmds */
-	Files 			[]*filemarshal.File
+	Files []*filemarshal.File
 }
 
 func (s *StartReq) String() string {
@@ -132,7 +132,7 @@ type SlaveInfo struct {
 	Addr   string
 	Server string
 	Nodes  []string
-	Rpc		*RpcClientServer
+	Rpc    *RpcClientServer
 }
 
 func (s *SlaveInfo) String() string {
@@ -516,7 +516,7 @@ func newStartReq(arg *StartReq) *StartReq {
 		Lserver:         arg.Lserver,
 		Cmds:            arg.Cmds,
 		BytesToTransfer: arg.BytesToTransfer,
-		Cwd: arg.Cwd,
+		Cwd:             arg.Cwd,
 	}
 }
 
@@ -591,7 +591,7 @@ func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 		Addr:   vd.HostAddr,
 		Server: vd.ServerAddr,
 		Nodes:  vd.Nodes,
-		Rpc:	r,
+		Rpc:    r,
 	}
 	sv.Slaves[s.Id] = s
 	sv.Addr2id[s.Server] = s.Id

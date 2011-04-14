@@ -25,9 +25,9 @@ const (
 )
 
 var (
-	lowNode    = flag.Int("l", 1, "Lowest node number")
-	highNode   = flag.Int("h", 40, "Highest node number")
-	debugLevel = flag.Int("d", 0, "Debug level")
+	lowNode      = flag.Int("l", 1, "Lowest node number")
+	highNode     = flag.Int("h", 40, "Highest node number")
+	debugLevel   = flag.Int("d", 0, "Debug level")
 	privateMount = flag.Bool("p", true, "private mounts")
 )
 

@@ -106,7 +106,7 @@ func main() {
 	case "R":
 		/* This is for executing a program from the slave */
 		loc.Init("run")
-		slaveProc(NewRpcClientServer(os.Stdin, *binRoot), &RpcClientServer{ E: gob.NewEncoder(os.Stdout), D: gob.NewDecoder(os.Stdout) }, &RpcClientServer{ E: gob.NewEncoder(os.NewFile(3, "pipe")), D: gob.NewDecoder(os.NewFile(3, "pipe")) })
+		slaveProc(NewRpcClientServer(os.Stdin, *binRoot), &RpcClientServer{E: gob.NewEncoder(os.Stdout), D: gob.NewDecoder(os.Stdout)}, &RpcClientServer{E: gob.NewEncoder(os.NewFile(3, "pipe")), D: gob.NewDecoder(os.NewFile(3, "pipe"))})
 	default:
 		flag.Usage()
 	}
