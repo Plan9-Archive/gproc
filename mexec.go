@@ -25,6 +25,10 @@ import (
 	"fmt"
 )
 
+/*
+ * This function is called when you give gproc an "e" argument, in order to run a specified
+ * command on the selected nodes
+ */
 func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []string) {
 	log.SetPrefix("mexec " + *prefix + ": ")
 	/* make sure there is someone to talk to, and get the vital data */
