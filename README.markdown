@@ -1,1 +1,79 @@
-README
+Gproc
+======
+
+Gproc provides a system for running programs across clusters. A command and a set of nodes upon which to run it are specified at the command line; the binary, any required libraries, and any additional files specified at the command line are packaged up and sent out to the selected nodes for execution. The outputs are then forwarded back to the control node.
+
+Locales
+-------
+
+The structure of the cluster is defined in a locale, for example "kane" or "kf", defined in the files "kanecfg.go" and "kfcfg.go", respectively.
+
+"kf" describes the KANE cluster as a flat network; when working with many nodes, this will be slow.
+
+"kane" describes KANE as a tree; every 20th node is set as a rack master. The front-end transfers files to the rack masters, which then serve the 19 nodes under them.
+
+Node specification syntax (BNF)
+-------------------------------
+
+<nodes> ::= <nodeset> | <nodeset> "/" <nodeset> | <nodeset> "," <nodes>
+<nodeset> ::= <node> | <node> "-" <node>
+<node> ::= "." | <number>
+
+Examples:
+
+	1-80	# Specifies nodes 1 through 80, inclusive
+	.		# Specifies all available nodes (flat network) or all first-level nodes (tree)
+	1/.		# Specifies all second-level nodes under the first level-1 node
+			# In the "kane" config, this would select the first 20 nodes
+	./.		# All nodes, all levels.
+
+Command line options
+--------------------
+
+There are several important command line options for use with gproc, the most important of which are a set of one-letter options which set the mode for gproc. The basic mode options for gproc are:
+
+	  gproc [switches] m
+	  gproc [switches] s
+	  gproc [switches] e <nodes> <command>
+	  gproc [switches] i
+
+"gproc m" starts the master process and should be executed on the front-end node. "gproc s" starts the slave process and should be run on every node you wish to control. "gproc e" is used to actually run a command on the specified nodes. "gproc i" provides information about the first level of nodes (support for deeper levels will be added eventually).
+
+There are a number of switches which can modify the behavior of gproc. Some only make sense in certain modes; each switch's appropriate mode(s) can be found in parentheses after the description. The default value for the option is listed as well.
+
+*	  -localbin=false # If set, programs will be run from each slave node's local directories, rather than copying binaries from the node where "gproc e" was executed. (e)
+*	  -p=true # If set, binRoot is mounted privately during execution. This prevents unwanted binaries and other files from sticking around in binRoot. (s)
+*	  -debug=0 # Specifies the debug level, from 0 to 10. (s, m, e)
+*	  -f="" # Comma-separated list of files to copy to the slaves along with the program being executed. (e)
+
+
+Example usage with KANE config (static tree)
+--------------------------------------------
+
+For the best control, you'll want 4 shells open to the front-end node, cesspool. In this example, we'll run gproc on the first 80 nodes of KANE.
+
+The copytokane script and the startkane command expect you to be using gproc_linux_amd64. If you need to use a different architecture, you'll have to modify them to taste. The startkane program is a simple utility for launching gproc on the specified nodes (from -l [low] to -h [high], inclusive). The final argument, 1 or 2, specifies which "level" of the tree is being launched.
+
+Copy the gproc binary out to the nodes you'll be using:
+	 sh copytokane.sh 1 80
+
+Run the master:
+	# This command creates a socket in /tmp/g. If you wish to re-run the master, remove /tmp/g before running
+	./gproc_linux_amd64 -locale=kane -debug=3 m 
+
+Start the level 1 nodes:
+	  ./startkane -l 1 -h 80 1
+
+Start the second level nodes:
+	  ./startkane -l 1 -h 80 2
+
+Run your command:
+	./gproc_linux_amd64 e ./. /bin/date
+
+When you're done, Ctrl-C the master process; all the slaves should then automatically exit.
+
+** KF config (flat network) **
+   sh copytokane 1 80
+   ./gproc_linux_amd64 -locale=kf -debug=3 m
+   ./startkf -l 1 -h 80
+   ./gproc_linux_amd64 e . /bin/date
