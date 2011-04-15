@@ -60,19 +60,24 @@ For the best control, you'll want 4 shells open to the front-end node, cesspool.
 The copytokane script and the startkane command expect you to be using gproc_linux_amd64. If you need to use a different architecture, you'll have to modify them to taste. The startkane program is a simple utility for launching gproc on the specified nodes (from -l [low] to -h [high], inclusive). The final argument, 1 or 2, specifies which "level" of the tree is being launched.
 
 Copy the gproc binary out to the nodes you'll be using:
+
 	 sh copytokane.sh 1 80
 
 Run the master:
+
 	# This command creates a socket in /tmp/g. If you wish to re-run the master, remove /tmp/g before running
 	./gproc_linux_amd64 -locale=kane -debug=3 m 
 
 Start the level 1 nodes:
+
 	  ./startkane -l 1 -h 80 1
 
 Start the second level nodes:
+
 	  ./startkane -l 1 -h 80 2
 
 Run your command:
+
 	./gproc_linux_amd64 e ./. /bin/date
 
 When you're done, Ctrl-C the master process; all the slaves should then automatically exit.
