@@ -3,6 +3,8 @@ Gproc
 
 Gproc provides a system for running programs across clusters. A command and a set of nodes upon which to run it are specified at the command line; the binary, any required libraries, and any additional files specified at the command line are packaged up and sent out to the selected nodes for execution. The outputs are then forwarded back to the control node.
 
+Files that are transferred to nodes are stored in a replicated root under a certain directory of the node (default /tmp/xproc). This keeps gproc's operations from interfering with the rest of the node. For example, to run /bin/date, the binary would be copied to /tmp/xproc/bin/date and any necessary libraries would go to /tmp/xproc/lib/.
+
 Locales
 -------
 
@@ -39,13 +41,16 @@ There are several important command line options for use with gproc, the most im
 
 "gproc m" starts the master process and should be executed on the front-end node. "gproc s" starts the slave process and should be run on every node you wish to control. "gproc e" is used to actually run a command on the specified nodes. "gproc i" provides information about the first level of nodes (support for deeper levels will be added eventually).
 
-There are a number of switches which can modify the behavior of gproc. Some only make sense in certain modes; each switch's appropriate mode(s) can be found in parentheses after the description. The default value for the option is listed as well.
+There are a number of switches which can modify the behavior of gproc; some of the most important ones are described here. Some only make sense in certain modes; each switch's appropriate mode(s) can be found in parentheses after the description. The default value for the option is listed as well.
 
 *	  -localbin=false # If set, programs will be run from each slave node's local directories, rather than copying binaries from the node where "gproc e" was executed. (e)
 *	  -p=true # If set, binRoot is mounted privately during execution. This prevents unwanted binaries and other files from sticking around in binRoot. (s)
 *	  -debug=0 # Specifies the debug level, from 0 to 10. (s, m, e)
 *	  -f="" # Comma-separated list of files to copy to the slaves along with the program being executed. (e)
-
+*	  -binRoot="/tmp/xproc" # The location under which the binaries, libraries, and other files will be placed. Use the same value for this when running the master, slaves, and exec modes or else gproc will get confused. (m, s, e)
+*	  -defaultMasterUDS="/tmp/g" # The master process puts a Unix Domain Socket into the filesystem; the "exec" stage then connects to this socket to send commands. (m, e)
+*	  -locale="local" # The locale to use. (m, s)
+*	  -cmdport="6666" # Which port gproc will listen on for incoming commands. (m, s)
 
 Example usage with KANE config (static tree)
 --------------------------------------------
@@ -72,7 +77,9 @@ Run your command:
 
 When you're done, Ctrl-C the master process; all the slaves should then automatically exit.
 
-** KF config (flat network) **
+KF config (flat network)
+------------------------
+
    sh copytokane 1 80
    ./gproc_linux_amd64 -locale=kf -debug=3 m
    ./startkf -l 1 -h 80
