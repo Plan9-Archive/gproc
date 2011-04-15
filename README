@@ -15,9 +15,9 @@ The structure of the cluster is defined in a locale, for example "kane" or "kf",
 Node specification syntax (BNF)
 -------------------------------
 
-<nodes> ::= <nodeset> | <nodeset> "/" <nodeset> | <nodeset> "," <nodes>
-<nodeset> ::= <node> | <node> "-" <node>
-<node> ::= "." | <number>
+		<nodes> ::= <nodeset> | <nodeset> "/" <nodeset> | <nodeset> "," <nodes>
+		<nodeset> ::= <node> | <node> "-" <node>
+		<node> ::= "." | <number>
 
 Examples:
 
