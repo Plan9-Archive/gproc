@@ -1,6 +1,12 @@
-goinstall bitbucket.org/npe/ldd
+Works with the Go weekly as of Apr 14 2011 (changeset 8101:6aa7ab6b6a9d). To get this version:
+cd $GOROOT && hg update 8101
+
+To install gproc:
+
+goinstall bitbucket.org/floren/filemarshal
+goinstall bitbucket.org/floren/ldd
 cd $GOROOT/src/cmd && 
-hg clone http://bitbucket.org/npe/gproc &&
+hg clone http://bitbucket.org/floren/gproc &&
 cd gproc &&
-make install 
-# make test
+make
+

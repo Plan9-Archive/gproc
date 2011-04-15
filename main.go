@@ -21,9 +21,8 @@ import (
 
 func usage() {
 	fmt.Fprint(os.Stderr, "usage: gproc m\n")
-	fmt.Fprint(os.Stderr, "usage: gproc s <family> <address> <server address>\n")
-	fmt.Fprint(os.Stderr, "usage: gproc e <server address> <fam> <address> <nodes> <command>\n")
-	fmt.Fprint(os.Stderr, "usage: gproc R\n")
+	fmt.Fprint(os.Stderr, "usage: gproc s\n")
+	fmt.Fprint(os.Stderr, "usage: gproc e <nodes> <command>\n")
 	fmt.Fprint(os.Stderr, "usage: gproc i [i ...] goes one level deeper for each i\n")
 	flag.PrintDefaults()
 	os.Exit(2)
