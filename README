@@ -1,3 +1,5 @@
+<!-- -*- markdown -*- -->
+
 Gproc
 ======
 
@@ -52,7 +54,7 @@ There are a number of switches which can modify the behavior of gproc; some of t
 *	  -locale="local" # The locale to use. (m, s)
 *	  -cmdport="6666" # Which port gproc will listen on for incoming commands. (m, s)
 
-Example usage with KANE config (static tree)
+Example usage with KANE locale (static tree)
 --------------------------------------------
 
 For the best control, you'll want 4 shells open to the front-end node, cesspool. In this example, we'll run gproc on the first 80 nodes of KANE.
@@ -82,10 +84,12 @@ Run your command:
 
 When you're done, Ctrl-C the master process; all the slaves should then automatically exit.
 
-KF config (flat network)
+KF locale (flat network)
 ------------------------
 
-   sh copytokane 1 80
-   ./gproc_linux_amd64 -locale=kf -debug=3 m
-   ./startkf -l 1 -h 80
-   ./gproc_linux_amd64 e . /bin/date
+This locale is not great at large scales, but it is very simple. All nodes are at the same level.
+
+		sh copytokane 1 80
+		./gproc_linux_amd64 -locale=kf -debug=3 m
+ 		./startkf -l 1 -h 80
+ 		./gproc_linux_amd64 e . /bin/date
