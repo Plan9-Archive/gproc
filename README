@@ -3,18 +3,27 @@
 Gproc
 ======
 
-Gproc provides a system for running programs across clusters. A command and a set of nodes upon which to run it are specified at the command line; the binary, any required libraries, and any additional files specified at the command line are packaged up and sent out to the selected nodes for execution. The outputs are then forwarded back to the control node.
+Gproc is a new system, written in Go, that combines features of the LANL version of bproc (http://sourceforge.net/projects/bproc/) and the xcpu software (xcpu.org). Unlike bproc, gproc requires no kernel patch. Like both of them, it provides a process startup mechanism for lightweight cluster nodes which have only a small ramdisk as the root file system, with no mounts at all. Lightweight cluster nodes can be very easy to manage if configured correctly (see, e.g., http://portal.acm.org/citation.cfm?id=1132314).
 
-Files that are transferred to nodes are stored in a replicated root under a certain directory of the node (default /tmp/xproc). This keeps gproc's operations from interfering with the rest of the node. For example, to run /bin/date, the binary would be copied to /tmp/xproc/bin/date and any necessary libraries would go to /tmp/xproc/lib/.
+Gproc currently is only used by us to run cluster processes as root. If this is a problem for you you might want to wait to use it; multi-user use is in the works (it is not hard but Go did not in the early days support some things we needed for it to work). 
+
+Gproc provides a system for running programs across clusters. A command and a set of nodes upon which to run it are specified at the command line; the binary, any required libraries, and any additional files specified at the command line are packaged up and sent out to the selected nodes for execution. The libraries need for the binary are determined by gproc programatically. The outputs are then forwarded back to the control node. Currently, we do not support stdin for the tree of processes as bproc did; it's coming but we have not needed it yet.
+
+Gproc can be used from one architecture type to run commands on another. The library determination will work even on, e.g., OSX, for binaries
+to run on an ARM. One needs to have a reasonable copy of a root file system for the other architecture locally. For example, to run on an ARM CPU from my OSX machine, I just use the -r switch with the path to the root file system for the ARM tree on my OSX laptop. 
+
+Files that are transferred to nodes are stored in a replicated root under a certain directory of the node (default /tmp/xproc). This keeps gproc's operations from interfering with the rest of the node. For example, to run /bin/date, the binary would be copied to /tmp/xproc/bin/date and any necessary libraries would go to /tmp/xproc/lib/. The current working directory is also created on the nodes and the remote process starts in it. The mount is a private mount and disappears when the remote process and all of its children exit. 
 
 At its most basic level, gproc needs at least a single "master" node and a single "slave" node; for testing purposes, these can even be the same system. The master, started with the "gproc m" command (see below), accepts connections from slave nodes (started with "gproc s"). The user then runs a "gproc e <nodes> <program>" command on the master; this sends a command over a Unix Domain Socket to the listening "gproc m" process, which then instructs the appropriate slave nodes to execute the specified program.
 
 Locales
 -------
 
-The structure of the cluster is defined in a locale, for example "kane" or "kf", defined in the files "kanecfg.go" and "kfcfg.go", respectively.
+Gproc does not require configuration files; for setting up one million virtual machines, configuration files are simply impractical. The structure of the cluster is defined in a locale, for example "kane" or "kf", defined in the files "kanecfg.go" and "kfcfg.go", respectively. We do, however, allow for an optional configure file in JSON format. 
 
-"kf" describes the KANE cluster as a flat network; when working with many nodes, this will be slow.
+Some example locales: 
+
+"kf" describes our KANE cluster as a flat network; when working with many nodes, this will be slow.
 
 "kane" describes KANE as a tree; every 20th node is set as a rack master. The front-end transfers files to the rack masters, which then serve the 19 nodes under them.
 
@@ -68,7 +77,7 @@ Examples:
 	.		# Specifies all available nodes (flat network) or all first-level nodes (tree)
 	1/.		# Specifies all second-level nodes under the first level-1 node
 			# In the "kane" config, this would select the first 20 nodes
-	./.		# All nodes, all levels.
+	./.		# All nodes, all levels. Note that this example is 2 levels, but there is no limit on depth. 
 
 Command line options
 --------------------
@@ -92,6 +101,7 @@ There are a number of switches which can modify the behavior of gproc; some of t
 *	  -defaultMasterUDS="/tmp/g" # The master process puts a Unix Domain Socket into the filesystem; the "exec" stage then connects to this socket to send commands. (m, e)
 *	  -locale="local" # The locale to use. (m, s)
 *	  -cmdport="6666" # Which port gproc will listen on for incoming commands. (m, s)
+*	  -r="/"	# where to find binaries. To use an arm root, for example, one can say -r=/path-to-arm-root
 
 
 Example usage with KANE locale (static tree)
@@ -126,7 +136,7 @@ When you're done, Ctrl-C the master process; all the slaves should then automati
 
 ** Sample Use Case **
 
-The Megawin project at Sandia is an attempt to boot up to 200 Windows virtual machines on a single Intel i7 node. These virtual machines load from a 700 MB disk image file, which must be copied to each node, along with a 114 MB QEMU "suspend to disk" image which helps boot the virtual machines more quickly. Gproc is used to transfer these files to all 520 KANE nodes and run the script that starts the virtual machines; the commands used are shown here.
+The Megawin project at Sandia boots up to 200 Windows virtual machines on a single Intel i7 node. These virtual machines load from a 700 MB disk image file, which must be copied to each node, along with a 114 MB QEMU "suspend to disk" image which helps boot the virtual machines more quickly. Gproc is used to transfer these files to all 520 KANE nodes and run the script that starts the virtual machines; the commands used are shown here.
 
 First, gproc is started as above:
 
