@@ -16,6 +16,43 @@ The structure of the cluster is defined in a locale, for example "kane" or "kf",
 
 "kane" describes KANE as a tree; every 20th node is set as a rack master. The front-end transfers files to the rack masters, which then serve the 19 nodes under them.
 
+"etchosts" is a useful locale for getting started with a small, simple cluster. See the section "Getting started with gproc" for info on how to use it.
+
+Getting started with gproc
+--------------------------
+
+A simple, generic locale called "etchosts" (see etchostscfg.go for the source) has been provided for use with a small cluster. The only requirement is that you have the names of all your nodes defined in /etc/hosts on every node in the cluster, and that slave nodes must end in a number. You should also have an entry for "master", the node on which you will be running the "gproc m" command. Here's an example /etc/hosts:
+
+	192.168.0.254	master
+	192.168.0.1 	n1
+	192.168.0.2		n2
+	192.168.0.3		n3
+	192.168.0.4		n4
+
+In this case, 192.168.0.254 would be the head node, from which commands should be launched. The systems n1 through n4 will be slave nodes, which will execute the actual commands. Assuming you have actually named your head node "master", here's some sample commands to get started:
+
+	# this will start the master
+	master$ sudo rm -f /tmp/g && ./gproc_linux_amd64 -locale=etchosts m 
+	#(now open a new window)
+
+	# copy to every slave
+	master$ for i in n1 n2 n3 n4; do scp -o gproc_linux_amd64  root@$i:; done
+	# start gproc on slaves
+	master$ for i in n1 n2 n3 n4; do ssh root@$i ./gproc_linux_amd64 -locale=etchosts s &> /dev/null &; done
+	# now run a command
+	master$ ./gproc_linux_amd64 e . /bin/hostname
+	n1
+	n2
+	n3
+	n4
+
+	# If we want to copy a file to every node's /root/, for example, we could run this:
+	master$ ./gproc_linux_amd64 -f="/path/to/somefile" e . cp /tmp/xproc/path/to/somefile /root/
+
+When you are finished with gproc, you should be able to simply kill the master process; this will cause the slave processes on the various nodes to exit automatically.
+
+Please see the rest of this document for more details on using gproc.
+
 Node specification syntax (BNF)
 -------------------------------
 
@@ -54,6 +91,7 @@ There are a number of switches which can modify the behavior of gproc; some of t
 *	  -locale="local" # The locale to use. (m, s)
 *	  -cmdport="6666" # Which port gproc will listen on for incoming commands. (m, s)
 
+
 Example usage with KANE locale (static tree)
 --------------------------------------------
 
@@ -63,7 +101,7 @@ The copytokane script and the startkane command expect you to be using gproc_lin
 
 Copy the gproc binary out to the nodes you'll be using:
 
-	 sh copytokane.sh 1 80
+	sh copytokane.sh 1 80
 
 Run the master:
 
@@ -72,17 +110,41 @@ Run the master:
 
 Start the level 1 nodes:
 
-	  ./startkane -l 1 -h 80 1
+	./startkane -l 1 -h 80 1
 
 Start the second level nodes:
 
-	  ./startkane -l 1 -h 80 2
+	./startkane -l 1 -h 80 2
 
 Run your command:
 
 	./gproc_linux_amd64 e ./. /bin/date
 
 When you're done, Ctrl-C the master process; all the slaves should then automatically exit.
+
+** Sample Use Case **
+
+The Megawin project at Sandia is an attempt to boot up to 200 Windows virtual machines on a single Intel i7 node. These virtual machines load from a 700 MB disk image file, which must be copied to each node, along with a 114 MB QEMU "suspend to disk" image which helps boot the virtual machines more quickly. Gproc is used to transfer these files to all 520 KANE nodes and run the script that starts the virtual machines; the commands used are shown here.
+
+First, gproc is started as above:
+
+	sh copytokane.sh 1 520
+	./gproc_linux_amd64 -locale=kane m
+	./startkane -l 1 -h 520 1
+	./startkane -l 1 -h 520 2
+
+Then, the files are copied. The script we use to start the virtual machines expects the files to be in /tmp/ramdisk, so we use gproc to transfer them and copy to the appropriate directory:
+
+	# The -f flag specifies files that should be copied along with the command
+	./gproc_linux_amd64 -f="/scratch/megawin2.img,/scratch/migrate" e ./. /bin/cp /tmp/xproc/scratch/* /tmp/ramdisk
+
+Although there are 520 nodes in the cluster, the 2-level tree means that the front-end node only directly transfers files to every 20th node (26 nodes total). Once the first-level nodes have received their copies of the files, they then copy the files to each of the 19 second-level nodes underneath them.
+
+Once the files have been transferred, it is a simple matter to run the script which starts the virtual machines on every node:
+
+	./gproc_linux_amd64 e ./. /scratch/megawin_kvm_start.sh
+
+The outputs from this script are forwarded back from every individual node to the front-end node for monitoring by the operator.
 
 KF locale (flat network)
 ------------------------
@@ -93,3 +155,6 @@ This locale is not great at large scales, but it is very simple. All nodes are a
 		./gproc_linux_amd64 -locale=kf -debug=3 m
  		./startkf -l 1 -h 80
  		./gproc_linux_amd64 e . /bin/date
+
+
+	
