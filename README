@@ -7,6 +7,8 @@ Gproc provides a system for running programs across clusters. A command and a se
 
 Files that are transferred to nodes are stored in a replicated root under a certain directory of the node (default /tmp/xproc). This keeps gproc's operations from interfering with the rest of the node. For example, to run /bin/date, the binary would be copied to /tmp/xproc/bin/date and any necessary libraries would go to /tmp/xproc/lib/.
 
+At its most basic level, gproc needs at least a single "master" node and a single "slave" node; for testing purposes, these can even be the same system. The master, started with the "gproc m" command (see below), accepts connections from slave nodes (started with "gproc s"). The user then runs a "gproc e <nodes> <program>" command on the master; this sends a command over a Unix Domain Socket to the listening "gproc m" process, which then instructs the appropriate slave nodes to execute the specified program.
+
 Locales
 -------
 
