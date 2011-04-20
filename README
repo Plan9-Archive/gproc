@@ -3,14 +3,13 @@
 Gproc
 ======
 
-Gproc is a new system, written in Go, that combines features of the LANL version of bproc (http://sourceforge.net/projects/bproc/) and the xcpu software (xcpu.org). Unlike bproc, gproc requires no kernel patch. Like both of them, it provides a process startup mechanism for lightweight cluster nodes which have only a small ramdisk as the root file system, with no mounts at all. Lightweight cluster nodes can be very easy to manage if configured correctly (see, e.g., http://portal.acm.org/citation.cfm?id=1132314).
+Gproc is a new system, written in Go, that combines features of the LANL version of bproc (http://sourceforge.net/projects/bproc/) and the xcpu software (xcpu.org). Unlike bproc, gproc requires no kernel patch. Like both of them, it provides a process startup mechanism for lightweight cluster nodes which have only a small ramdisk as the root file system, with no local disks or NFS root at all. Lightweight cluster nodes can be very easy to manage if configured correctly (see, e.g., http://portal.acm.org/citation.cfm?id=1132314).
 
 Gproc currently is only used by us to run cluster processes as root. If this is a problem for you you might want to wait to use it; multi-user use is in the works (it is not hard but Go did not in the early days support some things we needed for it to work). 
 
 Gproc provides a system for running programs across clusters. A command and a set of nodes upon which to run it are specified at the command line; the binary, any required libraries, and any additional files specified at the command line are packaged up and sent out to the selected nodes for execution. The libraries need for the binary are determined by gproc programatically. The outputs are then forwarded back to the control node. Currently, we do not support stdin for the tree of processes as bproc did; it's coming but we have not needed it yet.
 
-Gproc can be used from one architecture type to run commands on another. The library determination will work even on, e.g., OSX, for binaries
-to run on an ARM. One needs to have a reasonable copy of a root file system for the other architecture locally. For example, to run on an ARM CPU from my OSX machine, I just use the -r switch with the path to the root file system for the ARM tree on my OSX laptop. 
+Gproc can be used from one architecture type to run commands on another. The library determination will work even on, e.g., OSX, for binaries to run on an ARM. One needs to have a reasonable copy of a root file system for the other architecture locally. For example, to run on an ARM CPU from my OSX machine, I just use the -r switch with the path to the root file system for the ARM tree on my OSX laptop. 
 
 Files that are transferred to nodes are stored in a replicated root under a certain directory of the node (default /tmp/xproc). This keeps gproc's operations from interfering with the rest of the node. For example, to run /bin/date, the binary would be copied to /tmp/xproc/bin/date and any necessary libraries would go to /tmp/xproc/lib/. The current working directory is also created on the nodes and the remote process starts in it. The mount is a private mount and disappears when the remote process and all of its children exit. 
 
