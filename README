@@ -23,11 +23,11 @@ Getting started with gproc
 
 A simple, generic locale called "etchosts" (see etchostscfg.go for the source) has been provided for use with a small cluster. The only requirement is that you have the names of all your nodes defined in /etc/hosts on every node in the cluster, and that slave nodes must end in a number. You should also have an entry for "master", the node on which you will be running the "gproc m" command. Here's an example /etc/hosts:
 
-192.168.0.254	master
-192.168.0.1 	n1
-192.168.0.2		n2
-192.168.0.3		n3
-192.168.0.4		n4
+	192.168.0.254	master
+	192.168.0.1 	n1
+	192.168.0.2		n2
+	192.168.0.3		n3
+	192.168.0.4		n4
 
 In this case, 192.168.0.254 would be the head node, from which commands should be launched. The systems n1 through n4 will be slave nodes, which will execute the actual commands. Assuming you have actually named your head node "master", here's some sample commands to get started:
 
@@ -45,6 +45,7 @@ In this case, 192.168.0.254 would be the head node, from which commands should b
 	n2
 	n3
 	n4
+
 	# If we want to copy a file to every node's /root/, for example, we could run this:
 	master$ ./gproc_linux_amd64 -f="/path/to/somefile" e . cp /tmp/xproc/path/to/somefile /root/
 
