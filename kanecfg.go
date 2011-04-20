@@ -53,7 +53,7 @@ func (s *kane) Init(role string) {
 		/* Our KANE IPs go 10.1.30.1-240, .31.1-240, .32.1-40 */
 		lastOctet := which
 		if which/241 > 0 {
-			lastOctet = (which % 241) + 1
+			lastOctet = (which % 241) + ((which - 1)/240)
 		}
 
 		switch {

@@ -77,6 +77,7 @@ func startSlave(fam, masterAddr string, loc Locale) {
 				fmt.Sprintf("-p=%v", *DoPrivateMount),
 				fmt.Sprintf("-locale=%v", *locale),
 				fmt.Sprintf("-binRoot=%v", *binRoot),
+				fmt.Sprintf("-parent=%v", *parent),
 				"-prefix=" + id,
 				"R", // "R" = run a program
 			}
