@@ -190,7 +190,7 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
 			numWorkers += 1
 		}
 	}
-	nnodes := sendCommandsToANode(req, slaveNodes[0], *binRoot, availableSlaves.Nodes)
+	nnodes := sendCommandsToANode(req, slaveNodes[0].Subnodes, *binRoot, availableSlaves.Nodes)
 	Dprint(2, "Sent to ", nnodes, " nodes")
 	// Wait for all the children to finish execution
 	for numWorkers > 0 {

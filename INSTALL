@@ -1,5 +1,5 @@
 Works with the Go weekly as of Apr 14 2011 (changeset 8101:6aa7ab6b6a9d). To get this version:
-cd $GOROOT && hg update 8101
+cd $GOROOT && hg pull && hg update 8101
 
 To install gproc:
 

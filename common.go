@@ -600,6 +600,13 @@ func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 	return
 }
 
+func (sv *Slaves) Remove(s *SlaveInfo) {
+	sv.Slaves[s.Id] = nil, false
+	sv.Addr2id[s.Server] = "", false
+	Dprintln(2, "slave Remove: Id: ", s)
+	return
+}
+
 func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
 	s, ok = sv.Slaves[n]
 	return

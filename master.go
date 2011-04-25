@@ -31,7 +31,7 @@ func startMaster(domainSock string, loc Locale) {
 	registerSlaves(loc)
 }
 
-func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string, availableSlaves []string) (numnodes int) {
+func sendCommandsToANode(sendReq *StartReq, subNodes string, root string, availableSlaves []string) (numnodes int) {
 	/* for efficiency, on the slave node, if there is one proc, 
 	 * it connects directly to the parent IO forwarder. 
 	 * If the slave node is tasking other nodes, it will also spawn
@@ -45,12 +45,17 @@ func sendCommandsToANode(sendReq *StartReq, aNode nodeExecList, root string, ava
 	 */
 	connsperNode := 1
 
-	Dprint(2, "receiveCmds: slaveNodes: ", aNode.Nodes, " availableSlaves: ", availableSlaves, " subnodes ", aNode.Subnodes)
+	Dprint(2, "receiveCmds: slaveNodes: ", slaves, " availableSlaves: ", availableSlaves, " subnodes ", subNodes)
 
-	sendReq.Nodes = aNode.Subnodes
+	sendReq.Nodes = subNodes
 	for _, s := range availableSlaves {
 		if cacheRelayFilesAndDelegateExec(sendReq, root, s) == nil {
 			numnodes += connsperNode
+		} else {
+			si, err := slaves.Get(s)
+			if err {
+				slaves.Remove(si)
+			}
 		}
 	}
 
@@ -72,7 +77,7 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (nu
 		 * nodecount ...
 		 */
 		availableSlaves := slaves.ServIntersect(aNode.Nodes)
-		numnodes += sendCommandsToANode(sendReq, aNode, root, availableSlaves)
+		numnodes += sendCommandsToANode(sendReq, aNode.Subnodes, root, availableSlaves)
 	}
 	Dprint(2, "numnodes = ", numnodes)
 	return
@@ -135,7 +140,7 @@ func receiveCmds(domainSock string) os.Error {
 						return
 					}
 					numnodes := sendCommandsToNodes(r, &a, "")
-					r.Send("receiveCmds", Resp{NumNodes: numnodes, Msg: "cacheRelayFilesAndDelegateExec finished"})
+					r.Send("receiveCmds", Resp{NumNodes: numnodes, Msg: "sendCommandsToNodes finished"})
 				}
 			default:
 				{
