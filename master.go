@@ -52,9 +52,12 @@ func sendCommandsToANodeSet(sendReq *StartReq, subNodes string, root string, nod
 		if cacheRelayFilesAndDelegateExec(sendReq, root, s) == nil {
 			numnodes += connsperNode
 		} else {
-			si, err := slaves.Get(s)
-			if ! err {
+			Dprint(4, s, " failed")
+			si, ok := slaves.Get(s)
+			if ok {
 				slaves.Remove(si)
+			} else {
+				Dprint(4, "Could not find slave ", s, " to remove")
 			}
 		}
 	}

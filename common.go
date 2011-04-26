@@ -139,7 +139,7 @@ func (s *SlaveInfo) String() string {
 	if s == nil {
 		return "<nil>"
 	}
-	return fmt.Sprint(s.Id, " ", s.Addr)
+	return fmt.Sprint(s.Id, "@", s.Addr)
 }
 
 
@@ -357,7 +357,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.E
 
 	client, err := Dial(defaultFam, "", clientnode)
 	if err != nil {
-		log.Print("dialing:", err)
+		log.Print("cacheRelayFilesAndDelegateExec: dialing: ", clientnode, ": ", err)
 		return err
 	}
 	Dprintf(2, "connected to %v\n", client)
@@ -600,20 +600,33 @@ func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 	}
 	sv.Slaves[s.Id] = s
 	sv.Addr2id[s.Server] = s.Id
-	Dprintln(2, "slave Add: Id: ", s)
+	Dprintln(2, "slave Add: Id: ", s.Id)
 	resp.Id = s.Id
 	return
 }
 
 func (sv *Slaves) Remove(s *SlaveInfo) {
+	Dprintln(4, "Remove %v ", s, " slave %v", sv.Slaves[s.Id])
 	sv.Slaves[s.Id] = nil, false
 	sv.Addr2id[s.Server] = "", false
 	Dprintln(2, "slave Remove: Id: ", s)
 	return
 }
 
+/* old school: functions with names like GetIP and GetID and so on. 
+ * new school: overloading and picking via type signature
+ * go school: well, strings are different. So let's try both styles. 
+ * one function, but no overloading. Is this good or bad? Who knows? 
+ * But the ip and id strings are very, very different, so zero probability
+ * of collisions; does that make this ok? 
+ */
 func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
+	Dprint(6, "Get: ", n)
 	s, ok = sv.Slaves[n]
+	if ! ok {
+		s, ok = sv.Slaves[sv.Addr2id[n]]
+	}
+	Dprint(6, " Returns: ", s.Id)
 	return
 }
 

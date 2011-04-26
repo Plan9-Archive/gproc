@@ -35,7 +35,7 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	Dprint(2, "dialing masterAddr ", masterAddr)
 	master, err := Dial(fam, "", masterAddr)
 	if err != nil {
-		log.Fatal("dialing:", err)
+		log.Fatal("startSlave: dialing:", err)
 	}
 
 	/* vitalData -- what we're doing here is assembling information for our parent. 
