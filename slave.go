@@ -92,7 +92,9 @@ func startSlave(fam, masterAddr string, loc Locale) {
 
 				var ne nodeExecList
 				// This is the list of nodes the child got in its request
-				returnrpc.Recv("startSlave getting nodes ", &ne)
+				if returnrpc.Recv("startSlave getting nodes ", &ne) != nil {
+					return
+				}
 				// The child doesn't have the slaves populated, so we have to do it
 				ne.Nodes = slaves.ServIntersect(ne.Nodes)
 				passrpc.Send("startSlave sending nodes ", ne)
@@ -115,7 +117,9 @@ func initSlave(r *RpcClientServer, v *vitalData) {
 	Dprint(2, "initSlave: ", v)
 	r.Send("startSlave", *v)
 	resp := &SlaveResp{}
-	r.Recv("startSlave", &resp)
+	if r.Recv("startSlave", &resp) != nil {
+		log.Fatal("Can't start slave")
+	}
 	id = resp.Id
 	log.SetPrefix("slave " + id + ": ")
 }
@@ -145,7 +149,9 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
 
 	// Receive a StartReq from the master/parent
 	req := &StartReq{}
-	r.Recv("slaveProc", &req)
+	if r.Recv("slaveProc", &req) != nil {
+		log.Fatal("failed on receiving a start request")
+	}
 	Dprint(2, "slaveProc: req ", *req)
 
 	// Establish a connection to the IO proxy
@@ -168,14 +174,15 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
 	numWorkers = 0
 	nodesCopy = req.Nodes
 	slaveNodes, err := parseNodeList(nodesCopy)
-	returnrpc.Send("send slaveNodes ", slaveNodes[0])
-	var availableSlaves nodeExecList
-	inforpc.Recv("recv availableSlaves", &availableSlaves)
-
-	Dprint(2, "receiveCmds: sendReq.Nodes: ", req.Nodes, " expands to ", slaveNodes)
 	if err != nil {
 		return
 	}
+	returnrpc.Send("send slaveNodes ", slaveNodes[0])
+	var availableSlaves nodeExecList
+	if inforpc.Recv("recv availableSlaves", &availableSlaves) != nil {
+		return
+	}
+	Dprint(2, "receiveCmds: sendReq.Nodes: ", req.Nodes, " expands to ", slaveNodes)
 
 	if len(availableSlaves.Nodes) > 0 {
 		workerChan, l, err = ioProxy(defaultFam, loc.Ip()+":0", c)

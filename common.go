@@ -225,10 +225,11 @@ func (r *RpcClientServer) Send(funcname string, arg interface{}) {
 
 var onRecvFunc func(funcname string, r io.Reader, arg interface{})
 
-func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
-	err := r.D.Decode(arg)
+func (r *RpcClientServer) Recv(funcname string, arg interface{}) (err os.Error) {
+	err = r.D.Decode(arg)
 	if err != nil {
-		log.Fatal(funcname, ": Recv error: ", err)
+		log.Print(funcname, ": Recv error: ", err)
+		return
 	}
 	RecvPrint(funcname, r, arg)
 	/* maybe some other time 
@@ -236,6 +237,7 @@ func (r *RpcClientServer) Recv(funcname string, arg interface{}) {
 		onRecvFunc(funcname, r, arg)
 	}
 	*/
+	return
 }
 
 
@@ -544,10 +546,13 @@ func registerSlaves(loc Locale) os.Error {
 		vd := &vitalData{}
 		c, err := l.Accept()
 		if err != nil {
-			log.Fatal("registerSlaves:", err)
+			log.Print("registerSlaves:", err)
+			continue
 		}
 		r := NewRpcClientServer(c, *binRoot)
-		r.Recv("registerSlaves", &vd)
+		if r.Recv("receive vital data", &vd) != nil {
+			continue
+		}
 		/* quite the hack. At some point, on a really complex system, 
 		 * we'll need to return a set of listen addresses for a daemon, but we've yet to
 		 * see that in actual practice. We can't use LocalAddr here, since it returns our listen

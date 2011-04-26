@@ -108,7 +108,10 @@ func receiveCmds(domainSock string) os.Error {
 			}
 			r.Send("vitalData", vitalData)
 			/* it would be Really Cool if we could case out on the type of the request, I don't know how. */
-			r.Recv("receiveCmds", &a)
+			err := r.Recv("receiveCmds", &a)
+			if err != nil {
+				return
+			}
 			/* we could used re matching but that package is a bit big */
 			switch {
 			case a.Command[0] == uint8('x'):

@@ -26,14 +26,18 @@ func getInfo(masterAddr, query string) (info *Resp) {
 	/* master sends us vital data */
 	var vitalData vitalData
 	info = &Resp{}
-	r.Recv("vitalData", &vitalData)
+	if r.Recv("vitalData", &vitalData) != nil {
+		log.Fatal("Could not receive vital data")
+	}
 	if !vitalData.HostReady {
 		fmt.Print("No hosts yet: ", vitalData.Error, "\n")
 		return
 	}
 
 	r.Send("getInfo", req)
-	r.Recv("getinfo", info)
+	if r.Recv("getinfo", info) != nil {
+		log.Fatal("getinfo failed")
+	}
 	Dprintln(3, "getInfo: finished: ", *info)
 	return
 }

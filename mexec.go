@@ -42,7 +42,9 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 
 	/* master sends us vital data */
 	var vitalData vitalData
-	r.Recv("vitalData", &vitalData)
+	if r.Recv("vitalData", &vitalData) != nil {
+		log.Fatal("Can't get vital data from master")
+	}
 	pv := newPackVisitor()
 	cwd, _ := os.Getwd()
 	/* make sure our cwd ends up in the list of things to take along ...  but only take the dir*/
@@ -119,7 +121,9 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 
 	r.Send("startExecution", req)
 	resp := &Resp{}
-	r.Recv("startExecution", resp)
+	if r.Recv("startExecution", resp) != nil {
+		log.Fatal("Can't do start execution")
+	}
 	/* numWorkers tells us how many nodes will be connecting to our ioProxy */
 	numWorkers := resp.NumNodes
 	Dprintln(3, "startExecution: waiting for ", numWorkers)
