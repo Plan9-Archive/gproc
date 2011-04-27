@@ -157,7 +157,8 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
 	// Establish a connection to the IO proxy
 	n, c, err := fileTcpDial(req.Lserver)
 	if err != nil {
-		log.Fatal("tcpDial: ", err)
+		log.Print("tcpDial: ", err)
+		return
 	}
 
 	// Run the program
