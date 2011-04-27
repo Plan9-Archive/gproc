@@ -626,7 +626,7 @@ func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
 	if ! ok {
 		s, ok = sv.Slaves[sv.Addr2id[n]]
 	}
-	Dprint(6, " Returns: ", s.Id)
+	Dprint(6, " Returns: ", s)
 	return
 }
 
