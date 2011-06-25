@@ -53,8 +53,9 @@ func (s *kf) Init(role string) {
 		which, _ := strconv.Atoi(hostname[2:])
 		thirdOctet := 30 + (which-1)/240
 		//log.Printf("thirdOctet = %d", thirdOctet)
+		fourthOctet := which % 240
 		s.parentAddr = *parent + ":" + *cmdPort
-		s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(which)
+		s.ip = "10.1." + strconv.Itoa(thirdOctet) + "." + strconv.Itoa(fourthOctet)
 		s.addr = s.ip + ":" + *cmdPort
 	case "client":
 	}

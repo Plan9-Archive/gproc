@@ -249,8 +249,8 @@ func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
 	}
 	/* This is terrible, please fix it. Better yet, make the Go guys un-break net.Dial -- John */
 	if fam == "tcp" {
-		ra, _ := net.ResolveTCPAddr(raddr)
-		la, _ := net.ResolveTCPAddr(laddr)
+		ra, _ := net.ResolveTCPAddr("tcp4", raddr)
+		la, _ := net.ResolveTCPAddr("tcp4", laddr)
 		c, err = net.DialTCP(fam, la, ra)
 		if err != nil {
 			return
@@ -486,7 +486,7 @@ func doPrivateMount(pathbase string) {
  */
 func fileTcpDial(server string) (*os.File, net.Conn, os.Error) {
 	var laddr net.TCPAddr
-	raddr, err := net.ResolveTCPAddr(server)
+	raddr, err := net.ResolveTCPAddr("tcp4", server)
 	if err != nil {
 		return nil, nil, err
 	}

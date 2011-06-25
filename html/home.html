@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Gproc web interface</title>
+		<style>
+			html, body {
+				height: 100%;
+				margin: 0;
+				overflow: hidden;
+				padding: 0;
+			}
+
+			#loader {
+				padding: 0;
+				margin: 0;
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: #ededed;
+				z-index: 999;
+				vertical-align: middle;
+			}
+			#loaderInner {
+				padding: 5px;
+				position: relative;
+				left: 0;
+				top: 0;
+				width: 250px;
+				background: #3c3;
+				color: #ffffff;
+			}
+
+			#appLayout {
+				height: 100%;
+			}
+			#leftCol {
+				width: 14em;
+			}
+
+			.header {
+				font-weight: bold;
+			}
+		</style>
+		<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.6/dijit/themes/claro/claro.css" media="screen">
+		<script>
+			dojoConfig = {
+				parseOnLoad:	true,
+				gfxRenderer:	"svg,silverlight,vml"
+			};
+		</script>
+		<script src="http://ajax.googleapis.com/ajax/libs/dojo/1.6/dojo/dojo.xd.js"></script>
+		<script>
+			dojo.require("dijit.layout.BorderContainer");
+			dojo.require("dijit.layout.TabContainer");
+			dojo.require("dijit.layout.ContentPane");
+
+			// Hide the loader on page load
+			dojo.addOnLoad(function() {
+				dojo.byId('loaderInner').innerHTML += " done.";
+				setTimeout(function hideLoader(){
+					dojo.fadeOut({
+						node: 'loader',
+						duration: 500,
+						onEnd: function(n) {
+							n.style.display = 'none';
+						}
+					}).play();
+				}, 250);
+			});
+		</script>
+		<script>
+			// Require the basic 2d chart resource: Chart2D
+			dojo.require("dojox.charting.Chart2D");
+
+			// Retrieve the Legend, Tooltip, and Magnify classes
+			dojo.require("dojox.charting.widget.Legend");
+			dojo.require("dojox.charting.action2d.Tooltip");
+			dojo.require("dojox.charting.action2d.Magnify");
+
+			// Require the theme of our choosing
+			//"Claro", new in Dojo 1.6, will be used
+			dojo.require("dojox.charting.themes.Claro");
+
+			// Define the data
+			var chartData = [10000,9200,11811,12000,7662,13887,14200,12222,12000,10009,11288,12099];
+			var chartData2 = [3000,12000,17733,9876,12783,12899,13888,13277,14299,12345,12345,15763];
+			var chartData3 = [3000,12000,17733,9876,12783,12899,13888,13277,14299,12345,12345,15763].reverse();
+
+			// When the DOM is ready and resources are loaded...
+			dojo.ready(function() {
+				 
+				// Create the chart within it's "holding" node
+				var chart = new dojox.charting.Chart2D("chartNode");
+
+				// Set the theme
+				chart.setTheme(dojox.charting.themes.Claro);
+
+				// Add the only/default plot 
+				chart.addPlot("default", {
+					type: "StackedAreas",
+					markers: true
+				});
+				 
+				// Add axes
+				chart.addAxis("x");
+				chart.addAxis("y", { min: 5000, max: 30000, vertical: true, fixLower: "major", fixUpper: "major" });
+
+				// Add the series of data
+				chart.addSeries("Monthly Sales - 2010",chartData);
+				chart.addSeries("Monthly Sales - 2009",chartData2);
+				chart.addSeries("Monthly Sales - 2008",chartData3);
+				 
+				// Create the tooltip
+				var tip = new dojox.charting.action2d.Tooltip(chart,"default");
+				 
+				// Create the magnifier
+				var mag = new dojox.charting.action2d.Magnify(chart,"default");
+				 
+				// Render the chart!
+				chart.render();
+				 
+				// Create the legend
+				var legend = new dojox.charting.widget.Legend({ chart: chart }, "legend");
+			});
+		</script>
+	</head>
+	<body class="claro">
+		<!-- loader to hide page until everything has loaded -->
+		<div id="loader">
+			<div id="loaderInner" style="direction: ltr;">
+				Loading Gproc web interface ...
+			</div>
+		</div>
+
+		<div 
+				id="appLayout" class="demoLayout"
+				data-dojo-type="dijit.layout.BorderContainer"
+				data-dojo-props="design: 'headline'">
+			<div
+					class="centerPanel"
+					data-dojo-type="dijit.layout.TabContainer"
+					data-dojo-props="region: 'center', tabPosition: 'top'">
+				<div
+						data-dojo-type="dijit.layout.ContentPane"
+						data-dojo-props="title: 'Overview'">
+
+					<h4>Overview</h4>
+					<p>Some stuff</p>
+
+				</div>
+				<div
+						data-dojo-type="dijit.layout.ContentPane"
+						data-dojo-props="title: 'Status'">
+
+					<h4>Status of Nodes</h4>
+
+				</div>
+				<div
+						data-dojo-type="dijit.layout.ContentPane"
+						data-dojo-props="title: 'Node History'">
+
+					<h4>Node History</h4>
+
+					<div id="chartNode" style="width: 100%; height: 500px; margin: 30px auto 0px auto;"></div>
+
+				</div>
+				<div
+						data-dojo-type="dijit.layout.ContentPane"
+						data-dojo-props="title: 'Extended Slave Information'">
+
+					<h4>Extended Slave Information</h4>
+
+				</div>
+			</div>
+			<div
+					class="edgePanel header"
+					data-dojo-type="dijit.layout.ContentPane"
+					data-dojo-props="region: 'top'">
+				Gproc
+			</div>
+			<div
+					id="leftCol" class="edgePanel"
+					data-dojo-type="dijit.layout.ContentPane"
+					data-dojo-props="region: 'left', splitter: true">
+				Sidebar content (left)
+			</div>
+		</div>
+	</body>
+</html>

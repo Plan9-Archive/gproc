@@ -23,6 +23,7 @@ GOFILES=\
 	jaguarcfg.go\
 	jsoncfg.go\
 	etchostscfg.go\
+	web.go\
 
 include $(GOROOT)/src/Make.cmd
 

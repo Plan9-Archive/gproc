@@ -1,0 +1,11 @@
+	<h2>Extended Status</h2>
+	<ul>
+{.repeated section slavesOut} 
+		<li>
+			<b>Id:</b> {Id}<br>
+			<b>Addr:</b> {Addr}<br>
+			<b>Server:</b> {Server}<br>
+			<b>Nodes:</b> {Nodes}<br>
+			<b>Rpc:</b> {Rpc}
+{.end}
+	</ul>

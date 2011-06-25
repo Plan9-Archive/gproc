@@ -47,7 +47,7 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	addr := strings.Split(master.LocalAddr().String(), ":", -1)
 	peerAddr := addr[0] + ":0"
 
-	laddr, _ := net.ResolveTCPAddr(peerAddr)      // This multiple-return business sometimes gets annoying
+	laddr, _ := net.ResolveTCPAddr("tcp4", peerAddr)      // This multiple-return business sometimes gets annoying
 	netl, err := net.ListenTCP(defaultFam, laddr) // this is how we're ditching newListenProc
 	vitalData.ServerAddr = netl.Addr().String()
 	vitalData.HostAddr = master.LocalAddr().String()
