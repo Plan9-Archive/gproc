@@ -16,17 +16,18 @@ import (
 	"template"
 	"exec"
 	"os"
+	"url"
 )
 
 var fmap = template.FormatterMap{
-	"html": template.HTMLFormatter,
+	"html":     template.HTMLFormatter,
 	"url+html": UrlHtmlFormatter,
 }
 
-var templStatus,_ = template.ParseFile("html/status.template", fmap)
-var templExtendedSlaveInformation,_ = template.ParseFile("html/extended-slave-information.template", fmap)
-var templHeader,_ = template.ParseFile("html/header.template", fmap)
-var templFooter,_ = template.ParseFile("html/footer.template", fmap)
+var templStatus, _ = template.ParseFile("html/status.template", fmap)
+var templExtendedSlaveInformation, _ = template.ParseFile("html/extended-slave-information.template", fmap)
+var templHeader, _ = template.ParseFile("html/header.template", fmap)
+var templFooter, _ = template.ParseFile("html/footer.template", fmap)
 
 func web() {
 	if templStatus == nil || templExtendedSlaveInformation == nil || templHeader == nil || templFooter == nil {
@@ -35,7 +36,7 @@ func web() {
 	}
 	// Static pages:
 	// Register the dojo files
-	http.Handle("/", http.HandlerFunc(func (w http.ResponseWriter, req *http.Request) {
+	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		http.ServeFile(w, req, "html/home.html")
 	}))
 
@@ -67,8 +68,8 @@ func Status(w http.ResponseWriter, httpReq *http.Request) {
 	}
 
 	// We need to build the page
-	data := map[string] interface{} {
-		"title": "Status",
+	data := map[string]interface{}{
+		"title":  "Status",
 		"return": string(b[:]),
 	}
 
@@ -83,8 +84,8 @@ func ExtendedSlaveInformation(w http.ResponseWriter, req *http.Request) {
 	for _, i := range slaves.Slaves {
 		slavesOut = append(slavesOut, *i)
 	}
-	data := map[string] interface{} {
-		"title": "Extended Slave Information",
+	data := map[string]interface{}{
+		"title":     "Extended Slave Information",
 		"slavesOut": slavesOut,
 	}
 
@@ -94,5 +95,5 @@ func ExtendedSlaveInformation(w http.ResponseWriter, req *http.Request) {
 }
 
 func UrlHtmlFormatter(w io.Writer, fmt string, v ...interface{}) {
-	template.HTMLEscape(w, []byte(http.URLEscape(v[0].(string))))
+	template.HTMLEscape(w, []byte(url.QueryEscape(v[0].(string))))
 }
