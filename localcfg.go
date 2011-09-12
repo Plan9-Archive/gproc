@@ -50,7 +50,7 @@ func (l *local) Ip() string {
 
 func (s *local) SlaveIdFromVitalData(vd *vitalData) string {
 	/* grab the server address from vital data and index into our map */
-	addrs := strings.Split(vd.ServerAddr, ":", 2)
+	addrs := strings.SplitN(vd.ServerAddr, ":", 2)
 	id, ok := s.idMap[addrs[1]]
 
 	if !ok {

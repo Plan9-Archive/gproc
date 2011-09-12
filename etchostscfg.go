@@ -86,7 +86,7 @@ func (s *etchosts) Ip() string {
 
 func (s *etchosts) SlaveIdFromVitalData(vd *vitalData) (id string) {
 	Dprint(2, "ParentAddr = ", vd.ParentAddr, ", HostAddr = ", vd.HostAddr)
-	addrs := strings.Split(vd.HostAddr, ":", 2)
+	addrs := strings.SplitN(vd.HostAddr, ":", 2)
 	hosts, err := net.LookupAddr(addrs[0])
 	if err != nil || len(hosts) < 1 {
 		log.Panic("couldn't look up hostname!")

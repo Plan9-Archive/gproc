@@ -74,8 +74,8 @@ func (s *kf) Ip() string {
 }
 
 func (s *kf) SlaveIdFromVitalData(vd *vitalData) (id string) {
-	addrs := strings.Split(vd.ServerAddr, ":", 2)
-	octets := strings.Split(addrs[0], ".", 4)
+	addrs := strings.SplitN(vd.ServerAddr, ":", 2)
+	octets := strings.SplitN(addrs[0], ".", 4)
 	high, _ := strconv.Atoi(octets[2])
 	low, _ := strconv.Atoi(octets[3])
 	id = strconv.Itoa((high-30)*240 + low)

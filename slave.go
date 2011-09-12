@@ -44,7 +44,7 @@ func startSlave(fam, masterAddr string, loc Locale) {
 	 * kernels going back a long time, we might as well tell the master its own address for
 	 * the socket, since *the master can't get it*. True! 
 	 */
-	addr := strings.Split(master.LocalAddr().String(), ":", -1)
+	addr := strings.SplitN(master.LocalAddr().String(), ":", -1)
 	peerAddr := addr[0] + ":0"
 
 	laddr, _ := net.ResolveTCPAddr("tcp4", peerAddr)      // This multiple-return business sometimes gets annoying

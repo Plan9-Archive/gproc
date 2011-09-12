@@ -84,8 +84,8 @@ func (s *kane) Ip() string {
 }
 
 func (s *kane) SlaveIdFromVitalData(vd *vitalData) (id string) {
-	addrs := strings.Split(vd.ServerAddr, ":", 2)
-	octets := strings.Split(addrs[0], ".", 4)
+	addrs := strings.SplitN(vd.ServerAddr, ":", 2)
+	octets := strings.SplitN(addrs[0], ".", 4)
 	which, _ := strconv.Atoi(octets[3])
 	thirdOctet, _ := strconv.Atoi(octets[2])
 	/* get the lowest octet, take it mod 40 */

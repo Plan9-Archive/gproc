@@ -437,11 +437,11 @@ type nodeExecList struct {
  */
 func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
 	/* bust it apart by , */
-	ranges := strings.Split(l, ",", -1)
+	ranges := strings.SplitN(l, ",", -1)
 	for _, n := range ranges {
 		/* split into range and rest by the slash */
-		l := strings.Split(n, "/", 2)
-		be := strings.Split(l[0], "-", 2)
+		l := strings.SplitN(n, "/", 2)
+		be := strings.SplitN(l[0], "-", 2)
 		Dprint(6, " l is ", l, " be is ", be)
 		ne := &nodeExecList{Nodes: make([]string, 1)}
 		if len(l) > 1 {
@@ -559,7 +559,7 @@ func registerSlaves(loc Locale) os.Error {
 		 * address, not the address we accepted on, and if that's 0.0.0.0, that's useless. 
 		 */
 		if netaddr == "" {
-			addr := strings.Split(vd.ParentAddr, ":", 2)
+			addr := strings.SplitN(vd.ParentAddr, ":", 2)
 			Dprint(2, "addr is ", addr)
 			netaddr = addr[0]
 		}
@@ -568,7 +568,7 @@ func registerSlaves(loc Locale) os.Error {
 		 * to cons one up, which is easily done. 
 		 */
 		if vd.ServerAddr[0:len("0.0.0.0")] == "0.0.0.0" {
-			vd.ServerAddr = strings.Split(c.RemoteAddr().String(), ":", 2)[0] + vd.ServerAddr[7:]
+			vd.ServerAddr = strings.SplitN(c.RemoteAddr().String(), ":", 2)[0] + vd.ServerAddr[7:]
 			Dprint(2, "Guessed remote slave ServerAddr is ", vd.ServerAddr)
 		}
 		resp := slaves.Add(vd, r)

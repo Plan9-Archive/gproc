@@ -50,7 +50,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	/* make sure our cwd ends up in the list of things to take along ...  but only take the dir*/
 	filepath.Walk(cwd+"/.", pv, nil)
 	if len(*filesToTakeAlong) > 0 {
-		files := strings.Split(*filesToTakeAlong, ",", -1)
+		files := strings.SplitN(*filesToTakeAlong, ",", -1)
 		for _, f := range files {
 			rootedpath := f
 			if f[0] != '/' {
@@ -83,7 +83,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	}
 	/* build the library list given that we may have a different root */
 
-	libList := strings.Split(*libs, ":", -1)
+	libList := strings.SplitN(*libs, ":", -1)
 	rootedLibList := []string{}
 	for _, s := range libList {
 		Dprint(6, "startExecution: add lib ", s)
