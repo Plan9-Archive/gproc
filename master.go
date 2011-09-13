@@ -27,7 +27,7 @@ func startMaster(domainSock string, loc Locale) {
 	exceptFiles = make(map[string]bool, 16)
 	exceptList = []string{}
 
-//	go web()
+	go web()
 	go receiveCmds(domainSock)
 	registerSlaves(loc)
 }
