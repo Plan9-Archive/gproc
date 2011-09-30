@@ -26,8 +26,9 @@ var (
 	debugLevel   = flag.Int("d", 0, "Debug level")
 	privateMount = flag.Bool("p", true, "private mounts")
 	locale       = flag.String("locale", "kf", "Locale")
-	parent       = flag.String("parent", "10.1.254.254", "Parent")
+	parent       = flag.String("parent", "172.16.255.254", "Parent")
 	cmdPort      = flag.String("cmdport", "6666", "Command port")
+	binary      = flag.String("b", "gproc_linux_amd64", "Binary to send")
 )
 
 func runlevel(lowNode, highNode int) {
@@ -38,7 +39,12 @@ func runlevel(lowNode, highNode int) {
 		go func(anode int) {
 			node := fmt.Sprintf("root@kn%d", anode)
 
-			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_amd64", fmt.Sprintf("-p=%v ", *privateMount), fmt.Sprintf("--cmdport=%s", *cmdPort), fmt.Sprintf("-locale=%s ", *locale), fmt.Sprintf("-parent=%s ", *parent), fmt.Sprintf("-debug=%d ", *debugLevel), "s"}
+                        Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, *binary, 
+				"-parent='"+*parent+"'", 
+				"-myId='hostname base  '", 
+				"-myAddress=hostname", 
+				fmt.Sprintf("-p=%v ", *privateMount), fmt.Sprintf("-debug=%d", *debugLevel), "s"}
+		
 			fmt.Println(Args)
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)

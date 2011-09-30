@@ -56,6 +56,8 @@ func Status(w http.ResponseWriter, httpReq *http.Request) {
 	// This will execute an "e" command and return the output
 	// NOTE: soon we should fix the nasty ././././././. for length
 	// of tree
+	// NO: Just add another interface to local to return "depth". 
+	// Let's start using the locale more . 
 	argv := []string{"-locale=etchosts", "-localbin=true",
 		"-merger=true", "-iopp=4445", "e", "././././././.", "/bin/echo",
 		"up"}
