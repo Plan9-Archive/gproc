@@ -56,9 +56,10 @@ func sendCommandsToANodeSet(sendReq *StartReq, subNodes string, root string, nod
 			Dprint(4, s, " failed")
 			si, ok := slaves.Get(s)
 			if ok {
+				log.Print("Remove slave ", s, " ", si)
 				slaves.Remove(si)
 			} else {
-				Dprint(4, "Could not find slave ", s, " to remove")
+				log.Print("Could not find slave ", s, " to remove")
 			}
 		}
 	}

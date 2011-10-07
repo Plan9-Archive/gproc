@@ -16,16 +16,17 @@ import (
 	"net"
 	"fmt"
 	"gob"
+	"time"
+	"rand"
 )
 
 var id string
 
-/* We will for now assume that addressing is symmetric, that is, if we Dial someone on
- * a certain address, that's the address they should Dial us on. This assumption has held
- * up well for quite some time. And, in fact, it makes no sense to do it any other way ...
- */
-/* note that we're going to be able to merge master and slave fairly soon, now that they do almost the same things. */
-func startSlave() {
+func runSlave(){
+	/* some simple sanity checking */
+	if *DoPrivateMount == true && os.Getuid() != 0 {
+		log.Fatal("Slave: Need to run as root for private mounts")
+	}
 	if *parent == "" {
 		log.Fatal("Slave: must set parent IP with -parent switch")
 	}
@@ -35,17 +36,37 @@ func startSlave() {
 	if *myId == "" {
 		log.Fatal("Slave: must set myId with -myId switch")
 	}
+
+	/* at this point everything is right. So go forever. */
+	for {
+		startSlave()
+		Dprint(2, "Slave returned; try a timeout")
+		/* sleep for a random time that is between 10 and 60 seconds. random is necessary
+		 * because we have seen self-synchronization in earlier work. 
+		 */
+		r := int64(rand.Intn(50) + 10)
+		err := time.Sleep(r * int64(1<<30))
+		/* if we can't sleep we're going to hammer the server. Bad idea. */
+		if err != nil {
+			log.Fatal("Slave: sleep failed for ", r, " nanoseconds")
+		}
+	}
+}
+
+/* We will for now assume that addressing is symmetric, that is, if we Dial someone on
+ * a certain address, that's the address they should Dial us on. This assumption has held
+ * up well for quite some time. And, in fact, it makes no sense to do it any other way ...
+ */
+/* note that we're going to be able to merge master and slave fairly soon, now that they do almost the same things. */
+func startSlave() {
 	/* slight difference from master: we're ready when we start, since we run things */
 	vitalData := &vitalData{HostReady: true, Id: *myId}
 	masterAddr := *parent + ":" + *cmdPort
-	/* some simple sanity checking */
-	if *DoPrivateMount == true && os.Getuid() != 0 {
-		log.Fatal("Need to run as root for private mounts")
-	}
 	Dprint(2, "dialing masterAddr ", masterAddr)
 	master, err := Dial(*defaultFam, "", masterAddr)
 	if err != nil {
-		log.Fatal("startSlave: dialing:", err)
+		log.Print("startSlave: dialing:", err)
+		return
 	}
 
 	/* vitalData -- what we're doing here is assembling information for our parent. 
@@ -57,20 +78,26 @@ func startSlave() {
 	addr := strings.SplitN(master.LocalAddr().String(), ":", -1)
 	peerAddr := addr[0] + ":0"
 
-	laddr, _ := net.ResolveTCPAddr("tcp4", peerAddr)      // This multiple-return business sometimes gets annoying
-	netl, err := net.ListenTCP(*defaultFam, laddr) // this is how we're ditching newListenProc
+	laddr, _ := net.ResolveTCPAddr("tcp4", peerAddr)
+	netl, err := net.ListenTCP(*defaultFam, laddr)
+	if err != nil {
+		log.Print("startSlave: ", err)
+		return
+	}
 	vitalData.ServerAddr = netl.Addr().String()
 	vitalData.HostAddr = master.LocalAddr().String()
 	vitalData.ParentAddr = master.RemoteAddr().String()
 	r := NewRpcClientServer(master, *binRoot)
 	initSlave(r, vitalData)
 	go registerSlaves()
+	/* wow. This used to be much smaller and needs to be redone. */
 	go func() {
 		for {
 			// Wait for a connection from the master
 			c, err := netl.AcceptTCP()
 			if err != nil {
-				log.Fatal("problem in netl.Accept()")
+				log.Print("problem in netl.Accept()")
+				return
 			}
 			Dprint(3, "Received connection from: ", c.RemoteAddr())
 
@@ -91,7 +118,7 @@ func startSlave() {
 				"R", // "R" = run a program
 			}
 			// Start the new process
-			p, err := os.StartProcess(os.Args[0], argv, &procattr)
+			p, err := os.StartProcess(*gprocBin, argv, &procattr)
 			if err != nil {
 				log.Fatal("startSlave: ", err)
 			} else {

@@ -221,7 +221,7 @@ func (r *RpcClientServer) Send(funcname string, arg interface{}) {
 	SendPrint(funcname, r, arg)
 	err := r.E.Encode(arg)
 	if err != nil {
-		log.Fatal(funcname, ": Send: ", err)
+		log.Print(funcname, ": Send: ", err)
 	}
 }
 
@@ -311,28 +311,6 @@ func WaitAllChildren() {
 		log.Printf("wait4 returns pid %v status %v\n", pid, status)
 
 	}
-}
-
-func newListenProc(jobname string, job func(c *RpcClientServer), srvaddr string) string {
-	/* it is important to return the listen address, if this function was called
-	 * with port 0
-	 */
-	Dprint(2, "newListenProc %v %v\n", *defaultFam, srvaddr)
-	netl, err := net.Listen(*defaultFam, srvaddr)
-	if err != nil {
-		log.Fatal("newListenProc: ", err)
-	}
-	go func() {
-		for {
-			c, err := netl.Accept()
-			if err != nil {
-				log.Fatal(jobname, ": ", err)
-			}
-			Dprint(2, jobname, ": ", c.RemoteAddr())
-			go job(NewRpcClientServer(c, *binRoot))
-		}
-	}()
-	return netl.Addr().String()
 }
 
 /*

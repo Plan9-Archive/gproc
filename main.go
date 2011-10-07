@@ -43,6 +43,7 @@ var (
 	ioProxyPort      = flag.String("iopp", "0", "io proxy port")
 	cmdPort          = flag.String("cmdport", "6666", "command port")
 	defaultFam = flag.String("fam", "tcp4", "network type")
+	gprocBin	= flag.String("gprocBin", "gproc", "name of gproc binary")
 	/* required in the command line */
 	parent           = flag.String("parent", "hostname", "parent for some configurations")
 	myAddress = flag.String("myAddress", "hostname", "Required set to my address")
@@ -87,7 +88,7 @@ func main() {
 		if len(flag.Args()) != 1 {
 			flag.Usage()
 		}
-		startSlave()
+		runSlave()
 	case "EXEC", "exec", "e":
 		/* Issuing a command to run on the slaves */
 		if len(flag.Args()) < 3 {
