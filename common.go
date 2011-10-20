@@ -453,7 +453,7 @@ BadRange:
 
 func doPrivateMount(pathbase string) {
 	unshare()
-	_ = unmount(*binRoot)
+	_ = syscall.Unmount(*binRoot, 0)
 	syscallerr := privatemount(*binRoot)
 	if syscallerr != 0 {
 		log.Print("Mount failed ", syscallerr)

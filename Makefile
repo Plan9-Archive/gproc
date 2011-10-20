@@ -10,7 +10,6 @@ GOFILES=\
 	bproc_$(GOOS)_$(GOARCH).go\
 	common.go\
 	info.go\
-	forth.go\
 	mexec.go\
 	main.go\
 	master.go\

@@ -21,7 +21,7 @@ import (
 	"log"
 	"os"
 	"strings"
-	"bitbucket.org/floren/ldd"
+	"bitbucket.org/rminnich/ldd"
 	"path"
 	"path/filepath"
 	"fmt"

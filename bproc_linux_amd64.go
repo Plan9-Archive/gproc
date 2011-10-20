@@ -36,12 +36,3 @@ func ucred(fd int) (pid, uid, gid int) {
 	return creds[0], creds[1], creds[2]
 }
 
-func unmount(path string) int {
-	path8 := []byte(path)
-	_, _, e1 := syscall.Syscall( /* barf! syscall.SYS_UMOUNT */ 166, uintptr(unsafe.Pointer(&path8[0])), 0, 0)
-	return int(e1)
-}
-
-func getIfc() int {
-	return 0
-}

@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"flag"
 	"gob"
+	"bitbucket.org/rminnich/forth"
 )
 
 func usage() {
@@ -64,11 +65,22 @@ var (
  * is used for strongbox, where there is a single root, 49 level 1s defined by name %7 == 0, and 
  */ 
 func main() {
+	var err os.Error
 	flag.Usage = usage
 	flag.Parse()
-	*myId = forth(*myId)
-	*myAddress = forth(*myAddress)
-	*parent = forth(*parent)
+	interp := forth.New()
+	*myId, err = forth.Eval(interp, *myId)
+	if err != nil {
+		log.Fatal(err)
+	}
+	*myAddress, err = forth.Eval(interp, *myAddress)
+	if err != nil {
+		log.Fatal(err)
+	}
+	*parent, err = forth.Eval(interp, *parent)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("My id is %v; parent %v; address %v\n", *myId, *parent, *myAddress)
 	myListenAddress = *myAddress + ":" + *cmdPort
 	log.SetPrefix("newgproc " + *prefix + ": ")

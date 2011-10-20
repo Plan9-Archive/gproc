@@ -10,8 +10,6 @@
 package main
 
 import (
-	"syscall"
-	"unsafe"
 	"log"
 )
 
@@ -49,8 +47,3 @@ func ucred(fd int) (pid, uid, gid int) {
 	return 0, 0, 0
 }
 
-func unmount(path string) int {
-	path8 := []byte(path)
-	_, _, e1 := syscall.Syscall(syscall.SYS_UNMOUNT, uintptr(unsafe.Pointer(&path8[0])), 0, 0)
-	return int(e1)
-}
