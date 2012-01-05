@@ -10,7 +10,7 @@
 package main
 
 import (
-	"bitbucket.org/floren/filemarshal"
+	"bitbucket.org/dfritz/filemarshal"
 	"encoding/gob"
 	"fmt"
 	"io"
