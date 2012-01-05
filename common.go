@@ -10,13 +10,13 @@
 package main
 
 import (
-	"os"
-	"net"
-	"fmt"
-	"log"
-	"io"
-	"gob"
 	"bitbucket.org/floren/filemarshal"
+	"encoding/gob"
+	"fmt"
+	"io"
+	"log"
+	"net"
+	"os"
 	"strconv"
 	"strings"
 	"syscall"
@@ -29,7 +29,6 @@ type SlaveResp struct {
 func (s SlaveResp) String() string {
 	return fmt.Sprint("id: ", s.Id)
 }
-
 
 type Resp struct {
 	NumNodes int
@@ -52,7 +51,7 @@ type cmdToExec struct {
 	DestName      string
 	SymlinkTarget string
 	Local         int
-	Fi            *os.FileInfo
+	Fi            os.FileInfo
 }
 
 func (a *cmdToExec) String() string {
@@ -72,7 +71,7 @@ type vitalData struct {
 	HostAddr   string
 	ParentAddr string
 	ServerAddr string
-	Id	string
+	Id         string
 	Nodes      []string
 	Exceptlist map[string]bool
 }
@@ -144,7 +143,6 @@ func (s *SlaveInfo) String() string {
 	return fmt.Sprint(s.Id, "@", s.Addr)
 }
 
-
 func Dprint(level int, arg ...interface{}) {
 	if *DebugLevel >= level {
 		log.Print(arg...)
@@ -167,7 +165,6 @@ const (
 	Send = iota
 	Recv
 )
-
 
 func IoString(i interface{}, dir int) string {
 	switch i.(type) {
@@ -227,7 +224,7 @@ func (r *RpcClientServer) Send(funcname string, arg interface{}) {
 
 var onRecvFunc func(funcname string, r io.Reader, arg interface{})
 
-func (r *RpcClientServer) Recv(funcname string, arg interface{}) (err os.Error) {
+func (r *RpcClientServer) Recv(funcname string, arg interface{}) (err error) {
 	err = r.D.Decode(arg)
 	if err != nil {
 		log.Print(funcname, ": Recv error: ", err)
@@ -242,10 +239,9 @@ func (r *RpcClientServer) Recv(funcname string, arg interface{}) (err os.Error) 
 	return
 }
 
-
 var onDialFunc func(fam, laddr, raddr string)
 
-func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
+func Dial(fam, laddr, raddr string) (c net.Conn, err error) {
 	if onDialFunc != nil {
 		onDialFunc(fam, laddr, raddr)
 	}
@@ -265,7 +261,6 @@ func Dial(fam, laddr, raddr string) (c net.Conn, err os.Error) {
 	return
 }
 
-
 type Listener struct {
 	l net.Listener
 }
@@ -276,7 +271,7 @@ func (l Listener) Addr() net.Addr {
 
 var onListenFunc func(fam, laddr string)
 
-func Listen(fam, laddr string) (l Listener, err os.Error) {
+func Listen(fam, laddr string) (l Listener, err error) {
 	if onListenFunc != nil {
 		onListenFunc(fam, laddr)
 	}
@@ -287,7 +282,7 @@ func Listen(fam, laddr string) (l Listener, err os.Error) {
 
 var onAcceptFunc func(c net.Conn)
 
-func (l Listener) Accept() (c net.Conn, err os.Error) {
+func (l Listener) Accept() (c net.Conn, err error) {
 	c, err = l.l.Accept()
 	if err != nil {
 		return
@@ -299,13 +294,12 @@ func (l Listener) Accept() (c net.Conn, err os.Error) {
 	return
 }
 
-
 // depends on syscall
 func WaitAllChildren() {
 	var status syscall.WaitStatus
 	for {
 		pid, err := syscall.Wait4(-1, &status, 0, nil)
-		if err <= 0 {
+		if err != nil {
 			break
 		}
 		log.Printf("wait4 returns pid %v status %v\n", pid, status)
@@ -318,7 +312,7 @@ func WaitAllChildren() {
  * This function builds up a list of files that need to go out to the current node's sub-nodes.
  * It is called by both the master and, if a more complex hierarchy is used, the upper-level slaves.
  */
-func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.Error {
+func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) error {
 	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", clientnode, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	larg := newStartReq(arg)
@@ -328,7 +322,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.E
 		comesfrom := root + c.DestName
 		Dprint(2, "current cmd comesfrom = ", comesfrom, ", DestName = ", c.DestName, ", CurrentName = ", c.CurrentName, ", SymlinkTarget = ", c.SymlinkTarget)
 		f := new(filemarshal.File)
-		if c.Fi.IsRegular() || c.Fi.IsDirectory() || c.Fi.IsSymlink() {
+		if !c.Fi.IsDir() || c.Fi.IsDir() || ((c.Fi.Mode() & os.ModeSymlink) != 0) {
 			f = &filemarshal.File{CurrentName: comesfrom, Fi: *c.Fi, SymlinkTarget: c.SymlinkTarget, DestName: c.DestName}
 		} else {
 			continue
@@ -360,6 +354,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.E
 
 	return nil
 }
+
 /*
  * The ioProxy listens for incoming connections. Sub-nodes will connect to it
  * and use the connection as stdin, stdout, and stderr for the programs they
@@ -371,7 +366,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) os.E
  * finished. workerChan will contain one int for every client which has 
  * completed and disconnected.
  */
-func ioProxy(fam, server string, dest io.Writer) (workerChan chan int, l Listener, err os.Error) {
+func ioProxy(fam, server string, dest io.Writer) (workerChan chan int, l Listener, err error) {
 	workerChan = make(chan int, 0)
 	l, err = Listen(fam, server)
 	if err != nil {
@@ -416,7 +411,7 @@ type nodeExecList struct {
  * the really hard way: few people understand regular expressions. So we
  * don't use them. 
  */
-func parseNodeList(l string) (rl []nodeExecList, err os.Error) {
+func parseNodeList(l string) (rl []nodeExecList, err error) {
 	/* bust it apart by , */
 	ranges := strings.SplitN(l, ",", -1)
 	for _, n := range ranges {
@@ -465,7 +460,7 @@ func doPrivateMount(pathbase string) {
  * Make a TCP connection to a server, return both the connection and
  * a File pointing to that connection.
  */
-func fileTcpDial(server string) (*os.File, net.Conn, os.Error) {
+func fileTcpDial(server string) (*os.File, net.Conn, error) {
 	var laddr net.TCPAddr
 	raddr, err := net.ResolveTCPAddr("tcp4", server)
 	if err != nil {
@@ -503,13 +498,11 @@ func newStartReq(arg *StartReq) *StartReq {
 	}
 }
 
-
 /*
  * Functions and data types for keeping track of slave nodes
  */
 
-
-func registerSlaves() os.Error {
+func registerSlaves() error {
 	l, err := Listen(*defaultFam, myListenAddress)
 	if err != nil {
 		log.Fatal("listen error:", err)
@@ -584,8 +577,8 @@ func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 
 func (sv *Slaves) Remove(s *SlaveInfo) {
 	Dprintln(4, "Remove %v ", s, " slave %v", sv.Slaves[s.Id])
-	sv.Slaves[s.Id] = nil, false
-	sv.Addr2id[s.Server] = "", false
+	delete(sv.Slaves, s.Id)
+	delete(sv.Addr2id, s.Server)
 	Dprintln(2, "slave Remove: Id: ", s)
 	return
 }
@@ -600,7 +593,7 @@ func (sv *Slaves) Remove(s *SlaveInfo) {
 func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
 	Dprint(6, "Get: ", n)
 	s, ok = sv.Slaves[n]
-	if ! ok {
+	if !ok {
 		s, ok = sv.Slaves[sv.Addr2id[n]]
 	}
 	Dprint(6, " Returns: ", s)

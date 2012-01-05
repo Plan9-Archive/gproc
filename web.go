@@ -10,13 +10,13 @@
 package main
 
 import (
-	"http"
+	"net/http"
 	"io"
 	"log"
 	"old/template"
-	"exec"
+	"os/exec"
 	"os"
-	"url"
+	"net/url"
 )
 
 var fmap = template.FormatterMap{

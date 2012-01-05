@@ -18,13 +18,14 @@
 package main
 
 import (
+	"bitbucket.org/rminnich/ldd"
+	"errors"
+	"fmt"
 	"log"
 	"os"
-	"strings"
-	"bitbucket.org/rminnich/ldd"
 	"path"
 	"path/filepath"
-	"fmt"
+	"strings"
 )
 
 /*
@@ -136,7 +137,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 }
 
 var (
-	BadRangeErr = os.NewError("bad range format")
+	BadRangeErr = errors.New("bad range format")
 )
 
 type packVisitor struct {
@@ -149,7 +150,7 @@ func newPackVisitor() (p *packVisitor) {
 	return &packVisitor{alreadyVisited: make(map[string]bool)}
 }
 
-func (p *packVisitor) VisitDir(filePath string, f *os.FileInfo) bool {
+func (p *packVisitor) VisitDir(filePath string, f os.FileInfo) bool {
 	filePath = strings.TrimSpace(filePath)
 	filePath = strings.TrimRightFunc(filePath, isNull)
 
@@ -180,7 +181,7 @@ func isNull(r int) bool {
 	return r == 0
 }
 
-func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
+func (p *packVisitor) VisitFile(filePath string, f os.FileInfo) {
 	// shouldn't need to do this, need to fix ldd
 	filePath = strings.TrimSpace(filePath)
 	filePath = strings.TrimRightFunc(filePath, isNull)
@@ -194,13 +195,13 @@ func (p *packVisitor) VisitFile(filePath string, f *os.FileInfo) {
 		Local:       0,
 		Fi:          f,
 	}
-	Dprint(4, "VisitFile: appending ", f.Name, " ", f.Size, " ", []byte(filePath), " ", p.alreadyVisited)
+	Dprint(4, "VisitFile: appending ", f.Name(), " ", f.Size(), " ", []byte(filePath), " ", p.alreadyVisited)
 
 	p.cmds = append(p.cmds, c)
 
 	switch {
-	case f.IsRegular():
-		p.bytesToTransfer += f.Size
+	case !f.IsDir():
+		p.bytesToTransfer += f.Size()
 	case f.IsSymlink():
 		/* we have to read the link but also get a path the file for 
 		 * further walking. We think. 

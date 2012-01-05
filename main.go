@@ -10,14 +10,14 @@
 package main
 
 import (
-	"log"
-	"os"
-	"rpc"
-	"fmt"
-	"strconv"
-	"flag"
-	"gob"
 	"bitbucket.org/rminnich/forth"
+	"encoding/gob"
+	"flag"
+	"fmt"
+	"log"
+	"net/rpc"
+	"os"
+	"strconv"
 )
 
 func usage() {
@@ -43,14 +43,14 @@ var (
 	defaultMasterUDS = flag.String("defaultMasterUDS", "/tmp/g", "Default Master Unix Domain Socket")
 	ioProxyPort      = flag.String("iopp", "0", "io proxy port")
 	cmdPort          = flag.String("cmdport", "6666", "command port")
-	defaultFam = flag.String("fam", "tcp4", "network type")
-	gprocBin	= flag.String("gprocBin", "gproc", "name of gproc binary")
+	defaultFam       = flag.String("fam", "tcp4", "network type")
+	gprocBin         = flag.String("gprocBin", "gproc", "name of gproc binary")
 	/* required in the command line */
-	parent           = flag.String("parent", "hostname", "parent for some configurations")
+	parent    = flag.String("parent", "hostname", "parent for some configurations")
 	myAddress = flag.String("myAddress", "hostname", "Required set to my address")
-	myId = flag.String("myId", "0", "Required -- tell slaves their id")
+	myId      = flag.String("myId", "0", "Required -- tell slaves their id")
 	/* these are not switches */
-	role = "client"
+	role            = "client"
 	myListenAddress string
 )
 
@@ -63,9 +63,9 @@ var (
  * You can just put a simple string in for the argument and it will push and pop it
  *  ./gproc_linux_arm -parent='hostname base 7 roundup sb strcat 10.1.1.1 hostname base 7 % ifelse' -myId='hostname base 7 % 1  + hostname base 7 / hostname base 7 % ifelse' -myAddress=hostname s
  * is used for strongbox, where there is a single root, 49 level 1s defined by name %7 == 0, and 
- */ 
+ */
 func main() {
-	var err os.Error
+	var err error
 	flag.Usage = usage
 	flag.Parse()
 	interp := forth.New()
@@ -115,11 +115,11 @@ func main() {
 		info := getInfo(*defaultMasterUDS, flag.Arg(1))
 		fmt.Print("Nodes:\n", info)
 		/* not yet
-		 case "EXCEPT", "except", "x":
-		 loc.Init("init")
-		 exceptOK := except(*defaultMasterUDS, flag.Args()[1:])
-		 fmt.Print(exceptOK)
-		 */
+		case "EXCEPT", "except", "x":
+		loc.Init("init")
+		exceptOK := except(*defaultMasterUDS, flag.Args()[1:])
+		fmt.Print(exceptOK)
+		*/
 	case "R":
 		/* This is for executing a program from the slave */
 		slaveProc(NewRpcClientServer(os.Stdin, *binRoot), &RpcClientServer{E: gob.NewEncoder(os.Stdout), D: gob.NewDecoder(os.Stdout)}, &RpcClientServer{E: gob.NewEncoder(os.NewFile(3, "pipe")), D: gob.NewDecoder(os.NewFile(3, "pipe"))})

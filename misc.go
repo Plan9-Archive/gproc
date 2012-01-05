@@ -31,11 +31,10 @@ import (
 // 	return cmds
 // }
 
-
-func readitin(s, root string) ([]byte, os.FileInfo, os.Error) {
+func readitin(s, root string) ([]byte, os.FileInfo, error) {
 	fi, _ := os.Stat(root + s)
 	f, _ := os.Open(s)
-	bytes := make([]byte, fi.Size)
+	bytes := make([]byte, fi.Size())
 	f.Read(bytes)
 	return bytes, *fi, nil
 }
@@ -44,12 +43,12 @@ type Arg struct {
 	Msg []byte
 }
 
-func Ping(arg *Arg, resp *Resp) os.Error {
+func Ping(arg *Arg, resp *Resp) error {
 	resp.Msg = string(arg.Msg)
 	return nil
 }
 
-func Debug(arg *SetDebugLevel, resp *SetDebugLevel) os.Error {
+func Debug(arg *SetDebugLevel, resp *SetDebugLevel) error {
 	resp.level = *DebugLevel
 	*DebugLevel = arg.level
 	return nil

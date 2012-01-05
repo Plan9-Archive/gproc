@@ -15,9 +15,9 @@ import (
 	"os"
 	"net"
 	"fmt"
-	"gob"
+	"encoding/gob"
 	"time"
-	"rand"
+	"math/rand"
 )
 
 var id string

@@ -9,10 +9,7 @@
 
 package main
 
-import (
-	"os"
-	"log"
-)
+import "log"
 
 var (
 	Workers     []Worker
@@ -74,7 +71,7 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (nu
 	slaveNodes, err := parseNodeList(sendReq.Nodes)
 	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
 	if err != nil {
-		r.Send("receiveCmds", Resp{NumNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.String()})
+		r.Send("receiveCmds", Resp{NumNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.Error()})
 		return
 	}
 	for _, aNode := range slaveNodes {
@@ -91,7 +88,7 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (nu
 /*
  * The master sits in a loop listening for commands to come in over the Unix domain socket.
  */
-func receiveCmds(domainSock string) os.Error {
+func receiveCmds(domainSock string) error {
 	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready", Exceptlist: exceptFiles}
 	l, err := Listen("unix", *defaultMasterUDS)
 	if err != nil {
