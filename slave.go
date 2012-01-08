@@ -45,11 +45,7 @@ func runSlave(){
 		 * because we have seen self-synchronization in earlier work. 
 		 */
 		r := int64(rand.Intn(50) + 10)
-		err := time.Sleep(r * int64(1<<30))
-		/* if we can't sleep we're going to hammer the server. Bad idea. */
-		if err != nil {
-			log.Fatal("Slave: sleep failed for ", r, " nanoseconds")
-		}
+		time.Sleep(time.Duration(r * int64(1<<30)))
 	}
 }
 
@@ -277,7 +273,7 @@ func runLocal(req *StartReq, n *os.File, done chan int) {
 	p, err := os.StartProcess(execpath, req.Args, &procattr)
 	if err != nil {
 		log.Fatal("run: ", err)
-		n.Write([]uint8(err.String()))
+		n.Write([]uint8(err.Error()))
 	} else {
 		w, _ := p.Wait(0)
 		Dprint(2, "run: process returned ", w.String())
