@@ -323,7 +323,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) erro
 		Dprint(2, "current cmd comesfrom = ", comesfrom, ", DestName = ", c.DestName, ", CurrentName = ", c.CurrentName, ", SymlinkTarget = ", c.SymlinkTarget)
 		f := new(filemarshal.File)
 		if !c.Fi.IsDir() || c.Fi.IsDir() || ((c.Fi.Mode() & os.ModeSymlink) != 0) {
-			f = &filemarshal.File{CurrentName: comesfrom, Fi: *c.Fi, SymlinkTarget: c.SymlinkTarget, DestName: c.DestName}
+			f = &filemarshal.File{CurrentName: comesfrom, Fi: c.Fi, SymlinkTarget: c.SymlinkTarget, DestName: c.DestName}
 		} else {
 			continue
 		}

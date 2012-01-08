@@ -36,7 +36,7 @@ func readitin(s, root string) ([]byte, os.FileInfo, error) {
 	f, _ := os.Open(s)
 	bytes := make([]byte, fi.Size())
 	f.Read(bytes)
-	return bytes, *fi, nil
+	return bytes, fi, nil
 }
 
 type Arg struct {
