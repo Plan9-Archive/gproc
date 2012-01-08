@@ -60,7 +60,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 			filepath.Walk(rootedpath, walkFunc(pv, nil))
 		}
 	}
-	rawFiles, _ := ldd.Ldd(cmd[0], *root, *libs)
+	rawFiles, _ := ldd.Lddroot(cmd[0], *root, *libs)
 	Dprint(4, "LDD say rawFiles ", rawFiles, "cmds ", cmd, "root ", *root, " libs ", *libs)
 
 	/* now filter out the files we will not need */
@@ -197,7 +197,7 @@ func (p *packVisitor) VisitDir(filePath string, f os.FileInfo) bool {
 	return true
 }
 
-func isNull(r int) bool {
+func isNull(r rune) bool {
 	return r == 0
 }
 
@@ -222,7 +222,7 @@ func (p *packVisitor) VisitFile(filePath string, f os.FileInfo) {
 	switch {
 	case !f.IsDir():
 		p.bytesToTransfer += f.Size()
-	case f.IsSymlink():
+	case f.Mode() & os.ModeSymlink != 0:
 		/* we have to read the link but also get a path the file for 
 		 * further walking. We think. 
 		 */
