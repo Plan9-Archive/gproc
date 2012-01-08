@@ -1,12 +1,15 @@
-#Works with the Go weekly as of release.r60
-cd $GOROOT && hg pull -u release.r60
+#Works with the Go weekly as of 12.22.2011
+cd $GOROOT && hg pull -u weekly.2011-12-22
+
+cd src && ./all.bash
 
 # To install gproc:
+goinstall bitbucket.org/dfritz/filemarshal
+goinstall bitbucket.org/dfritz/ldd
+goinstall bitbucket.org/rminnich/forth
 
-goinstall bitbucket.org/floren/filemarshal
-goinstall bitbucket.org/floren/ldd
 # you can do this anywhere
-hg clone http://bitbucket.org/floren/gproc &&
+hg clone http://bitbucket.org/dfritz/gproc-neu gproc &&
 cd gproc &&
-make
+gomake
 
