@@ -49,7 +49,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	pv := newPackVisitor()
 	cwd, _ := os.Getwd()
 	/* make sure our cwd ends up in the list of things to take along ...  but only take the dir*/
-	filepath.Walk(cwd+"/.", pv, nil)
+	filepath.Walk(cwd+"/.", walkFunc(pv, nil))
 	if len(*filesToTakeAlong) > 0 {
 		files := strings.SplitN(*filesToTakeAlong, ",", -1)
 		for _, f := range files {
@@ -57,7 +57,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 			if f[0] != '/' {
 				rootedpath = cwd + "/" + f
 			}
-			filepath.Walk(rootedpath, pv, nil)
+			filepath.Walk(rootedpath, walkFunc(pv, nil))
 		}
 	}
 	rawFiles, _ := ldd.Ldd(cmd[0], *root, *libs)
@@ -78,7 +78,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 				continue
 			}
 			Dprint(4, "startExecution: not local walking '", s, "' full path is '", *root+s, "'")
-			filepath.Walk(*root+s, pv, nil)
+			filepath.Walk(*root+s, walkFunc(pv, nil))
 			Dprint(4, "finishedFiles is ", finishedFiles)
 		}
 	}
@@ -132,7 +132,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		<-workerChan
 		numWorkers--
 		Dprintln(3, "startExecution: read from a workerchan, numworkers = ", numWorkers)
-	}
+}
 	Dprintln(3, "startExecution: finished")
 }
 
@@ -148,6 +148,26 @@ type packVisitor struct {
 
 func newPackVisitor() (p *packVisitor) {
 	return &packVisitor{alreadyVisited: make(map[string]bool)}
+}
+
+func walkFunc(p *packVisitor, pv_err chan <- error) filepath.WalkFunc {
+	return func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			if pv_err != nil {
+				pv_err <- err
+			}
+			return nil
+		}
+		if info.IsDir() {
+			if !p.VisitDir(path, info) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		p.VisitFile(path, info)
+		return nil
+	}
+	
 }
 
 func (p *packVisitor) VisitDir(filePath string, f os.FileInfo) bool {
@@ -209,7 +229,7 @@ func (p *packVisitor) VisitFile(filePath string, f os.FileInfo) {
 		var walkPath string
 		c.SymlinkTarget, walkPath = resolveLink(filePath)
 		Dprint(4, "c.CurrentName", c.CurrentName, " filePath ", filePath)
-		filepath.Walk(walkPath, p, nil)
+		filepath.Walk(walkPath, walkFunc(p, nil))
 	}
 	p.alreadyVisited[filePath] = true
 }
