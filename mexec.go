@@ -26,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 /*
@@ -167,7 +168,6 @@ func walkFunc(p *packVisitor, pv_err chan <- error) filepath.WalkFunc {
 		p.VisitFile(path, info)
 		return nil
 	}
-	
 }
 
 func (p *packVisitor) VisitDir(filePath string, f os.FileInfo) bool {
@@ -178,12 +178,30 @@ func (p *packVisitor) VisitDir(filePath string, f os.FileInfo) bool {
 		return false
 	}
 	//	_, file := path.Split(filePath)
+	uid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Uid)
+	gid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Gid)
+	var ftype int
+	switch {
+		case ((f.Mode() & os.ModeType) == 0):
+			ftype = 0
+		case f.IsDir():
+			ftype = 1
+		case ((f.Mode() & os.ModeSymlink) != 0):
+			ftype = 2
+		default:
+			ftype = 3
+	}
+	perm := uint32(f.Mode().Perm())
+
 	c := &cmdToExec{
 		//		name: file,
 		CurrentName: filePath,
 		DestName:    filePath,
 		Local:       0,
-		Fi:          f,
+		Uid:		uid,
+		Gid:		gid,
+		Ftype:		ftype,
+		Perm:		perm,
 	}
 	Dprint(4, "VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
 	p.cmds = append(p.cmds, c)
@@ -208,19 +226,38 @@ func (p *packVisitor) VisitFile(filePath string, f os.FileInfo) {
 	if p.alreadyVisited[filePath] {
 		return
 	}
+
+	uid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Uid)
+	gid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Gid)
+	var ftype int
+	switch {
+		case ((f.Mode() & os.ModeType) == 0):
+			ftype = 0
+		case f.IsDir():
+			ftype = 1
+		case ((f.Mode() & os.ModeSymlink) != 0):
+			ftype = 2
+		default:
+			ftype = 3
+	}
+	perm := uint32(f.Mode().Perm())
+
 	c := &cmdToExec{
 		//		name: file,
 		CurrentName: filePath,
 		DestName:    filePath,
 		Local:       0,
-		Fi:          f,
+		Uid:		uid,
+		Gid:		gid,
+		Ftype:		ftype,
+		Perm:		perm,
 	}
 	Dprint(4, "VisitFile: appending ", f.Name(), " ", f.Size(), " ", []byte(filePath), " ", p.alreadyVisited)
 
 	p.cmds = append(p.cmds, c)
 
 	switch {
-	case !f.IsDir():
+	case f.Mode() & os.ModeType == 0:
 		p.bytesToTransfer += f.Size()
 	case f.Mode() & os.ModeSymlink != 0:
 		/* we have to read the link but also get a path the file for 

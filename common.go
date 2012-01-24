@@ -51,7 +51,10 @@ type cmdToExec struct {
 	DestName      string
 	SymlinkTarget string
 	Local         int
-	Fi            os.FileInfo
+	Uid		int
+	Gid		int
+	Ftype		int
+	Perm		uint32
 }
 
 func (a *cmdToExec) String() string {
@@ -322,8 +325,8 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) erro
 		comesfrom := root + c.DestName
 		Dprint(2, "current cmd comesfrom = ", comesfrom, ", DestName = ", c.DestName, ", CurrentName = ", c.CurrentName, ", SymlinkTarget = ", c.SymlinkTarget)
 		f := new(filemarshal.File)
-		if !c.Fi.IsDir() || c.Fi.IsDir() || ((c.Fi.Mode() & os.ModeSymlink) != 0) {
-			f = &filemarshal.File{CurrentName: comesfrom, Fi: c.Fi, SymlinkTarget: c.SymlinkTarget, DestName: c.DestName}
+		if (c.Ftype <= 2) { /* if the filetype is a directory, regular file, or symlink */
+			f = &filemarshal.File{CurrentName: comesfrom, Uid: c.Uid, Gid: c.Gid, Ftype: c.Ftype, Perm: c.Perm, SymlinkTarget: c.SymlinkTarget, DestName: c.DestName}
 		} else {
 			continue
 		}
