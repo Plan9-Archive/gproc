@@ -7,4 +7,4 @@ var onDialFunc func(fam, laddr, raddr string)
 var onListenFunc func(fam, laddr string)
 var onAcceptFunc func(c net.Conn)
 
-they are called with their namesake functions defined in common.go. This implementation is similar to debug.go in the "gob" package. Please look at graphviz.go for a reference implementation.
+they are called with their namesake functions defined in common.go. This implementation is similar to debug.go in the "gob" package.

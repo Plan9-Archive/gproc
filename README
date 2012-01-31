@@ -7,7 +7,7 @@ Gproc is a new system, written in Go, that combines features of the LANL version
 
 Gproc currently is only used by us to run cluster processes as root. If this is a problem for you you might want to wait to use it; multi-user use is in the works (it is not hard but Go did not in the early days support some things we needed for it to work). 
 
-Gproc provides a system for running programs across clusters. A command and a set of nodes upon which to run it are specified at the command line; the binary, any required libraries, and any additional files specified at the command line are packaged up and sent out to the selected nodes for execution. The libraries need for the binary are determined by gproc programatically. The outputs are then forwarded back to the control node. Currently, we do not support stdin for the tree of processes as bproc did; it's coming but we have not needed it yet.
+Gproc provides a system for running programs across clusters. A command and a set of nodes upon which to run it are specified at the command line; the binary, any required libraries, and any additional files specified at the command line are packaged up and sent out to the selected nodes for execution. The libraries needed for the binary are determined by gproc programatically. The outputs are then forwarded back to the control node. Currently, we do not support stdin for the tree of processes as bproc did; it's coming but we have not needed it yet.
 
 Gproc can be used from one architecture type to run commands on another. The library determination will work even on, e.g., OSX, for binaries to run on an ARM. One needs to have a reasonable copy of a root file system for the other architecture locally. For example, to run on an ARM CPU from my OSX machine, I just use the -r switch with the path to the root file system for the ARM tree on my OSX laptop. 
 
@@ -15,68 +15,36 @@ Files that are transferred to nodes are stored in a replicated root under a cert
 
 At its most basic level, gproc needs at least a single "master" node and a single "slave" node; for testing purposes, these can even be the same system. The master, started with the "gproc m" command (see below), accepts connections from slave nodes (started with "gproc s"). The user then runs a "gproc e <nodes> <program>" command on the master; this sends a command over a Unix Domain Socket to the listening "gproc m" process, which then instructs the appropriate slave nodes to execute the specified program.
 
-Locales
--------
-
-Gproc does not require configuration files; for setting up one million virtual machines, configuration files are simply impractical. The structure of the cluster is defined in a locale, for example "kane" or "kf", defined in the files "kanecfg.go" and "kfcfg.go", respectively. We do, however, allow for an optional configure file in JSON format. 
-
-Some example locales: 
-
-"kf" describes our KANE cluster as a flat network; when working with many nodes, this will be slow.
-
-"kane" describes KANE as a tree; every 20th node is set as a rack master. The front-end transfers files to the rack masters, which then serve the 19 nodes under them.
-
-"etchosts" is a useful locale for getting started with a small, simple cluster. See the section "Getting started with gproc" for info on how to use it.
-
 Getting started with gproc
 --------------------------
 
-A simple, generic locale called "etchosts" (see etchostscfg.go for the source) has been provided for use with a small cluster. The only requirement is that you have the names of all your nodes defined in /etc/hosts on every node in the cluster, and that slave nodes must end in a number. You should also have an entry for "master", the node on which you will be running the "gproc m" command. Here's an example /etc/hosts:
+Every gproc tree begins with a master node. The gproc master delegates commands to the slave nodes, which in turn run the requested command. A gproc master is started with at least:
+	
+	gproc m
 
-	192.168.0.254	master
-	192.168.0.1 	n1
-	192.168.0.2		n2
-	192.168.0.3		n3
-	192.168.0.4		n4
+With the master node running, we can begin to start slaves by invoking gproc with the 's' parameter. Additionally, each slave must be told where to find its parent node (which isn't necessarily the master, as gproc can form a tree of nodes), what its ID is, and what its address is. These parameters are given via the -myParent, -myId, and -myAddress flags. 
 
-In this case, 192.168.0.254 would be the head node, from which commands should be launched. The systems n1 through n4 will be slave nodes, which will execute the actual commands. Assuming you have actually named your head node "master", here's some sample commands to get started:
+Bootstrapping many nodes using these flags can become quite cumbersome. To facilitate easy setup, these flags can optionally take a small but powerful set of commands to programmatically determine the parent, id, and address. The command set uses a simple stack based, postfix grammar.
 
-	# this will start the master
-	master$ sudo rm -f /tmp/g && ./gproc_linux_amd64 -locale=etchosts m 
-	#(now open a new window)
+Node specification commands
+---------------------------
 
-	# copy to every slave
-	master$ for i in n1 n2 n3 n4; do scp -o gproc_linux_amd64  root@$i:; done
-	# start gproc on slaves
-	master$ for i in n1 n2 n3 n4; do ssh root@$i ./gproc_linux_amd64 -locale=etchosts s &> /dev/null &; done
-	# now run a command
-	master$ ./gproc_linux_amd64 e . /bin/hostname
-	n1
-	n2
-	n3
-	n4
+Nodes are bootstrapped via a simple but powerful postfix command set used on the command line. The commads are:
 
-	# If we want to copy a file to every node's /root/, for example, we could run this:
-	master$ ./gproc_linux_amd64 -f="/path/to/somefile" e . cp /tmp/xproc/path/to/somefile /root/
+*	- Multiple the top two stack elements
++	- Add the top two stack elements
+-	- Subtract the top two stack elements (tos[1] - tos[0])
+/	- Divide the top two stack elements (tos[1] - tos[0])
+%	- Mod the top two stack elements (tos[1] % tos[0])
+roundup	- Round up tos[1] to the next highest integer defined by tos[0]
+strcat	- Concatenate the top two stack elements (tos[1],tos[0])
+ifelse	- if tos[0] == 0, replace tos[0] with tos[1], else tos[2]
+hostname- Push the os.Hostname field onto the stack
+hostbase- Strip the leading characters in the range a-z and . from tos[0], leaving only numbers
+dup	- Duplicate tos[0]
+swap	- Swap tos[0] with tos[1]
 
-When you are finished with gproc, you should be able to simply kill the master process; this will cause the slave processes on the various nodes to exit automatically.
-
-Please see the rest of this document for more details on using gproc.
-
-Node specification syntax (BNF)
--------------------------------
-
-		<nodes> ::= <nodeset> | <nodeset> "/" <nodeset> | <nodeset> "," <nodes>
-		<nodeset> ::= <node> | <node> "-" <node>
-		<node> ::= "." | <number>
-
-Examples:
-
-	1-80	# Specifies nodes 1 through 80, inclusive
-	.		# Specifies all available nodes (flat network) or all first-level nodes (tree)
-	1/.		# Specifies all second-level nodes under the first level-1 node
-			# In the "kane" config, this would select the first 20 nodes
-	./.		# All nodes, all levels. Note that this example is 2 levels, but there is no limit on depth. 
+Note: tos[0] is the top of the stack, tos[1] is the second elements, and so on. 
 
 Command line options
 --------------------
@@ -98,74 +66,61 @@ There are a number of switches which can modify the behavior of gproc; some of t
 *	  -f="" # Comma-separated list of files to copy to the slaves along with the program being executed. (e)
 *	  -binRoot="/tmp/xproc" # The location under which the binaries, libraries, and other files will be placed. Use the same value for this when running the master, slaves, and exec modes or else gproc will get confused. (m, s, e)
 *	  -defaultMasterUDS="/tmp/g" # The master process puts a Unix Domain Socket into the filesystem; the "exec" stage then connects to this socket to send commands. (m, e)
-*	  -locale="local" # The locale to use. (m, s)
 *	  -cmdport="6666" # Which port gproc will listen on for incoming commands. (m, s)
 *	  -r="/"	# where to find binaries. To use an arm root, for example, one can say -r=/path-to-arm-root
 
+Node specification syntax (BNF)
+-------------------------------
 
-Example usage with KANE locale (static tree)
---------------------------------------------
+This syntax is used to select the nodes on which to run a command.
 
-For the best control, you'll want 4 shells open to the front-end node, cesspool. In this example, we'll run gproc on the first 80 nodes of KANE.
+		<nodes> ::= <nodeset> | <nodeset> "/" <nodeset> | <nodeset> "," <nodes>
+		<nodeset> ::= <node> | <node> "-" <node>
+		<node> ::= "." | <number>
 
-The copytokane script and the startkane command expect you to be using gproc_linux_amd64. If you need to use a different architecture, you'll have to modify them to taste. The startkane program is a simple utility for launching gproc on the specified nodes (from -l [low] to -h [high], inclusive). The final argument, 1 or 2, specifies which "level" of the tree is being launched.
+Examples:
 
-Copy the gproc binary out to the nodes you'll be using:
+	1-80	# Specifies nodes 1 through 80, inclusive
+	.		# Specifies all available nodes (flat network) or all first-level nodes (tree)
+	1/.		# Specifies all second-level nodes under the first level-1 node
+			# In the "kane" config, this would select the first 20 nodes
+	./.		# All nodes, all levels. Note that this example is 2 levels, but there is no limit on depth. 
 
-	sh copytokane.sh 1 80
+Example usage
+-------------
 
-Run the master:
+In this example we have the following cluster:
 
-	# This command creates a socket in /tmp/g. If you wish to re-run the master, remove /tmp/g before running
-	./gproc_linux_amd64 -locale=kane -debug=3 m 
+A master node, with the hostname "master"
+64 slave nodes, with hostnames slave0..slave63
 
-Start the level 1 nodes:
+The gproc tree will be set up as a 2-level tree, with the master as the root node, and slave nodes 0, 1, 2, and 3 as the first level internal nodes. The rest of the nodes will use their hostname % 4 to determine their parent.
 
-	./startkane -l 1 -h 80 1
+First, we start the master node:
 
-Start the second level nodes:
+	./gproc m
 
-	./startkane -l 1 -h 80 2
+Then we start the first level slave nodes. This command is the same for each of the internal nodes:
 
-Run your command:
+	./gproc -myParent="master" -myId="hostname hostbase" -myAddress="hostname"
+
+For the leaf nodes, we use:
+
+	./gproc -myParent="slave hostname hostbase 4 % strcat" -myId="hostname hostbase" -myAddress="hostname"
+
+For large scale bootstrapping it may be useful to use partially bootstrapped tree to start lower levels of the tree, i.e. manually start the first level of nodes, and then invoke gproc to have the first level nodes start the second level, and so on.
+
+Finally, we issue a command on the master node:
 
 	./gproc_linux_amd64 e ./. /bin/date
 
-When you're done, Ctrl-C the master process; all the slaves should then automatically exit.
+That should result in 64 dates returning, from each slave node.
 
-** Sample Use Case **
-
-The Megawin project at Sandia boots up to 200 Windows virtual machines on a single Intel i7 node. These virtual machines load from a 700 MB disk image file, which must be copied to each node, along with a 114 MB QEMU "suspend to disk" image which helps boot the virtual machines more quickly. Gproc is used to transfer these files to all 520 KANE nodes and run the script that starts the virtual machines; the commands used are shown here.
-
-First, gproc is started as above:
-
-	sh copytokane.sh 1 520
-	./gproc_linux_amd64 -locale=kane m
-	./startkane -l 1 -h 520 1
-	./startkane -l 1 -h 520 2
-
-Then, the files are copied. The script we use to start the virtual machines expects the files to be in /tmp/ramdisk, so we use gproc to transfer them and copy to the appropriate directory:
+If you want to get fancy, we can have gproc send some files with the command. If gproc is setup as a tree, then the master node will transfer these files to the first level of nodes only, and the first level will in turn send the files to each of their children, and so on:
 
 	# The -f flag specifies files that should be copied along with the command
 	./gproc_linux_amd64 -f="/scratch/megawin2.img,/scratch/migrate" e ./. /bin/cp /tmp/xproc/scratch/* /tmp/ramdisk
 
-Although there are 520 nodes in the cluster, the 2-level tree means that the front-end node only directly transfers files to every 20th node (26 nodes total). Once the first-level nodes have received their copies of the files, they then copy the files to each of the 19 second-level nodes underneath them.
-
-Once the files have been transferred, it is a simple matter to run the script which starts the virtual machines on every node:
-
-	./gproc_linux_amd64 e ./. /scratch/megawin_kvm_start.sh
-
-The outputs from this script are forwarded back from every individual node to the front-end node for monitoring by the operator.
-
-KF locale (flat network)
-------------------------
-
-This locale is not great at large scales, but it is very simple. All nodes are at the same level.
-
-		sh copytokane 1 80
-		./gproc_linux_amd64 -locale=kf -debug=3 m
- 		./startkf -l 1 -h 80
- 		./gproc_linux_amd64 e . /bin/date
+When you're done, Ctrl-C the master process; all the slaves should then automatically exit.
 
 
-	
