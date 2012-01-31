@@ -1,75 +1,47 @@
-# Copyright 2010 The Go Authors.  All rights reserved.
-# Use of this source code is governed by a BSD-style
-# license that can be found in the LICENSE file.
-
 include $(GOROOT)/src/Make.inc
 
-TARG=gproc_$(GOOS)_$(GOARCH)
-GOFILES=\
-	bproc_$(GOOS).go\
-	bproc_$(GOOS)_$(GOARCH).go\
-	common.go\
-	info.go\
-	mexec.go\
-	main.go\
-	master.go\
-	misc.go \
-	slave.go\
-	web.go\
+all: build
 
-include $(GOROOT)/src/Make.cmd
+DEPS=\
+	src/typeapply\
+	src/ldd\
+	src/filemarshal\
+	src/forth\
 
-all:	$(TARG) startkf startkane startstrongbox
+DIRS=\
+	src/gproc\
 
-testwork: $(TARG)
-	./startgproc.sh -d10 -r
+clean.deps: $(addsuffix .clean, $(DEPS))
+clean.dirs: $(addsuffix .clean, $(DIRS))
+build.dirs: $(addsuffix .build, $(DIRS))
+build.deps: $(addsuffix .build-dep, $(DEPS))
 
-testhome: $(TARG)
-	./startgproc.sh -d10 -r 192.168.2.1 192.168.2 3-4,6-10
+%.clean:
+	+@echo clean $*
+	+@$(MAKE) -C $* clean >$*/clean.out 2>&1 || (echo CLEAN FAIL $*; cat $*/clean.out; exit 1)
+	+@rm -f $*/clean.out
 
-testtrace: $(TARG)
-		./startgproc.sh -s -r 192.168.2.1 192.168.2 3-4,6-10
+%.libs:
+	+@echo clean-libs
+	+@rm -f src/*.a
 
-testtrace1: $(TARG)
-		./startgproc.sh -s -r 192.168.2.1 192.168.2 3-3
+%.build-dep:
+	+@echo build-dep $*
+	+@$(MAKE) -C $* >$*/build-dep.out 2>&1 || (echo BUILD-DEP FAIL $*; cat $*/build-dep.out; exit 1)
+	+@cp $*/_obj/*.a src/
+	+@rm -f $*/build-dep.out
 
-smoketest: $(TARG)
-	(cd testdata; ./test.sh)
+%.build:
+	+@echo build $*
+	+@$(MAKE) -C $* >$*/build.out 2>&1 || (echo BUILD FAIL $*; cat $*/build.out; exit 1)
+	+@cp src/gproc/gproc_$(GOOS)_$(GOARCH) ./gproc
+	+@rm -f $*/build.out
 
-startstrongbox: startstrongbox.go
-	$(GC) startstrongbox.go
-	$(LD) -o startstrongbox startstrongbox.$(O)
-	rm startstrongbox.$(O)
+clean: clean.deps clean.dirs clean.libs
+	+@rm -f ./gproc
 
-startkf:	startkf.go
-	$(GC) startkf.go
-	$(LD) -o startkf startkf.$(O)
-	rm startkf.$(O)
+echo-dirs:
+	@echo $(DIRS)
 
-startkane:	startkane.go
-	$(GC) startkane.go
-	$(LD) -o startkane startkane.$(O)
-	rm startkane.$(O)
+build: build.deps build.dirs
 
-testlocal: $(TARG)
-	rm -f /tmp/g && ./gproc -debug=8 master /tmp/g &
-	sleep 3
-	./gproc  -debug=8 worker tcp4 127.0.0.1:`cat /tmp/srvaddr | sed 's/^.*://g'` 127.0.0.1:0 &
-	sleep 3
-	rm -rf /tmp/xproc
-	time ./gproc -debug=8 exec /tmp/g tcp4 127.0.0.1:0 1 /bin/date
-	rm -rf /tmp/xproc
-	time ./gproc -debug=8 exec /tmp/g tcp4 127.0.0.1:0 1 /bin/date
-	rm -f /tmp/g
-
-testlinuxd: $(TARG)
-	./startgproc.sh -d8  10.12.0.11 10.12.0 12-17
-	#./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-17
-testlinux: $(TARG)
-	./startgproc.sh  10.12.0.11 10.12.0 12-17
-testlinuxp: $(TARG)
-		./startgproc.sh -p3  10.12.0.11 10.12.0 12-17
-testlinuxpd: $(TARG)
-		./startgproc.sh -p3 -d8  10.12.0.11 10.12.0 12-17
-testlinux1: $(TARG)
-	./startgproc.sh -r -d10 10.12.0.11 10.12.0 12-12
