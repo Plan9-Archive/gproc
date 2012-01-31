@@ -10,7 +10,7 @@
 package main
 
 import (
-	"bitbucket.org/rminnich/forth"
+	"../forth"
 	"encoding/gob"
 	"flag"
 	"fmt"

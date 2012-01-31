@@ -4,11 +4,6 @@ cd $GOROOT && hg pull -u weekly.2012-1-20
 cd src && ./all.bash
 
 # To install gproc:
-goinstall bitbucket.org/dfritz/filemarshal
-goinstall bitbucket.org/dfritz/ldd
-goinstall bitbucket.org/rminnich/forth
-
-# you can do this anywhere
 hg clone http://bitbucket.org/dfritz/gproc-neu gproc &&
 cd gproc &&
 gomake

@@ -1,0 +1,117 @@
+// ldd package
+package ldd
+
+import (
+	"debug/elf"
+	"os"
+	"path"
+	"strings"
+)
+
+// Lddroot returns a []string containing all the files (including 
+// symbolic links) that the binary depends on. It is like 
+// the SunOS/Solaris/Linux ldd command. The root parameter is used
+// on systems which contain a full root file system (e.g. ARM file
+// system on OSX). 
+func Lddroot(cmd, root, liblist string) ([]string, error) {
+	/* it might just be static ... */
+	ret := []string{}
+	libpath := strings.Split(liblist, ":")
+	known := make(map[string]string, 16)
+	/* this is far larger than we will ever need, but I am in fright of deadlock. */
+	strings := make(chan string, 256)
+	/* assumption: we get a rooted path. */
+	binpath := path.Join(root, cmd)
+
+	/* test to make sure it is there and it's an ELF */
+	/* fails on Plan 9 but that's not really an issue. */
+	e, err := elf.Open(binpath)
+	if err != nil {
+		return []string{}, err
+	} else {
+		strings <- cmd
+	}
+	e.Close()
+	for len(strings) > 0 {
+		libdir := ""
+		lib := <-strings
+		if _, ok := known[lib]; ok {
+			continue
+		}
+		/* if it's absolute just open it */
+		/* note: do the elfOpen before the stat. If it's a symlink loop, 
+		 * the elf.Open will fail and save us the trouble of having to 
+		 * figure that out ourselves. 
+		 */
+		if path.IsAbs(lib) {
+			binpath = path.Join(root + lib)
+			libdir = ""
+			e, err = elf.Open(binpath)
+		} else {
+			for _, libdir = range libpath {
+				binpath = path.Join(root, libdir, lib)
+				e, err = elf.Open(binpath)
+				if err == nil {
+					break
+				}
+			}
+		}
+		/* nothing? We're done */
+		if err != nil {
+			return []string{}, err
+		}
+
+		dynlibs, err := e.ImportedLibraries()
+		/* maybe we should make the chan a []string 
+		 * but I really like chans
+		 */
+		for _, val := range dynlibs {
+			strings <- val
+		}
+
+		e.Close()
+		/* there may be none. This might be a leaf like libc.so
+		 */
+		if err != nil {
+			/* tough call. You found it, it's dynamic, 
+			 * it's broken. I think that's an error. 
+			 */
+			return []string{}, err
+		}
+
+		/* we know this one. */
+		known[lib] = binpath
+
+		ret = append(ret, binpath)
+
+		/* now, what if it was a symlink? 
+		 * the elf.Open worked; we know it's not a bad
+		 * link. So gather up the symlinks and put it all 
+		 * in there. 
+		 */
+		for {
+			linkname, err := os.Readlink(binpath)
+			if err != nil {
+				break
+			}
+
+			/* NEVER normalize the value you return
+			 * to the caller
+			 * ALWAYS normalize the binpath
+			 */
+
+			ret = append(ret, linkname)
+			binpath = path.Join(root, libdir, linkname)
+			known[linkname] = binpath
+		}
+
+	}
+	return ret, nil
+}
+
+// Ldd returns a []string containing all the files (including 
+// symbolic links) that the binary depends on. It is like 
+// the SunOS/Solaris/Linux ldd command. 
+func Ldd(cmd, liblist string) ([]string, error) {
+	return Lddroot(cmd, "/", liblist)
+}

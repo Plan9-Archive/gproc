@@ -18,7 +18,7 @@
 package main
 
 import (
-	"bitbucket.org/dfritz/ldd"
+	"../ldd"
 	"errors"
 	"fmt"
 	"log"
