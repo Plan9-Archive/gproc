@@ -19,7 +19,7 @@ func getInfo(masterAddr, query string) (info *Resp) {
 	log.SetPrefix("getIbfo " + *prefix + ": ")
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
-		log.Fatal("startExecution: dialing: ", masterAddr, " ", err)
+		log_error("startExecution: dialing: ", masterAddr, " ", err)
 	}
 	r := NewRpcClientServer(client, *binRoot)
 
@@ -27,7 +27,7 @@ func getInfo(masterAddr, query string) (info *Resp) {
 	var vitalData vitalData
 	info = &Resp{}
 	if r.Recv("vitalData", &vitalData) != nil {
-		log.Fatal("Could not receive vital data")
+		log_error("Could not receive vital data")
 	}
 	if !vitalData.HostReady {
 		fmt.Print("No hosts yet: ", vitalData.Error, "\n")
@@ -36,8 +36,8 @@ func getInfo(masterAddr, query string) (info *Resp) {
 
 	r.Send("getInfo", req)
 	if r.Recv("getinfo", info) != nil {
-		log.Fatal("getinfo failed")
+		log_error("getinfo failed")
 	}
-	Dprintln(3, "getInfo: finished: ", *info)
+	log_info("getInfo: finished: ", *info)
 	return
 }

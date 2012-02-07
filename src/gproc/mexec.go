@@ -38,14 +38,14 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	/* make sure there is someone to talk to, and get the vital data */
 	client, err := Dial("unix", "", masterAddr)
 	if err != nil {
-		log.Fatal("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
+		log_error("startExecution: dialing: ", fam, " ", masterAddr, " ", err)
 	}
 	r := NewRpcClientServer(client, *binRoot)
 
 	/* master sends us vital data */
 	var vitalData vitalData
 	if r.Recv("vitalData", &vitalData) != nil {
-		log.Fatal("Can't get vital data from master")
+		log_error("Can't get vital data from master")
 	}
 	pv := newPackVisitor()
 	cwd, _ := os.Getwd()
@@ -62,7 +62,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		}
 	}
 	rawFiles, _ := ldd.Lddroot(cmd[0], *root, *libs)
-	Dprint(4, "LDD say rawFiles ", rawFiles, "cmds ", cmd, "root ", *root, " libs ", *libs)
+	log_info("LDD say rawFiles ", rawFiles, "cmds ", cmd, "root ", *root, " libs ", *libs)
 
 	/* now filter out the files we will not need */
 	finishedFiles := []string{}
@@ -78,9 +78,9 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 			if s == "" {
 				continue
 			}
-			Dprint(4, "startExecution: not local walking '", s, "' full path is '", *root+s, "'")
+			log_info("startExecution: not local walking '", s, "' full path is '", *root+s, "'")
 			filepath.Walk(*root+s, walkFunc(pv, nil))
-			Dprint(4, "finishedFiles is ", finishedFiles)
+			log_info("finishedFiles is ", finishedFiles)
 		}
 	}
 	/* build the library list given that we may have a different root */
@@ -88,7 +88,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	libList := strings.SplitN(*libs, ":", -1)
 	rootedLibList := []string{}
 	for _, s := range libList {
-		Dprint(6, "startExecution: add lib ", s)
+		log_info("startExecution: add lib ", s)
 		rootedLibList = append(rootedLibList, fmt.Sprintf("%s/%s", *root, s))
 	}
 	/* this test could be earlier. We leave it all the way down here so we can 
@@ -99,12 +99,12 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		fmt.Print("Can not start jobs: ", vitalData.Error, "\n")
 		return
 	}
-	Dprint(4, "startExecution: libList ", libList)
+	log_info("startExecution: libList ", libList)
 	ioProxyListenAddr := vitalData.HostAddr + ":" + ioProxyPort
 	/* The ioProxy brings back the standard i/o streams from the slaves */
 	workerChan, l, err := ioProxy(fam, ioProxyListenAddr, os.Stdout)
 	if err != nil {
-		log.Fatal("startExecution: ioproxy: ", err)
+		log_error("startExecution: ioproxy: ", err)
 	}
 
 	req := StartReq{
@@ -124,17 +124,17 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	r.Send("startExecution", req)
 	resp := &Resp{}
 	if r.Recv("startExecution", resp) != nil {
-		log.Fatal("Can't do start execution")
+		log_error("Can't do start execution")
 	}
 	/* numWorkers tells us how many nodes will be connecting to our ioProxy */
 	numWorkers := resp.NumNodes
-	Dprintln(3, "startExecution: waiting for ", numWorkers)
+	log_info("startExecution: waiting for ", numWorkers)
 	for numWorkers > 0 {
 		<-workerChan
 		numWorkers--
-		Dprintln(3, "startExecution: read from a workerchan, numworkers = ", numWorkers)
+		log_info("startExecution: read from a workerchan, numworkers = ", numWorkers)
 	}
-	Dprintln(3, "startExecution: finished")
+	log_info("startExecution: finished")
 }
 
 var (
@@ -203,7 +203,7 @@ func (p *packVisitor) VisitDir(filePath string, f os.FileInfo) bool {
 		Ftype:       ftype,
 		Perm:        perm,
 	}
-	Dprint(4, "VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
+	log_info("VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
 	p.cmds = append(p.cmds, c)
 	p.alreadyVisited[filePath] = true
 	/* to make it possible to drag directories along, without dragging files along, we adopt that convention that 
@@ -252,7 +252,7 @@ func (p *packVisitor) VisitFile(filePath string, f os.FileInfo) {
 		Ftype:       ftype,
 		Perm:        perm,
 	}
-	Dprint(4, "VisitFile: appending ", f.Name(), " ", f.Size(), " ", []byte(filePath), " ", p.alreadyVisited)
+	log_info("VisitFile: appending ", f.Name(), " ", f.Size(), " ", []byte(filePath), " ", p.alreadyVisited)
 
 	p.cmds = append(p.cmds, c)
 
@@ -265,7 +265,7 @@ func (p *packVisitor) VisitFile(filePath string, f os.FileInfo) {
 		 */
 		var walkPath string
 		c.SymlinkTarget, walkPath = resolveLink(filePath)
-		Dprint(4, "c.CurrentName", c.CurrentName, " filePath ", filePath)
+		log_info("c.CurrentName", c.CurrentName, " filePath ", filePath)
 		filepath.Walk(walkPath, walkFunc(p, nil))
 	}
 	p.alreadyVisited[filePath] = true
@@ -282,9 +282,9 @@ func resolveLink(filePath string) (linkPath, fullPath string) {
 		dir, _ := path.Split(filePath)
 		linkDir = path.Join(dir, linkDir)
 	}
-	Dprint(4, "VisitFile: read link ", filePath, "->", linkDir+linkFile)
+	log_info("VisitFile: read link ", filePath, "->", linkDir+linkFile)
 	if err != nil {
-		log.Fatal("VisitFile: readlink: ", err)
+		log_error("VisitFile: readlink: ", err)
 	}
 	fullPath = path.Join(linkDir, linkFile)
 	return

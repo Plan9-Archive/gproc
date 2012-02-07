@@ -9,7 +9,9 @@
 
 package main
 
-import "log"
+import (
+	"log"
+)
 
 var (
 	Workers     []Worker
@@ -20,7 +22,7 @@ var (
 
 func startMaster() {
 	log.SetPrefix("master " + *prefix + ": ")
-	Dprintln(2, "starting master")
+	log_info("starting master")
 	exceptFiles = make(map[string]bool, 16)
 	exceptList = []string{}
 
@@ -43,20 +45,20 @@ func sendCommandsToANodeSet(sendReq *StartReq, subNodes string, root string, nod
 	 */
 	connsperNode := 1
 
-	Dprint(2, "receiveCmds: slaveNodes: ", slaves, " nodeSet: ", nodeSet, " subnodes ", subNodes)
+	log_info("receiveCmds: slaveNodes: ", slaves, " nodeSet: ", nodeSet, " subnodes ", subNodes)
 
 	sendReq.Nodes = subNodes
 	for _, s := range nodeSet {
 		if cacheRelayFilesAndDelegateExec(sendReq, root, s) == nil {
 			numnodes += connsperNode
 		} else {
-			Dprint(4, s, " failed")
+			log_info(s, " failed")
 			si, ok := slaves.Get(s)
 			if ok {
-				log.Print("Remove slave ", s, " ", si)
+				log_info("Remove slave ", s, " ", si)
 				slaves.Remove(si)
 			} else {
-				log.Print("Could not find slave ", s, " to remove")
+				log_info("Could not find slave ", s, " to remove")
 			}
 		}
 	}
@@ -69,7 +71,7 @@ func sendCommandsToANodeSet(sendReq *StartReq, subNodes string, root string, nod
  */
 func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (numnodes int) {
 	slaveNodes, err := parseNodeList(sendReq.Nodes)
-	Dprint(2, "receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
+	log_info("receiveCmds: sendReq.Nodes: ", sendReq.Nodes, " expands to ", slaveNodes)
 	if err != nil {
 		r.Send("receiveCmds", Resp{NumNodes: 0, Msg: "startExecution: bad slaveNodeList: " + err.Error()})
 		return
@@ -81,7 +83,7 @@ func sendCommandsToNodes(r *RpcClientServer, sendReq *StartReq, root string) (nu
 		nodeSet := slaves.ServIntersect(aNode.Nodes)
 		numnodes += sendCommandsToANodeSet(sendReq, aNode.Subnodes, root, nodeSet)
 	}
-	Dprint(2, "numnodes = ", numnodes)
+	log_info("numnodes = ", numnodes)
 	return
 }
 
@@ -92,12 +94,12 @@ func receiveCmds(domainSock string) error {
 	vitalData := vitalData{HostAddr: "", HostReady: false, Error: "No hosts ready", Exceptlist: exceptFiles}
 	l, err := Listen("unix", *defaultMasterUDS)
 	if err != nil {
-		log.Fatal("listen error:", err)
+		log_error("listen error:", err)
 	}
 	for {
 		c, err := l.Accept()
 		if err != nil {
-			log.Fatalf("receiveCmds: accept on (%v) failed %v\n", l, err)
+			log_error("receiveCmds: accept on (%v) failed %v\n", l, err)
 		}
 		r := NewRpcClientServer(c, *binRoot)
 		go func() {
@@ -126,7 +128,7 @@ func receiveCmds(domainSock string) error {
 						exceptList = append(exceptList, s)
 					}
 					exceptOK := Resp{Msg: "Files accepted"}
-					Dprint(8, "Respond to except request ", exceptOK)
+					log_info("Respond to except request ", exceptOK)
 					r.Send("exceptOK", exceptOK)
 				}
 			case a.Command[0] == uint8('i'):
@@ -136,7 +138,7 @@ func receiveCmds(domainSock string) error {
 						hostinfo.Msg += i + " " + s + "\n"
 					}
 					hostinfo.NumNodes = len(slaves.Addr2id)
-					Dprint(8, "Respond to info request ", hostinfo)
+					log_info("Respond to info request ", hostinfo)
 					r.Send("hostinfo", hostinfo)
 				}
 			case a.Command[0] == uint8('e'):

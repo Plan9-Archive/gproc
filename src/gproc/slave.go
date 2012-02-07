@@ -25,22 +25,22 @@ var id string
 func runSlave() {
 	/* some simple sanity checking */
 	if *DoPrivateMount == true && os.Getuid() != 0 {
-		log.Fatal("Slave: Need to run as root for private mounts")
+		log_error("Slave: Need to run as root for private mounts")
 	}
 	if *parent == "" {
-		log.Fatal("Slave: must set parent IP with -parent switch")
+		log_error("Slave: must set parent IP with -parent switch")
 	}
 	if *myAddress == "" {
-		log.Fatal("Slave: must set myAddress IP with -myAddress switch")
+		log_error("Slave: must set myAddress IP with -myAddress switch")
 	}
 	if *myId == "" {
-		log.Fatal("Slave: must set myId with -myId switch")
+		log_error("Slave: must set myId with -myId switch")
 	}
 
 	/* at this point everything is right. So go forever. */
 	for {
 		startSlave()
-		Dprint(2, "Slave returned; try a timeout")
+		log_info("Slave returned; try a timeout")
 		/* sleep for a random time that is between 10 and 60 seconds. random is necessary
 		 * because we have seen self-synchronization in earlier work. 
 		 */
@@ -58,10 +58,10 @@ func startSlave() {
 	/* slight difference from master: we're ready when we start, since we run things */
 	vitalData := &vitalData{HostReady: true, Id: *myId}
 	masterAddr := *parent + ":" + *cmdPort
-	Dprint(2, "dialing masterAddr ", masterAddr)
+	log_info("dialing masterAddr ", masterAddr)
 	master, err := Dial(*defaultFam, "", masterAddr)
 	if err != nil {
-		log.Print("startSlave: dialing:", err)
+		log_error("startSlave: dialing:", err)
 		return
 	}
 
@@ -77,7 +77,7 @@ func startSlave() {
 	laddr, _ := net.ResolveTCPAddr("tcp4", peerAddr)
 	netl, err := net.ListenTCP(*defaultFam, laddr)
 	if err != nil {
-		log.Print("startSlave: ", err)
+		log_error("startSlave: ", err)
 		return
 	}
 	vitalData.ServerAddr = netl.Addr().String()
@@ -92,10 +92,10 @@ func startSlave() {
 			// Wait for a connection from the master
 			c, err := netl.AcceptTCP()
 			if err != nil {
-				log.Print("problem in netl.Accept()")
+				log_info("problem in netl.Accept()")
 				return
 			}
-			Dprint(3, "Received connection from: ", c.RemoteAddr())
+			log_info("Received connection from: ", c.RemoteAddr())
 
 			// start a new process, give it 'c' as stdin.
 			connFile, _ := c.File()                              // the new process will read a StartReq from connFile
@@ -106,7 +106,7 @@ func startSlave() {
 			procattr := os.ProcAttr{Env: nil, Dir: cwd, Files: f}
 			argv := []string{
 				"gproc",
-				fmt.Sprintf("-debug=%d", *DebugLevel),
+				fmt.Sprintf("-debug=%v", *Extra_debug),
 				fmt.Sprintf("-p=%v", *DoPrivateMount),
 				fmt.Sprintf("-binRoot=%v", *binRoot),
 				fmt.Sprintf("-parent=%v", *parent),
@@ -116,7 +116,7 @@ func startSlave() {
 			// Start the new process
 			p, err := os.StartProcess(*gprocBin, argv, &procattr)
 			if err != nil {
-				log.Fatal("startSlave: ", err)
+				log_error("startSlave: ", err)
 			} else {
 				// The process started, let's make some RpcClientServers on our end to communicate with it
 				passrpc := &RpcClientServer{E: gob.NewEncoder(writep), D: gob.NewDecoder(writep)}
@@ -132,7 +132,7 @@ func startSlave() {
 				passrpc.Send("startSlave sending nodes ", ne)
 
 				w, _ := p.Wait(0) // Wait until the child process is finished. We need to do things sorta synchronously
-				Dprint(2, "startSlave: process returned ", w.String())
+				log_info("startSlave: process returned ", w.String())
 			}
 			c.Close()
 			writep.Close()
@@ -148,11 +148,11 @@ func startSlave() {
 }
 
 func initSlave(r *RpcClientServer, v *vitalData) {
-	Dprint(2, "initSlave: ", v)
+	log_info("initSlave: ", v)
 	r.Send("startSlave", *v)
 	resp := &SlaveResp{}
 	if r.Recv("startSlave", &resp) != nil {
-		log.Fatal("Can't start slave")
+		log_error("Can't start slave")
 	}
 	id = resp.Id
 	log.SetPrefix("slave " + id + ": ")
@@ -184,14 +184,14 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
 	// Receive a StartReq from the master/parent
 	req := &StartReq{}
 	if r.Recv("slaveProc", &req) != nil {
-		log.Fatal("failed on receiving a start request")
+		log_error("failed on receiving a start request")
 	}
-	Dprint(2, "slaveProc: req ", *req)
+	log_info("slaveProc: req ", *req)
 
 	// Establish a connection to the IO proxy
 	n, c, err := fileTcpDial(req.Lserver)
 	if err != nil {
-		log.Print("tcpDial: ", err)
+		log_info("tcpDial: ", err)
 		return
 	}
 
@@ -217,14 +217,14 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
 	if inforpc.Recv("recv availableSlaves", &availableSlaves) != nil {
 		return
 	}
-	Dprint(2, "receiveCmds: sendReq.Nodes: ", req.Nodes, " expands to ", slaveNodes)
+	log_info("receiveCmds: sendReq.Nodes: ", req.Nodes, " expands to ", slaveNodes)
 
 	if len(availableSlaves.Nodes) > 0 {
 		workerChan, l, err = ioProxy(*defaultFam, *myAddress+":0", c)
 		if err != nil {
-			log.Fatalf("slave: ioproxy: ", err)
+			log_error("slave: ioproxy: ", err)
 		}
-		Dprint(2, "netwaiter locl.Ip() ", *myAddress, " listener at ", l.Addr().String())
+		log_info("netwaiter locl.Ip() ", *myAddress, " listener at ", l.Addr().String())
 		req.Lfam = l.Addr().Network()
 		req.Lserver = l.Addr().String()
 
@@ -233,17 +233,17 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
 		}
 	}
 	nnodes := sendCommandsToANodeSet(req, slaveNodes[0].Subnodes, *binRoot, availableSlaves.Nodes)
-	Dprint(2, "Sent to ", nnodes, " nodes")
+	log_info("Sent to ", nnodes, " nodes")
 	// Wait for all the children to finish execution
 	for numWorkers > 0 {
 		worker := <-workerChan
-		Dprint(2, worker, " returned, ", numWorkers, " workers left")
+		log_info(worker, " returned, ", numWorkers, " workers left")
 		numWorkers--
 	}
 	<-done // wait until our own instance has finished executing
 	c.Close()
 	n.Close()
-	Dprint(2, "Exiting slaveProc")
+	log_info("Exiting slaveProc")
 }
 
 /*
@@ -253,14 +253,14 @@ func slaveProc(r *RpcClientServer, inforpc *RpcClientServer, returnrpc *RpcClien
  * 'n' points to a connection to the ioProxy directly "above" us.
  */
 func runLocal(req *StartReq, n *os.File, done chan int) {
-	Dprint(2, "runLocal: dialed %v", n)
+	log_info("runLocal: dialed %v", n)
 	f := []*os.File{n, n, n} // set up stdin/stdout/stderr for the program
 	var pathbase = *binRoot
 	execpath := pathbase + req.Path + req.Args[0]
 	if req.LocalBin {
 		execpath = req.Args[0]
 	}
-	Dprint(2, "run: execpath: ", execpath)
+	log_info("run: execpath: ", execpath)
 	Env := req.Env
 	/* now build the LD_LIBRARY_PATH variable */
 	ldLibPath := "LD_LIBRARY_PATH="
@@ -268,17 +268,17 @@ func runLocal(req *StartReq, n *os.File, done chan int) {
 		ldLibPath = ldLibPath + *binRoot + req.Path + s + ":"
 	}
 	Env = append(Env, ldLibPath)
-	Dprint(2, "run: Env ", Env)
+	log_info("run: Env ", Env)
 	procattr := os.ProcAttr{Env: Env, Dir: pathbase + "/" + req.Cwd,
 		Files: f}
-	Dprint(2, "run: dir: ", pathbase+"/"+req.Cwd)
+	log_info("run: dir: ", pathbase+"/"+req.Cwd)
 	p, err := os.StartProcess(execpath, req.Args, &procattr)
 	if err != nil {
-		log.Fatal("run: ", err)
+		log_error("run: ", err)
 		n.Write([]uint8(err.Error()))
 	} else {
 		w, _ := p.Wait(0)
-		Dprint(2, "run: process returned ", w.String())
+		log_info("run: process returned ", w.String())
 	}
 	done <- 1 // we're called as a goroutine, so notify that we're done
 }

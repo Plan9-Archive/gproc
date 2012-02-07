@@ -15,9 +15,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/rpc"
 	"os"
-	"strconv"
 )
 
 func usage() {
@@ -34,7 +32,6 @@ var (
 	prefix         = flag.String("prefix", "", "logging prefix")
 	localbin       = flag.Bool("localbin", false, "execute local files")
 	DoPrivateMount = flag.Bool("p", true, "Do a private mount")
-	DebugLevel     = flag.Int("debug_delete", 0, "debug level")
 	Extra_debug    = flag.Bool("debug", false, "enable extra debug info")
 	/* this one gets me a zero-length string if not set. Phooey. */
 	filesToTakeAlong = flag.String("f", "", "comma-seperated list of files/directories to take along")
@@ -72,25 +69,23 @@ func main() {
 	interp := forth.New()
 	*myId, err = forth.Eval(interp, *myId)
 	if err != nil {
-		log.Fatal(err)
+		log_error(err)
 	}
 	*myAddress, err = forth.Eval(interp, *myAddress)
 	if err != nil {
-		log.Fatal(err)
+		log_error(err)
 	}
 	*parent, err = forth.Eval(interp, *parent)
 	if err != nil {
-		log.Fatal(err)
+		log_error(err)
 	}
 	fmt.Printf("My id is %v; parent %v; address %v\n", *myId, *parent, *myAddress)
 	myListenAddress = *myAddress + ":" + *cmdPort
 	log.SetPrefix("newgproc " + *prefix + ": ")
-	Dprintln(2, "starting:", os.Args, "debuglevel", *DebugLevel)
+	log_info("starting:", os.Args)
 
 	switch flag.Arg(0) {
 	/* traditional bproc master, commands over unix domain socket */
-	case "DEBUG", "debug", "d":
-		SetDebugLevelRPC(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	case "MASTER", "master", "m":
 		if len(flag.Args()) > 1 {
 			flag.Usage()
@@ -127,23 +122,4 @@ func main() {
 	default:
 		flag.Usage()
 	}
-}
-
-func SetDebugLevelRPC(fam, server, newlevel string) {
-	var ans SetDebugLevel
-	level, err := strconv.Atoi(newlevel)
-	if err != nil {
-		log.Fatal("bad level:", err)
-	}
-
-	a := SetDebugLevel{level} // Synchronous call
-	client, err := rpc.DialHTTP(fam, server)
-	if err != nil {
-		log.Fatal("SetDebugLevelRPC: dialing: ", err)
-	}
-	err = client.Call("Node.Debug", a, &ans)
-	if err != nil {
-		log.Fatal("error:", err)
-	}
-	log.Printf("Was %d is %d\n", ans.level, level)
 }

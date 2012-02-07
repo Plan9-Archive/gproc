@@ -11,7 +11,6 @@ package main
 
 import (
 	"os"
-	//"bitbucket.org/floren/ldd"
 )
 
 /* let's be nice and do an Ldd on each file. That's helpful to people. Later. */
@@ -45,11 +44,5 @@ type Arg struct {
 
 func Ping(arg *Arg, resp *Resp) error {
 	resp.Msg = string(arg.Msg)
-	return nil
-}
-
-func Debug(arg *SetDebugLevel, resp *SetDebugLevel) error {
-	resp.level = *DebugLevel
-	*DebugLevel = arg.level
 	return nil
 }

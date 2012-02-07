@@ -11,7 +11,6 @@ package main
 
 import (
 	"encoding/binary"
-	"log"
 	"syscall"
 	"unsafe"
 )
@@ -19,35 +18,35 @@ import (
 func getIfc() int {
 	sock := tcpSockDial("74.125.87.99:80")
 	if sock < 0 {
-		Dprintf(2, "getIfc: %v\n", sock)
+		log_info("getIfc: %v\n", sock)
 		return -1
 	}
 	ifc := make([]byte, 256)
 
 	_, _, e1 := syscall.Syscall(syscall.SYS_IOCTL, uintptr(sock), uintptr(SIOCGIFADDR), uintptr(unsafe.Pointer(&ifc[0])))
 	if e1 < 0 {
-		Dprintf(2, "getIfc: ioctl: %v %v\n", sock, e1)
+		log_info("getIfc: ioctl: %v %v\n", sock, e1)
 		return -1
 	}
-	log.Print(ifc)
+	log_info(ifc)
 	// so we are le.
 	ifcbuf := make([]byte, 128)
 	binary.LittleEndian.PutUint32(ifc, uint32(len(ifcbuf)))
-	log.Print("pointers ", unsafe.Pointer(&ifc), " ", uintptr(unsafe.Pointer(&ifcbuf)))
+	log_info("pointers ", unsafe.Pointer(&ifc), " ", uintptr(unsafe.Pointer(&ifcbuf)))
 	p := uintptr(unsafe.Pointer(&ifcbuf))
 	ifc[4] = uint8(p)
 	ifc[5] = uint8(p >> 8)
 	ifc[6] = uint8(p >> 16)
 	ifc[7] = uint8(p >> 24)
-	log.Printf("%x\n", binary.LittleEndian.Uint32(ifc[4:]))
-	log.Print(ifc)
+	log_info("%x\n", binary.LittleEndian.Uint32(ifc[4:]))
+	log_info(ifc)
 
 	_, _, e0 := syscall.Syscall(syscall.SYS_IOCTL, uintptr(sock), uintptr(SIOCGIFCONF), uintptr(unsafe.Pointer(&ifc)))
 	if e0 < 0 {
-		Dprintf(2, "getIfc: ioctl: %v %v\n", sock, e0)
+		log_info("getIfc: ioctl: %v %v\n", sock, e0)
 		return -1
 	}
-	log.Print(ifc)
-	log.Print(ifcbuf)
+	log_info(ifc)
+	log_info(ifcbuf)
 	return 0
 }

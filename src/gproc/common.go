@@ -147,7 +147,10 @@ func (s *SlaveInfo) String() string {
 	return fmt.Sprint(s.Id, "@", s.Addr)
 }
 
-func log_prep() {
+var log_prefix string
+
+func log_prologue() {
+	log_prefix = log.Prefix()
 	_, file, line, _ := runtime.Caller(2)
 	short := file
 	for i := len(file) - 1; i > 0; i-- {
@@ -161,34 +164,22 @@ func log_prep() {
 	log.SetPrefix(p + ":" + short + ":" + strconv.Itoa(line) + ": ")
 }
 
+func log_epilogue() {
+	log.SetPrefix(log_prefix)
+}
+
 func log_info(arg ...interface{}) {
 	if *Extra_debug {
-		log_prep()
-		log.Print(arg...)
+		log_prologue()
+		log.Println(arg...)
+		log_epilogue()
 	}
 }
 
 func log_error(arg ...interface{}) {
-	log_prep()
-	log.Panic(arg...)
-}
-
-func Dprint(level int, arg ...interface{}) {
-	if *DebugLevel >= level {
-		log.Print(arg...)
-	}
-}
-
-func Dprintln(level int, arg ...interface{}) {
-	if *DebugLevel >= level {
-		log.Println(arg...)
-	}
-}
-
-func Dprintf(level int, fmt string, arg ...interface{}) {
-	if *DebugLevel >= level {
-		log.Printf(fmt, arg...)
-	}
+	log_prologue()
+	log.Panicln(arg...)
+	log_epilogue()
 }
 
 const (
@@ -212,14 +203,11 @@ func IoString(i interface{}, dir int) string {
 }
 
 func SendPrint(funcname, to interface{}, arg interface{}) {
-	Dprintf(1, "%15s send %25s: %s\n", funcname, IoString(to, Send), arg)
+	log_info("%15s send %25s: %s\n", funcname, IoString(to, Send), arg)
 }
 
 func RecvPrint(funcname, from interface{}, arg interface{}) {
-	/* works not well. 
-	Dprintf(1, "%15s recv %25s: %s\n", funcname, IoString(from, Recv), arg)
-	*/
-	Dprintf(1, "%v recv %v: %v\n", funcname, from, arg)
+	log_info("%v recv %v: %v\n", funcname, from, arg)
 }
 
 // this group depends on gob
@@ -248,7 +236,7 @@ func (r *RpcClientServer) Send(funcname string, arg interface{}) {
 	SendPrint(funcname, r, arg)
 	err := r.E.Encode(arg)
 	if err != nil {
-		log.Print(funcname, ": Send: ", err)
+		log_info(funcname, ": Send: ", err)
 	}
 }
 
@@ -257,7 +245,7 @@ var onRecvFunc func(funcname string, r io.Reader, arg interface{})
 func (r *RpcClientServer) Recv(funcname string, arg interface{}) (err error) {
 	err = r.D.Decode(arg)
 	if err != nil {
-		log.Print(funcname, ": Recv error: ", err)
+		log_info(funcname, ": Recv error: ", err)
 		return
 	}
 	RecvPrint(funcname, r, arg)
@@ -283,10 +271,8 @@ func Dial(fam, laddr, raddr string) (c net.Conn, err error) {
 		if err != nil {
 			return
 		}
-		//Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
 	} else {
 		c, err = net.Dial(fam, raddr)
-		//Dprint(2, "dial connect ", c.LocalAddr(), "->", c.RemoteAddr())
 	}
 	return
 }
@@ -317,7 +303,7 @@ func (l Listener) Accept() (c net.Conn, err error) {
 	if err != nil {
 		return
 	}
-	Dprint(2, "accepted ", c.RemoteAddr(), "->", c.LocalAddr())
+	log_info("accepted ", c.RemoteAddr(), "->", c.LocalAddr())
 	if onAcceptFunc != nil {
 		onAcceptFunc(c)
 	}
@@ -332,7 +318,7 @@ func WaitAllChildren() {
 		if err != nil {
 			break
 		}
-		log.Printf("wait4 returns pid %v status %v\n", pid, status)
+		log_info("wait4 returns pid %v status %v\n", pid, status)
 
 	}
 }
@@ -343,14 +329,14 @@ func WaitAllChildren() {
  * It is called by both the master and, if a more complex hierarchy is used, the upper-level slaves.
  */
 func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) error {
-	Dprint(2, "cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", clientnode, " fileServer: ", arg.Lfam, arg.Lserver)
+	log_info("cacheRelayFilesAndDelegateExec: files ", arg.Cmds, " nodes: ", clientnode, " fileServer: ", arg.Lfam, arg.Lserver)
 
 	larg := newStartReq(arg)
 
 	/* Build up a list of filemarshal.File so the filemarshal can transmit the needed files */
 	for _, c := range larg.Cmds {
 		comesfrom := root + c.DestName
-		Dprint(2, "current cmd comesfrom = ", comesfrom, ", DestName = ", c.DestName, ", CurrentName = ", c.CurrentName, ", SymlinkTarget = ", c.SymlinkTarget)
+		log_info("current cmd comesfrom = ", comesfrom, ", DestName = ", c.DestName, ", CurrentName = ", c.CurrentName, ", SymlinkTarget = ", c.SymlinkTarget)
 		f := new(filemarshal.File)
 		if c.Ftype <= 2 { /* if the filetype is a directory, regular file, or symlink */
 			f = &filemarshal.File{CurrentName: comesfrom, Uid: c.Uid, Gid: c.Gid, Ftype: c.Ftype, Perm: c.Perm, SymlinkTarget: c.SymlinkTarget, DestName: c.DestName}
@@ -362,23 +348,23 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) erro
 
 	client, err := Dial(*defaultFam, "", clientnode)
 	if err != nil {
-		log.Print("cacheRelayFilesAndDelegateExec: dialing: ", clientnode, ": ", err)
+		log_info("cacheRelayFilesAndDelegateExec: dialing: ", clientnode, ": ", err)
 		return err
 	}
-	Dprintf(2, "connected to %v\n", client)
+	log_info("connected to %v\n", client)
 	rpc := NewRpcClientServer(client, *binRoot)
-	Dprintf(2, "rpc client %v, arg %v", rpc, larg)
+	log_info("rpc client %v, arg %v", rpc, larg)
 	go func() {
 		// This Send pushes our larg struct to filemarshal. Since it contains a
 		// []*filemarshal.File, the filemarshal grabs the list of files and sends
 		// the file contents too.
 		rpc.Send("cacheRelayFilesAndDelegateExec", larg)
-		Dprintf(2, "bytesToTransfer %v localbin %v\n", arg.BytesToTransfer, arg.LocalBin)
+		log_info("bytesToTransfer %v localbin %v\n", arg.BytesToTransfer, arg.LocalBin)
 
 		if arg.LocalBin {
-			Dprintf(2, "cmds %v\n", arg.Cmds)
+			log_info("cmds %v\n", arg.Cmds)
 		}
-		Dprintf(2, "cacheRelayFilesAndDelegateExec DONE\n")
+		log_info("cacheRelayFilesAndDelegateExec DONE\n")
 		/* at this point it is out of our hands */
 	}()
 
@@ -406,21 +392,21 @@ func ioProxy(fam, server string, dest io.Writer) (workerChan chan int, l Listene
 	go func() {
 		for whichWorker := 7090; ; whichWorker++ {
 			conn, err := l.Accept()
-			Dprint(2, "ioProxy: connected by ", conn.RemoteAddr())
+			log_info("ioProxy: connected by ", conn.RemoteAddr())
 
 			if err != nil {
-				Dprint(2, "ioProxy: accept:", err)
+				log_info("ioProxy: accept:", err)
 				continue
 			}
 			go func(id int, conn net.Conn) {
-				Dprint(2, "ioProxy: start reading ", id)
+				log_info("ioProxy: start reading ", id)
 				n, err := io.Copy(dest, conn)
 				workerChan <- id
-				Dprint(2, "ioProxy: read ", n)
+				log_info("ioProxy: read ", n)
 				if err != nil {
-					log.Fatal("ioProxy: ", err)
+					log_error("ioProxy: ", err)
 				}
-				Dprint(2, "ioProxy: end")
+				log_info("ioProxy: end")
 			}(whichWorker, conn)
 		}
 	}()
@@ -448,7 +434,7 @@ func parseNodeList(l string) (rl []nodeExecList, err error) {
 		/* split into range and rest by the slash */
 		l := strings.SplitN(n, "/", 2)
 		be := strings.SplitN(l[0], "-", 2)
-		Dprint(6, " l is ", l, " be is ", be)
+		log_info(" l is ", l, " be is ", be)
 		ne := &nodeExecList{Nodes: make([]string, 1)}
 		if len(l) > 1 {
 			ne.Subnodes = l[1]
@@ -469,7 +455,7 @@ func parseNodeList(l string) (rl []nodeExecList, err error) {
 		rl = append(rl, *ne)
 	}
 
-	Dprint(2, "parseNodeList returns ", rl)
+	log_info("parseNodeList returns ", rl)
 	return
 BadRange:
 	err = BadRangeErr
@@ -481,8 +467,7 @@ func doPrivateMount(pathbase string) {
 	_ = syscall.Unmount(*binRoot, 0)
 	syscallerr := privatemount(*binRoot)
 	if syscallerr != 0 {
-		log.Print("Mount failed ", syscallerr)
-		os.Exit(1)
+		log_error("Mount failed ", syscallerr)
 	}
 }
 
@@ -535,18 +520,18 @@ func newStartReq(arg *StartReq) *StartReq {
 func registerSlaves() error {
 	l, err := Listen(*defaultFam, myListenAddress)
 	if err != nil {
-		log.Fatal("listen error:", err)
+		log_error("listen error:", err)
 	}
 
-	Dprint(0, "-cmdport=", l.Addr())
-	Dprint(2, l.Addr())
+	log_info("-cmdport=", l.Addr())
+	log_info(l.Addr())
 
 	slaves = newSlaves()
 	for {
 		vd := &vitalData{}
 		c, err := l.Accept()
 		if err != nil {
-			log.Print("registerSlaves:", err)
+			log_info("registerSlaves:", err)
 			continue
 		}
 		r := NewRpcClientServer(c, *binRoot)
@@ -560,7 +545,7 @@ func registerSlaves() error {
 		 */
 		if netaddr == "" {
 			addr := strings.SplitN(vd.ParentAddr, ":", 2)
-			Dprint(2, "addr is ", addr)
+			log_info("addr is ", addr)
 			netaddr = addr[0]
 		}
 		/* depending on the machine we are on, it is possible we don't get a usable IP address 
@@ -569,12 +554,12 @@ func registerSlaves() error {
 		 */
 		if vd.ServerAddr[0:len("0.0.0.0")] == "0.0.0.0" {
 			vd.ServerAddr = strings.SplitN(c.RemoteAddr().String(), ":", 2)[0] + vd.ServerAddr[7:]
-			Dprint(2, "Guessed remote slave ServerAddr is ", vd.ServerAddr)
+			log_info("Guessed remote slave ServerAddr is ", vd.ServerAddr)
 		}
 		resp := slaves.Add(vd, r)
 		r.Send("registerSlaves", resp)
 	}
-	Dprint(2, "registerSlaves is exiting! That can't be good!")
+	log_info("registerSlaves is exiting! That can't be good!")
 	return nil
 }
 
@@ -600,16 +585,16 @@ func (sv *Slaves) Add(vd *vitalData, r *RpcClientServer) (resp SlaveResp) {
 	}
 	sv.Slaves[s.Id] = s
 	sv.Addr2id[s.Server] = s.Id
-	Dprintln(2, "slave Add: Id: ", s.Id)
+	log_info("slave Add: Id: ", s.Id)
 	resp.Id = s.Id
 	return
 }
 
 func (sv *Slaves) Remove(s *SlaveInfo) {
-	Dprintln(4, "Remove %v ", s, " slave %v", sv.Slaves[s.Id])
+	log_info("Remove %v ", s, " slave %v", sv.Slaves[s.Id])
 	delete(sv.Slaves, s.Id)
 	delete(sv.Addr2id, s.Server)
-	Dprintln(2, "slave Remove: Id: ", s)
+	log_info("slave Remove: Id: ", s)
 	return
 }
 
@@ -621,12 +606,12 @@ func (sv *Slaves) Remove(s *SlaveInfo) {
  * of collisions; does that make this ok? 
  */
 func (sv *Slaves) Get(n string) (s *SlaveInfo, ok bool) {
-	Dprint(6, "Get: ", n)
+	log_info("Get: ", n)
 	s, ok = sv.Slaves[n]
 	if !ok {
 		s, ok = sv.Slaves[sv.Addr2id[n]]
 	}
-	Dprint(6, " Returns: ", s)
+	log_info(" Returns: ", s)
 	return
 }
 

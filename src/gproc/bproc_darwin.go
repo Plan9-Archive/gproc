@@ -9,17 +9,13 @@
 
 package main
 
-import (
-	"log"
-)
-
 func privatemount(path string) int {
-	log.Fatal("privatemount called on OSX")
+	log_error("privatemount called on OSX")
 	return -1
 }
 
 func unshare() int {
-	log.Fatal("privatemount called on OSX")
+	log_error("privatemount called on OSX")
 	return -1
 }
 

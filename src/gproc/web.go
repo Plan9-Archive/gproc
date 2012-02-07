@@ -11,7 +11,6 @@ package main
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"old/template"
@@ -31,7 +30,7 @@ var templFooter, _ = template.ParseFile("html/footer.template", fmap)
 
 func web() {
 	if templStatus == nil || templExtendedSlaveInformation == nil || templHeader == nil || templFooter == nil {
-		log.Print("Not starting web server")
+		log_info("Not starting web server")
 		return
 	}
 	// Static pages:
@@ -48,7 +47,7 @@ func web() {
 	// Finally, start the web server
 	err := http.ListenAndServe(":9000", nil)
 	if err != nil {
-		log.Print("ListenAndServe:", err)
+		log_info("ListenAndServe:", err)
 	}
 }
 
@@ -66,7 +65,7 @@ func Status(w http.ResponseWriter, httpReq *http.Request) {
 	cmd.Env = os.Environ()
 	b, err := cmd.Output()
 	if err != nil {
-		log.Print("status failed: ", b, " with err: ", err)
+		log_info("status failed: ", b, " with err: ", err)
 	}
 
 	// We need to build the page

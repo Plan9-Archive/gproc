@@ -10,7 +10,6 @@
 package main
 
 import (
-	"log"
 	"syscall"
 	"unsafe"
 )
@@ -28,7 +27,7 @@ func ucred(fd int) (pid, uid, gid int) {
 
 	if e1 < 0 {
 		if *DebugLevel > 2 {
-			log.Printf("%v %v\n", fd, e1)
+			log_info("%v %v\n", fd, e1)
 		}
 		return -1, -1, -1
 	}
