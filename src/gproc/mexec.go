@@ -96,7 +96,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 	 * earlier in the code. 
 	 */
 	if !vitalData.HostReady {
-		fmt.Print("Can not start jobs: ", vitalData.Error, "\n")
+		log_info("Can not start jobs: ", vitalData.Error)
 		return
 	}
 	log_info("startExecution: libList ", libList)

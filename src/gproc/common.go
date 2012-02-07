@@ -364,7 +364,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) erro
 		if arg.LocalBin {
 			log_info("cmds %v\n", arg.Cmds)
 		}
-		log_info("cacheRelayFilesAndDelegateExec DONE\n")
+		log_info("cacheRelayFilesAndDelegateExec DONE")
 		/* at this point it is out of our hands */
 	}()
 
@@ -386,7 +386,7 @@ func ioProxy(fam, server string, dest io.Writer) (workerChan chan int, l Listene
 	workerChan = make(chan int, 0)
 	l, err = Listen(fam, server)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ioproxy: Listen: %v\n", err)
+		log_error("ioproxy: Listen: %v\n", err)
 		return
 	}
 	go func() {

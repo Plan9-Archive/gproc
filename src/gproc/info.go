@@ -10,7 +10,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -30,7 +29,7 @@ func getInfo(masterAddr, query string) (info *Resp) {
 		log_error("Could not receive vital data")
 	}
 	if !vitalData.HostReady {
-		fmt.Print("No hosts yet: ", vitalData.Error, "\n")
+		log_info("No hosts yet: ", vitalData.Error)
 		return
 	}
 

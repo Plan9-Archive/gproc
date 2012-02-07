@@ -79,7 +79,7 @@ func main() {
 	if err != nil {
 		log_error(err)
 	}
-	fmt.Printf("My id is %v; parent %v; address %v\n", *myId, *parent, *myAddress)
+	log_info("My id is %v; parent %v; address %v\n", *myId, *parent, *myAddress)
 	myListenAddress = *myAddress + ":" + *cmdPort
 	log.SetPrefix("newgproc " + *prefix + ": ")
 	log_info("starting:", os.Args)
