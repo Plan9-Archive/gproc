@@ -10,11 +10,10 @@
 package main
 
 import (
+	"log"
 	"syscall"
 	"unsafe"
-	"log"
 )
-
 
 func ucred(fd int) (pid, uid, gid int) {
 	var length [1]int
@@ -35,4 +34,3 @@ func ucred(fd int) (pid, uid, gid int) {
 	}
 	return creds[0], creds[1], creds[2]
 }
-

@@ -17,10 +17,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
-	"runtime"
 )
 
 type SlaveResp struct {
@@ -52,10 +52,10 @@ type cmdToExec struct {
 	DestName      string
 	SymlinkTarget string
 	Local         int
-	Uid		int
-	Gid		int
-	Ftype		int
-	Perm		uint32
+	Uid           int
+	Gid           int
+	Ftype         int
+	Perm          uint32
 }
 
 func (a *cmdToExec) String() string {
@@ -148,17 +148,17 @@ func (s *SlaveInfo) String() string {
 }
 
 func log_prep() {
-        _, file, line, _ := runtime.Caller(2)
-        short := file
-        for i := len(file) - 1; i > 0; i-- {
-                if file[i] == '/' {
-                        short = file[i+1:]
-                        break
-                }
-        }
-        log.SetFlags(0)
+	_, file, line, _ := runtime.Caller(2)
+	short := file
+	for i := len(file) - 1; i > 0; i-- {
+		if file[i] == '/' {
+			short = file[i+1:]
+			break
+		}
+	}
+	log.SetFlags(0)
 	p := log.Prefix()
-        log.SetPrefix(p + ":" + short + ":" + strconv.Itoa(line) + ": ")
+	log.SetPrefix(p + ":" + short + ":" + strconv.Itoa(line) + ": ")
 }
 
 func log_info(arg ...interface{}) {
@@ -352,7 +352,7 @@ func cacheRelayFilesAndDelegateExec(arg *StartReq, root, clientnode string) erro
 		comesfrom := root + c.DestName
 		Dprint(2, "current cmd comesfrom = ", comesfrom, ", DestName = ", c.DestName, ", CurrentName = ", c.CurrentName, ", SymlinkTarget = ", c.SymlinkTarget)
 		f := new(filemarshal.File)
-		if (c.Ftype <= 2) { /* if the filetype is a directory, regular file, or symlink */
+		if c.Ftype <= 2 { /* if the filetype is a directory, regular file, or symlink */
 			f = &filemarshal.File{CurrentName: comesfrom, Uid: c.Uid, Gid: c.Gid, Ftype: c.Ftype, Perm: c.Perm, SymlinkTarget: c.SymlinkTarget, DestName: c.DestName}
 		} else {
 			continue

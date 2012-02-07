@@ -133,7 +133,7 @@ func startExecution(masterAddr, fam, ioProxyPort, slaveNodes string, cmd []strin
 		<-workerChan
 		numWorkers--
 		Dprintln(3, "startExecution: read from a workerchan, numworkers = ", numWorkers)
-}
+	}
 	Dprintln(3, "startExecution: finished")
 }
 
@@ -151,7 +151,7 @@ func newPackVisitor() (p *packVisitor) {
 	return &packVisitor{alreadyVisited: make(map[string]bool)}
 }
 
-func walkFunc(p *packVisitor, pv_err chan <- error) filepath.WalkFunc {
+func walkFunc(p *packVisitor, pv_err chan<- error) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			if pv_err != nil {
@@ -182,14 +182,14 @@ func (p *packVisitor) VisitDir(filePath string, f os.FileInfo) bool {
 	gid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Gid)
 	var ftype int
 	switch {
-		case ((f.Mode() & os.ModeType) == 0):
-			ftype = 0
-		case f.IsDir():
-			ftype = 1
-		case ((f.Mode() & os.ModeSymlink) != 0):
-			ftype = 2
-		default:
-			ftype = 3
+	case ((f.Mode() & os.ModeType) == 0):
+		ftype = 0
+	case f.IsDir():
+		ftype = 1
+	case ((f.Mode() & os.ModeSymlink) != 0):
+		ftype = 2
+	default:
+		ftype = 3
 	}
 	perm := uint32(f.Mode().Perm())
 
@@ -198,10 +198,10 @@ func (p *packVisitor) VisitDir(filePath string, f os.FileInfo) bool {
 		CurrentName: filePath,
 		DestName:    filePath,
 		Local:       0,
-		Uid:		uid,
-		Gid:		gid,
-		Ftype:		ftype,
-		Perm:		perm,
+		Uid:         uid,
+		Gid:         gid,
+		Ftype:       ftype,
+		Perm:        perm,
 	}
 	Dprint(4, "VisitDir: appending ", filePath, " ", []byte(filePath), " ", p.alreadyVisited)
 	p.cmds = append(p.cmds, c)
@@ -231,14 +231,14 @@ func (p *packVisitor) VisitFile(filePath string, f os.FileInfo) {
 	gid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Gid)
 	var ftype int
 	switch {
-		case ((f.Mode() & os.ModeType) == 0):
-			ftype = 0
-		case f.IsDir():
-			ftype = 1
-		case ((f.Mode() & os.ModeSymlink) != 0):
-			ftype = 2
-		default:
-			ftype = 3
+	case ((f.Mode() & os.ModeType) == 0):
+		ftype = 0
+	case f.IsDir():
+		ftype = 1
+	case ((f.Mode() & os.ModeSymlink) != 0):
+		ftype = 2
+	default:
+		ftype = 3
 	}
 	perm := uint32(f.Mode().Perm())
 
@@ -247,19 +247,19 @@ func (p *packVisitor) VisitFile(filePath string, f os.FileInfo) {
 		CurrentName: filePath,
 		DestName:    filePath,
 		Local:       0,
-		Uid:		uid,
-		Gid:		gid,
-		Ftype:		ftype,
-		Perm:		perm,
+		Uid:         uid,
+		Gid:         gid,
+		Ftype:       ftype,
+		Perm:        perm,
 	}
 	Dprint(4, "VisitFile: appending ", f.Name(), " ", f.Size(), " ", []byte(filePath), " ", p.alreadyVisited)
 
 	p.cmds = append(p.cmds, c)
 
 	switch {
-	case f.Mode() & os.ModeType == 0:
+	case f.Mode()&os.ModeType == 0:
 		p.bytesToTransfer += f.Size()
-	case f.Mode() & os.ModeSymlink != 0:
+	case f.Mode()&os.ModeSymlink != 0:
 		/* we have to read the link but also get a path the file for 
 		 * further walking. We think. 
 		 */

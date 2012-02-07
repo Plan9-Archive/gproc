@@ -46,4 +46,3 @@ func ucred(fd int) (pid, uid, gid int) {
 	*/
 	return 0, 0, 0
 }
-

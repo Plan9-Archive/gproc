@@ -35,7 +35,7 @@ var (
 	localbin       = flag.Bool("localbin", false, "execute local files")
 	DoPrivateMount = flag.Bool("p", true, "Do a private mount")
 	DebugLevel     = flag.Int("debug_delete", 0, "debug level")
-	Extra_debug	= flag.Bool("debug", false, "enable extra debug info")
+	Extra_debug    = flag.Bool("debug", false, "enable extra debug info")
 	/* this one gets me a zero-length string if not set. Phooey. */
 	filesToTakeAlong = flag.String("f", "", "comma-seperated list of files/directories to take along")
 	root             = flag.String("r", "", "root for finding binaries")

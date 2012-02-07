@@ -11,7 +11,6 @@ package main
 
 import ()
 
-
 func getIfc() int {
 	return 0
 }

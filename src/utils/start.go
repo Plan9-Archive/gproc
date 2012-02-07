@@ -16,9 +16,9 @@
 package main
 
 import (
-	"os"
-	"fmt"
 	"flag"
+	"fmt"
+	"os"
 )
 
 func usage() {
@@ -31,8 +31,8 @@ var (
 	highNode     = flag.Int("h", 40, "Highest node number")
 	debugLevel   = flag.Int("d", 0, "Debug level")
 	privateMount = flag.Bool("p", true, "private mounts")
-	runornot = flag.String("b", "20", "block size -- default 20")
-	myAddress = flag.String("myAddress", "hostname", "what to tell a node to compute it's own address") 
+	runornot     = flag.String("b", "20", "block size -- default 20")
+	myAddress    = flag.String("myAddress", "hostname", "what to tell a node to compute it's own address")
 )
 
 func runlevel(lowNode, highNode int, mod bool) {
@@ -47,10 +47,10 @@ func runlevel(lowNode, highNode int, mod bool) {
 		go func(anode int) {
 			node := fmt.Sprintf("root@kn%d", anode)
 
-                        Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_amd64", 
-				"-parent='hostname base 20 roundup kn strcat 10.1.234.234 hostname base 20 % ifelse'", 
-				"-myId='hostname base 20 % 1  + hostname base 20 / hostname base    %  ifelse'", 
-				"-myAddress=hostname", 
+			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_amd64",
+				"-parent='hostname base 20 roundup kn strcat 10.1.234.234 hostname base 20 % ifelse'",
+				"-myId='hostname base 20 % 1  + hostname base 20 / hostname base    %  ifelse'",
+				"-myAddress=hostname",
 				fmt.Sprintf("-p=%v ", *privateMount), fmt.Sprintf("-debug=%d", *debugLevel), "s"}
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)

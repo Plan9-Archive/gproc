@@ -15,10 +15,10 @@ type File struct {
 	DestName      string // The decoder will place a file in DestDir + DestName (eg. "/tmp/xproc" + "/lib/libc.so.6")
 	SymlinkTarget string // this is for symlinks
 	file          *os.File
-	Uid		int
-	Gid		int
-	Ftype		int // 0=regular, 1=dir, 2=symlink, >2=something else
-	Perm		uint32
+	Uid           int
+	Gid           int
+	Ftype         int // 0=regular, 1=dir, 2=symlink, >2=something else
+	Perm          uint32
 }
 
 // NewFile creates a new file referring to f,
@@ -100,7 +100,7 @@ func (enc encoder) Encode(x interface{}) error {
 	for _, name := range names {
 		off := int64(0)
 		f := files[name]
-		if (f.Ftype != 0) {
+		if f.Ftype != 0 {
 			continue
 		}
 		f.file, err = os.Open(f.CurrentName) // Read from the "CurrentName"
@@ -146,7 +146,6 @@ func (dec decoder) Decode(x interface{}) error {
 		}
 	},
 		x)
-
 
 	for _, name := range names {
 		if files[name] == nil {

@@ -61,7 +61,7 @@ type Forth interface {
 	Empty() bool
 	Newop(string, forthop)
 	Reset()
-	Stack()[]string
+	Stack() []string
 }
 
 // New creates a new stack
@@ -76,15 +76,17 @@ func (f *forthstack) Newop(n string, op forthop) {
 	opmap[n] = op
 }
 
-func  Ops() (map[string] forthop){
+func Ops() map[string]forthop {
 	return opmap
 }
+
 // Reset resets the stack to empty
 func (f *forthstack) Reset() {
 	f.stack = f.stack[0:0]
 }
+
 // Return the stack as a []string
-func (f *forthstack) Stack() []string{
+func (f *forthstack) Stack() []string {
 	return f.stack
 }
 
@@ -148,6 +150,7 @@ func iEval(f Forth, s string) {
 	}
 	return
 }
+
 /* Eval takes a Forth and strings and splits the string on space
  * characters, pushing each element on the stack or invoking the 
  * operator if it is found in the opmap. It returns TOS when it is done. 
@@ -262,4 +265,3 @@ func NewWord(f Forth, name, command string) {
 	opmap[name] = newword
 	return
 }
-

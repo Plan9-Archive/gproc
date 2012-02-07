@@ -10,9 +10,9 @@
 package main
 
 import (
+	"log"
 	"syscall"
 	"unsafe"
-	"log"
 )
 
 var errors = []string{
@@ -166,4 +166,3 @@ func ucred(fd int) (pid, uid, gid int) {
 	}
 	return creds[0], creds[1], creds[2]
 }
-

@@ -10,19 +10,19 @@
 package main
 
 import (
-	"log"
-	"strings"
-	"os"
-	"net"
-	"fmt"
 	"encoding/gob"
-	"time"
+	"fmt"
+	"log"
 	"math/rand"
+	"net"
+	"os"
+	"strings"
+	"time"
 )
 
 var id string
 
-func runSlave(){
+func runSlave() {
 	/* some simple sanity checking */
 	if *DoPrivateMount == true && os.Getuid() != 0 {
 		log.Fatal("Slave: Need to run as root for private mounts")

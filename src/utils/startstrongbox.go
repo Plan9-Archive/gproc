@@ -10,9 +10,9 @@
 package main
 
 import (
-	"os"
-	"fmt"
 	"flag"
+	"fmt"
+	"os"
 )
 
 func usage() {
@@ -24,7 +24,7 @@ var (
 	lowNode    = flag.Int("l", 1, "Lowest node number")
 	highNode   = flag.Int("h", 490, "Highest node number")
 	debugLevel = flag.Int("d", 0, "Debug level")
-	parent = flag.String("parent", "sbroot", "parent address")
+	parent     = flag.String("parent", "sbroot", "parent address")
 )
 
 func runlevel(lowNode, highNode int, mod7 bool) {
@@ -38,7 +38,7 @@ func runlevel(lowNode, highNode int, mod7 bool) {
 		numspawn++
 		go func(anode int) {
 			node := fmt.Sprintf("root@sb%d", anode)
-//-parent='hostname base 7 roundup sb strcat 10.1.1.1 hostname base 7 % ifelse' -myId='hostname base 7 % 1  + hostname base 7 / hostname base   7 %  ifelse' -myAddress=hostname s
+			//-parent='hostname base 7 roundup sb strcat 10.1.1.1 hostname base 7 % ifelse' -myId='hostname base 7 % 1  + hostname base 7 / hostname base   7 %  ifelse' -myAddress=hostname s
 
 			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_arm", "-parent='hostname base 7 roundup sb strcat 10.0.0.253 hostname base 7 % ifelse'", "-myId='hostname base 7 % 1  + hostname base 7 / hostname base   7 %  ifelse'", "-myAddress=hostname", fmt.Sprintf("-debug=%d", *debugLevel), "s"}
 			f := []*os.File{nil, os.Stdout, os.Stderr}

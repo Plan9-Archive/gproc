@@ -10,12 +10,11 @@
 package main
 
 import (
+	"encoding/binary"
 	"log"
 	"syscall"
 	"unsafe"
-	"encoding/binary"
 )
-
 
 func getIfc() int {
 	sock := tcpSockDial("74.125.87.99:80")
