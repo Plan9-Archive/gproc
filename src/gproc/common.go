@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"runtime"
 )
 
 type SlaveResp struct {
@@ -144,6 +145,32 @@ func (s *SlaveInfo) String() string {
 		return "<nil>"
 	}
 	return fmt.Sprint(s.Id, "@", s.Addr)
+}
+
+func log_prep() {
+        _, file, line, _ := runtime.Caller(2)
+        short := file
+        for i := len(file) - 1; i > 0; i-- {
+                if file[i] == '/' {
+                        short = file[i+1:]
+                        break
+                }
+        }
+        log.SetFlags(0)
+	p := log.Prefix()
+        log.SetPrefix(p + ":" + short + ":" + strconv.Itoa(line) + ": ")
+}
+
+func log_info(arg ...interface{}) {
+	if *Extra_debug {
+		log_prep()
+		log.Print(arg...)
+	}
+}
+
+func log_error(arg ...interface{}) {
+	log_prep()
+	log.Panic(arg...)
 }
 
 func Dprint(level int, arg ...interface{}) {
