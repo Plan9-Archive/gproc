@@ -143,6 +143,8 @@ func startSlave() {
 	// This read doesn't really matter, the important thing is that it will fail when the master goes away
 	foo := &StartReq{}
 	r.Recv("slaveProc done", &foo)
+	/* instead of returning here, just exit. This is because the master went away, so we want to destroy the whole tree */
+	os.Exit(0)
 }
 
 func initSlave(r *RpcClientServer, v *vitalData) {
