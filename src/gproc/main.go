@@ -10,7 +10,7 @@
 package main
 
 import (
-	"../forth"
+	"bitbucket.org/floren/gproc/src/forth"
 	"encoding/gob"
 	"flag"
 	"fmt"

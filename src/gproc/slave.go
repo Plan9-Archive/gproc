@@ -131,7 +131,7 @@ func startSlave() {
 				ne.Nodes = slaves.ServIntersect(ne.Nodes)
 				passrpc.Send("startSlave sending nodes ", ne)
 
-				w, _ := p.Wait(0) // Wait until the child process is finished. We need to do things sorta synchronously
+				w, _ := p.Wait() // Wait until the child process is finished. We need to do things sorta synchronously
 				log_info("startSlave: process returned ", w.String())
 			}
 			c.Close()
@@ -277,7 +277,7 @@ func runLocal(req *StartReq, n *os.File, done chan int) {
 		log_error("run: ", err)
 		n.Write([]uint8(err.Error()))
 	} else {
-		w, _ := p.Wait(0)
+		w, _ := p.Wait()
 		log_info("run: process returned ", w.String())
 	}
 	done <- 1 // we're called as a goroutine, so notify that we're done

@@ -2,7 +2,7 @@
 package filemarshal
 
 import (
-	"../typeapply"
+	"bitbucket.org/floren/gproc/src/typeapply"
 	"errors"
 	"fmt"
 	"os"

@@ -13,22 +13,29 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"old/template"
+	"html/template"
 	"os"
 	"os/exec"
 )
 
-var fmap = template.FormatterMap{
-	"html":     template.HTMLFormatter,
+var fmap = template.FuncMap{
+	"html":     template.HTMLEscaper,
 	"url+html": UrlHtmlFormatter,
 }
 
-var templStatus, _ = template.ParseFile("html/status.template", fmap)
-var templExtendedSlaveInformation, _ = template.ParseFile("html/extended-slave-information.template", fmap)
-var templHeader, _ = template.ParseFile("html/header.template", fmap)
-var templFooter, _ = template.ParseFile("html/footer.template", fmap)
+var (
+	templStatus *template.Template
+	templExtendedSlaveInformation *template.Template
+	templHeader *template.Template
+	templFooter *template.Template
+)
+
 
 func web() {
+	templStatus, _ = template.New("templStatus").Funcs(fmap).ParseFiles("html/status.template")
+	templExtendedSlaveInformation, _ = template.New("templExtendedSlaveInformation").Funcs(fmap).ParseFiles("html/extended-slave-information.template")
+	templHeader, _ = template.New("templHeader").Funcs(fmap).ParseFiles("html/header.template")
+	templFooter, _ = template.New("templFooter").Funcs(fmap).ParseFiles("html/footer.template")
 	if templStatus == nil || templExtendedSlaveInformation == nil || templHeader == nil || templFooter == nil {
 		log_info("Not starting web server")
 		return

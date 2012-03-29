@@ -26,7 +26,7 @@ func startMaster() {
 	exceptFiles = make(map[string]bool, 16)
 	exceptList = []string{}
 
-	go web()
+	//go web()
 	go receiveCmds(*defaultMasterUDS)
 	registerSlaves()
 }

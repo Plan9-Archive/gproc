@@ -18,7 +18,7 @@
 package main
 
 import (
-	"../ldd"
+	"bitbucket.org/floren/gproc/src/ldd"
 	"errors"
 	"fmt"
 	"log"
@@ -178,8 +178,8 @@ func (p *packVisitor) VisitDir(filePath string, f os.FileInfo) bool {
 		return false
 	}
 	//	_, file := path.Split(filePath)
-	uid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Uid)
-	gid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Gid)
+	uid := int(f.Sys().(*syscall.Stat_t).Uid)
+	gid := int(f.Sys().(*syscall.Stat_t).Gid)
 	var ftype int
 	switch {
 	case ((f.Mode() & os.ModeType) == 0):
@@ -227,8 +227,8 @@ func (p *packVisitor) VisitFile(filePath string, f os.FileInfo) {
 		return
 	}
 
-	uid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Uid)
-	gid := int(f.(*os.FileStat).Sys.(*syscall.Stat_t).Gid)
+	uid := int(f.Sys().(*syscall.Stat_t).Uid)
+	gid := int(f.Sys().(*syscall.Stat_t).Gid)
 	var ftype int
 	switch {
 	case ((f.Mode() & os.ModeType) == 0):
