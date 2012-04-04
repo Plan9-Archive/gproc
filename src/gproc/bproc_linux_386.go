@@ -26,9 +26,7 @@ func ucred(fd int) (pid, uid, gid int) {
 	_, _, e1 := syscall.Syscall(102, 15, uintptr(unsafe.Pointer(&ucred[0])), 0)
 
 	if e1 < 0 {
-		if *DebugLevel > 2 {
-			log_info("%v %v\n", fd, e1)
-		}
+		log_info("%v %v\n", fd, e1)
 		return -1, -1, -1
 	}
 	return creds[0], creds[1], creds[2]
