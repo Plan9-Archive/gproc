@@ -1,0 +1,6 @@
+These are some simple utilities for starting gproc on clusters. We use
+startkane to launch a two-level tree. For example, if we want to run
+on nodes 201 through 400, we would start "gproc m", then run
+"startkane -l 200 -h 400 1" to start the first level of the tree, then
+"startkane -l 200 -h 400 2" to start the second level.
+

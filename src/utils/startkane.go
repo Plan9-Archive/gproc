@@ -32,7 +32,7 @@ var (
 )
 
 func runlevel(lowNode, highNode int, mod bool) {
-	reap := make(chan *os.Waitmsg, 0)
+	reap := make(chan *os.ProcessState, 0)
 	numspawn := 0
 	for i := lowNode; i <= highNode; i++ {
 		fmt.Printf("Check %d; mode %v; mod %v\n", i, (i%BLOCKSIZE == 0), mod)
@@ -43,10 +43,10 @@ func runlevel(lowNode, highNode int, mod bool) {
 		go func(anode int) {
 			node := fmt.Sprintf("root@kn%d", anode)
 
-			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc_linux_amd64",
-				"-parent='hostname base 20 roundup kn strcat 10.1.234.234 hostname base 20 % ifelse'",
-				"-myId='hostname base 20 % 1  + hostname base 20 / hostname base    %  ifelse'",
-				"-myAddress=hostname",
+			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc",
+				"-parent='172.16.255.254 kn hostname hostbase 20 roundup strcat hostname hostbase 20 % ifelse'",
+				"-myId='hostname hostbase'",
+				"-myAddress='hostname'",
 				fmt.Sprintf("-p=%v ", *privateMount), fmt.Sprintf("-debug=%d", *debugLevel), "s"}
 			f := []*os.File{nil, os.Stdout, os.Stderr}
 			fmt.Printf("Spawn to %v\n", node)
@@ -55,7 +55,7 @@ func runlevel(lowNode, highNode int, mod bool) {
 				fmt.Print("StartProcess fails: ", err)
 			}
 
-			msg, err := os.Wait(pid.Pid, 0)
+			msg, err := pid.Wait()
 			reap <- msg
 		}(i)
 	}
