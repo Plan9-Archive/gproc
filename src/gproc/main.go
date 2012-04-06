@@ -44,7 +44,7 @@ var (
 	defaultFam       = flag.String("fam", "tcp4", "network type")
 	gprocBin         = flag.String("gprocBin", "gproc", "name of gproc binary")
 	/* required in the command line */
-	parent    = flag.String("parent", "hostname", "parent for some configurations")
+	parent    = flag.String("myParent", "hostname", "parent for some configurations")
 	myAddress = flag.String("myAddress", "hostname", "Required set to my address")
 	myId      = flag.String("myId", "0", "Required -- tell slaves their id")
 	/* these are not switches */

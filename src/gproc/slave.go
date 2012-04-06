@@ -28,7 +28,7 @@ func runSlave() {
 		log_error("Slave: Need to run as root for private mounts")
 	}
 	if *parent == "" {
-		log_error("Slave: must set parent IP with -parent switch")
+		log_error("Slave: must set parent IP with -myParent switch")
 	}
 	if *myAddress == "" {
 		log_error("Slave: must set myAddress IP with -myAddress switch")

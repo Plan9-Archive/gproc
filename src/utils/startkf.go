@@ -40,7 +40,7 @@ func runlevel(lowNode, highNode int) {
 			node := fmt.Sprintf("root@kn%d", anode)
 
 			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, *binary,
-				"-parent='" + *parent + "'",
+				"-myParent='" + *parent + "'",
 				"-myId='hostname base  '",
 				"-myAddress=hostname",
 				fmt.Sprintf("-p=%v ", *privateMount), fmt.Sprintf("-debug=%d", *debugLevel), "s"}

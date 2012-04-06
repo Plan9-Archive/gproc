@@ -44,7 +44,7 @@ func runlevel(lowNode, highNode int, mod bool) {
 			node := fmt.Sprintf("root@kn%d", anode)
 
 			Args := []string{"ssh", "-o", "StrictHostKeyCHecking=no", node, "./gproc",
-				"-parent='172.16.255.254 kn hostname hostbase 20 roundup strcat hostname hostbase 20 % ifelse'",
+				"-myParent='172.16.255.254 kn hostname hostbase 20 roundup strcat hostname hostbase 20 % ifelse'",
 				"-myId='hostname hostbase'",
 				"-myAddress='hostname'",
 				fmt.Sprintf("-p=%v ", *privateMount), fmt.Sprintf("-debug=%d", *debugLevel), "s"}
